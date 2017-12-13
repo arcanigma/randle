@@ -1,0 +1,24 @@
+{
+    "name": "randle",
+    "description": "Dice rolling and randomization bot for Slack.",
+    "version": "1.0.0",
+    "main": "bot/main.js",
+    "scripts": {
+        "start": "node bot/main.js"
+    },
+    "engines": {
+        "node": "^8.0.0"
+    },
+    "dependencies": {
+        "botkit": "^0.6.7"
+    },
+    "author": {
+        "name": "Ron Reaser",
+        "email": "ron@reaser.org",
+        "url": "https://github.com/ron-reaser"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ron-reaser/randle.git"
+    }
+}
