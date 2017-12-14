@@ -28,13 +28,6 @@ var handler = {
     }
 }
 
-var rng = {
-    randomInt: require('../library/random-int'),
-    fyShuffle: require('../library/fisher-yates')
-};
-
-var commands = {
-    ping: require('./commands/ping')(controller),
-    fu: require('./commands/fu')(controller, handler, rng),
-    deck: require('./commands/deck')(controller, handler, rng)
-};
+['ping', 'fu', 'deck'].forEach(name => {
+    require(`./commands/${name}`)(controller, handler);
+});

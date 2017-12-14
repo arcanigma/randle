@@ -1,4 +1,6 @@
-module.exports = function(controller, handler, rng) {
+var fyShuffle = require('fisher-yates');
+
+module.exports = function(controller, handler) {
 
     controller.hears( [/^!shuffle(.*)/i], ['direct_message', 'direct_mention', 'mention', 'ambient'], function(bot, message) {
         try {
@@ -34,7 +36,7 @@ module.exports = function(controller, handler, rng) {
         if (elements.length < 2)
             throw new Error('You must provide a comma-separated list of at least two elements.');
 
-        rng.fyShuffle(elements);
+        fyShuffle(elements);
 
         return elements;
     }

@@ -1,3 +1,5 @@
+var randomInt = require('random-int');
+
 const answers = {
     1: {'phrase': '*no*, *and*...',  'color': '#E8E8E8'},
     2: {'phrase': '*no*.',           'color': '#C2D9E6'},
@@ -7,7 +9,7 @@ const answers = {
     6: {'phrase': '*yes*, *and*...', 'color': '#2C9EE0'},
 };
 
-module.exports = function(controller, handler, rng) {
+module.exports = function(controller, handler) {
 
     controller.hears( [/!fu/i], ['direct_message', 'direct_mention', 'mention', 'ambient'], function(bot, message) {
         try {
@@ -23,7 +25,7 @@ module.exports = function(controller, handler, rng) {
             var details = [];
             var rolls = [];
             for (let i = 1; i <= dice; i++) {
-                let roll = rng.randomInt(1, 6);
+                let roll = randomInt(1, 6);
                 rolls.push(roll);
 
                 let phrase = answers[roll]['phrase'];
