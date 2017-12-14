@@ -28,6 +28,6 @@ var handler = {
     }
 }
 
-['ping', 'fu', 'deck'].forEach(name => {
-    require(`./commands/${name}`)(controller, handler);
-});
+require('./commands/ping')(controller);
+require('./commands/fu')(controller, handler);
+require('./commands/deck')(controller, handler);

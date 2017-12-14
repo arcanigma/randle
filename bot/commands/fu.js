@@ -9,9 +9,12 @@ const answers = {
     6: {'phrase': '*yes*, *and*...', 'color': '#2C9EE0'},
 };
 
+const MAX_ATTACH = 10,
+      MAX_DICE = 20;
+
 module.exports = function(controller, handler) {
 
-    controller.hears( [/!fu/i], ['direct_message', 'direct_mention', 'mention', 'ambient'], function(bot, message) {
+    controller.hears([/!fu/i], ['direct_message', 'direct_mention', 'mention', 'ambient'], function(bot, message) {
         try {
             bot.startTyping(message);
 
@@ -21,6 +24,8 @@ module.exports = function(controller, handler) {
                 modifier += (parseInt(element) || (element == 0 ? 0 : parseInt(element + "1")));
             });
             var dice = 1 + Math.abs(modifier);
+            if (dice > MAX_DICE)
+                throw new Error(`Total number of dice must be ${MAX_DICE} or less.`);
 
             var details = [];
             var rolls = [];
@@ -30,13 +35,21 @@ module.exports = function(controller, handler) {
 
                 let phrase = answers[roll]['phrase'];
                 let color = answers[roll]['color'];
-                details.push({
-                    'text': `${roll} → ${phrase}`,
-                    'mrkdwn_in': ['text'],
-                    'color': color
-                });
+                if (details.length < MAX_ATTACH)
+                    details.push({
+                        'text': `${roll} → ${phrase}`,
+                        'mrkdwn_in': ['text'],
+                        'color': color
+                    });
             }
             rolls.sort();
+
+            if (rolls.length > MAX_ATTACH)
+                details.unshift({
+                    'text': `Only the first *${MAX_ATTACH}* results are shown here.`,
+                    'mrkdwn_in': ['text'],
+                    'color': 'warning'
+                });
 
             if (dice == 1) {
                 let roll = rolls[0];
