@@ -16,6 +16,18 @@ controller.spawn({
     if (err) throw new Error(err);
 });
 
+var handler = {
+    error: function(bot, message, err) {
+        bot.whisper(message, {
+            'text': `<@${message.user}>, your command caused an error. Please report it to the developer.`,
+            'attachments': [{
+                'text': err.toString(),
+                'color': 'danger'
+            }]
+        });
+    }
+}
+
 var rng = {
     randomInt: require('../library/random-int'),
     fyShuffle: require('../library/fisher-yates')
@@ -23,6 +35,6 @@ var rng = {
 
 var commands = {
     ping: require('./commands/ping')(controller),
-    fu: require('./commands/fu')(controller, rng),
-    deck: require('./commands/deck')(controller, rng)
+    fu: require('./commands/fu')(controller, handler, rng),
+    deck: require('./commands/deck')(controller, handler, rng)
 };

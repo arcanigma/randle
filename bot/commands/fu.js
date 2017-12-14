@@ -7,7 +7,7 @@ const answers = {
     6: {'phrase': '*yes*, *and*...', 'color': '#2C9EE0'},
 };
 
-module.exports = function(controller, rng) {
+module.exports = function(controller, handler, rng) {
 
     controller.hears( [/!fu/i], ['direct_message', 'direct_mention', 'mention', 'ambient'], function(bot, message) {
         try {
@@ -69,13 +69,7 @@ module.exports = function(controller, rng) {
             }
         }
         catch(err) {
-            bot.whisper(message, {
-                'text': `<@${message.user}>, your command caused an error. Please report it to the developer.`,
-                'attachments': [{
-                    'text': err.toString(),
-                    'color': 'danger'
-                }]
-            });
+            handler.error(bot, message, err);
         }
     });
 }

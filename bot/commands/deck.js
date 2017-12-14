@@ -1,4 +1,4 @@
-module.exports = function(controller, rng) {
+module.exports = function(controller, handler, rng) {
 
     controller.hears( [/^!shuffle(.*)/i], ['direct_message', 'direct_mention', 'mention', 'ambient'], function(bot, message) {
         try {
@@ -9,13 +9,7 @@ module.exports = function(controller, rng) {
             });
         }
         catch(err) {
-            bot.whisper(message, {
-                'text': `<@${message.user}>, your command caused an error. Please report it to the developer.`,
-                'attachments': [{
-                    'text': err.toString(),
-                    'color': 'danger'
-                }]
-            });
+            handler.error(bot, message, err);
         }
     });
 
@@ -28,13 +22,7 @@ module.exports = function(controller, rng) {
             });
         }
         catch(err) {
-            bot.whisper(message, {
-                'text': `<@${message.user}>, your command caused an error. Please report it to the developer.`,
-                'attachments': [{
-                    'text': err.toString(),
-                    'color': 'danger'
-                }]
-            });
+            handler.error(bot, message, err);
         }
     });
 
@@ -44,7 +32,7 @@ module.exports = function(controller, rng) {
         // TODO: duplicate on *N
 
         if (elements.length < 2)
-            throw new Error('You must provide a comma-separated list of elements');
+            throw new Error('You must provide a comma-separated list of at least two elements.');
 
         rng.fyShuffle(elements);
 
