@@ -15,6 +15,8 @@ controller.spawn({
     if (err) throw new Error(err);
 });
 
+var rng = require ('php-random-int');
 var commands = {
-    ping: require('./commands/ping')(controller)
+    ping: require('./commands/ping')(controller, rng),
+    fu: require('./commands/fu')(controller, rng)
 };
