@@ -6,7 +6,8 @@ if (!process.env.SLACK_BOT_TOKEN) {
 }
 
 var controller = Botkit.slackbot({
-    debug: false
+    debug: false,
+    require_delivery: true
 });
 
 controller.spawn({
@@ -17,6 +18,6 @@ controller.spawn({
 
 var rng = require ('php-random-int');
 var commands = {
-    ping: require('./commands/ping')(controller, rng),
+    ping: require('./commands/ping')(controller),
     fu: require('./commands/fu')(controller, rng)
 };
