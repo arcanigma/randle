@@ -24,7 +24,7 @@ module.exports = function(controller, rng) {
             var details = [];
             var rolls = [];
             for (let i = 1; i <= dice; i++) {
-                let roll = rng(1, 6);
+                let roll = rng.randomInt(1, 6);
                 rolls.push(roll);
 
                 let phrase = answers[roll]['phrase'];
