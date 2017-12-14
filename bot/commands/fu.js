@@ -1,18 +1,17 @@
+const answers = {
+    1: {'phrase': '*no*, *and*...',  'color': '#E8E8E8'},
+    2: {'phrase': '*no*.',           'color': '#C2D9E6'},
+    3: {'phrase': '*no*, *but*...',  'color': '#9DCAE4'},
+    4: {'phrase': '*yes*, *but*...', 'color': '#77BBE3'},
+    5: {'phrase': '*yes*.',          'color': '#52ACE1'},
+    6: {'phrase': '*yes*, *and*...', 'color': '#2C9EE0'},
+};
+
 module.exports = function(controller, rng) {
 
     controller.hears( [/!fu/i], ['direct_message', 'direct_mention', 'mention', 'ambient'], function(bot, message) {
-        bot.startTyping(message);
-
-        var response;
         try {
-            const answers = {
-                1: {'phrase': '*no*, *and*...',  'color': '#E8E8E8'},
-                2: {'phrase': '*no*.',           'color': '#C2D9E6'},
-                3: {'phrase': '*no*, *but*...',  'color': '#9DCAE4'},
-                4: {'phrase': '*yes*, *but*...', 'color': '#77BBE3'},
-                5: {'phrase': '*yes*.',          'color': '#52ACE1'},
-                6: {'phrase': '*yes*, *and*...', 'color': '#2C9EE0'},
-            };
+            bot.startTyping(message);
 
             var modifier = 0;
             var found = message.text.trim().match(/[+-][0-9]*/ig);
@@ -40,11 +39,11 @@ module.exports = function(controller, rng) {
             if (dice == 1) {
                 let roll = rolls[0];
                 let phrase = answers[roll]['phrase'];
-                response = {
+                bot.reply(message, {
                     'response_type': 'in_channel',
                     'text': `<@${message.user}>, the answer is ${phrase}`,
                     'attachments': details
-                };
+                });
             }
             else {
                 let roll, type, quality;
@@ -62,17 +61,21 @@ module.exports = function(controller, rng) {
                 let extra = dice - 1;
                 let cube = extra > 1 ? 'dice' : 'die';
                 let phrase = answers[roll]['phrase'];
-                response = {
+                bot.reply(message, {
                     'response_type': 'in_channel',
                     'text': `<@${message.user}>, with ${extra} ${type} ${cube}, the *${quality}* answer is ${phrase}`,
                     'attachments': details
-                };
+                });
             }
         }
-        catch(err){
-            response = err;
+        catch(err) {
+            bot.whisper(message, {
+                'text': `<@${message.user}>, your command caused an error. Please report it to the developer.`,
+                'attachments': [{
+                    'text': err.toString(),
+                    'color': 'danger'
+                }]
+            });
         }
-
-        bot.reply(message, response);
     });
 }

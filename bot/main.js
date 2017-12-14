@@ -17,10 +17,12 @@ controller.spawn({
 });
 
 var rng = {
-    randomInt: require ('../library/random-int'),
-    fyShuffle: require ('../library/fisher-yates')
+    randomInt: require('../library/random-int'),
+    fyShuffle: require('../library/fisher-yates')
 };
+
 var commands = {
     ping: require('./commands/ping')(controller),
-    fu: require('./commands/fu')(controller, rng)
+    fu: require('./commands/fu')(controller, rng),
+    deck: require('./commands/deck')(controller, rng)
 };
