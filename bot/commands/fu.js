@@ -20,9 +20,9 @@ module.exports = function(controller, handler) {
 
             var modifier = 0;
             var found = message.text.trim().match(/[+-][0-9]*/ig);
-            if (found) found.forEach(function(element) {
+            if (found) for (let element in found) {
                 modifier += (parseInt(element) || (element == 0 ? 0 : parseInt(element + "1")));
-            });
+            }
             var dice = 1 + Math.abs(modifier);
             if (dice > MAX_DICE)
                 throw new Error(`Total number of dice must be ${MAX_DICE} or less.`);
@@ -33,8 +33,8 @@ module.exports = function(controller, handler) {
                 let roll = randomInt(1, 6);
                 rolls.push(roll);
 
-                let phrase = answers[roll]['phrase'];
-                let color = answers[roll]['color'];
+                let phrase = answers[roll].phrase;
+                let color = answers[roll].color;
                 if (details.length < MAX_ATTACH)
                     details.push({
                         'text': `${roll} → ${phrase}`,
@@ -53,7 +53,7 @@ module.exports = function(controller, handler) {
 
             if (dice == 1) {
                 let roll = rolls[0];
-                let phrase = answers[roll]['phrase'];
+                let phrase = answers[roll].phrase;
                 bot.reply(message, {
                     'response_type': 'in_channel',
                     'text': `<@${message.user}>, the answer is ${phrase}`,
@@ -75,7 +75,7 @@ module.exports = function(controller, handler) {
 
                 let extra = dice - 1;
                 let cube = extra > 1 ? 'dice' : 'die';
-                let phrase = answers[roll]['phrase'];
+                let phrase = answers[roll].phrase;
                 bot.reply(message, {
                     'response_type': 'in_channel',
                     'text': `<@${message.user}>, with ${extra} ${type} ${cube}, the *${quality}* answer is ${phrase}`,
@@ -87,4 +87,4 @@ module.exports = function(controller, handler) {
             handler.error(bot, message, err);
         }
     });
-}
+};

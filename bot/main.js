@@ -26,8 +26,9 @@ var handler = {
             }]
         });
     }
-}
+};
 
-require('./commands/ping')(controller);
-require('./commands/fu')(controller, handler);
+require('./commands/echo')(controller);
+require('./commands/roll')(controller, handler);
 require('./commands/deck')(controller, handler);
+require('./commands/fu')(controller, handler);
