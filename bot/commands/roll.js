@@ -7,7 +7,7 @@ const RECEIVE_TYPES = ['direct_message', 'direct_mention', 'mention', 'ambient']
 
 module.exports = function(controller, handler) {
 
-    // PRE-PROCESS MACRO REPLACEMENTS
+    // PRE-PROCESS MACROS
     controller.middleware.receive.use(function(bot, message, next) {
         const MACROS = {
             '/adv': '2d20H',
@@ -33,46 +33,89 @@ module.exports = function(controller, handler) {
     });
 
     // PRE-PROCESS ARITHMETIC
-    var arithmeticHandler = function(bot, message, next) {
-        try {
-            const re = /([+-]|\b)([0-9]+)\s*([+-])\s*([0-9]+)\b/;
-            const fun = function (match, sign, x, op, y) {
-                x = parseInt(sign+x);
-                y = parseInt(op+y);
-                let sum = x+y;
-                if (sign && sum >= 0)
-                    return '+' + sum;
-                else
-                    return sum.toString();
-            };
+    var regexReduceArithmetic = function(text) {
+        const re = /([+-]|\b)([0-9]+)\s*([+-])\s*([0-9]+)\b/;
+        const fun = function (match, sign, x, op, y) {
+            x = parseInt(sign+x);
+            y = parseInt(op+y);
+            let sum = x+y;
+            if (sign && sum >= 0)
+                return '+' + sum;
+            else
+                return sum.toString();
+        };
 
-            message.text = regexReduce(message.text, re, fun);
+        return regexReduce(text, re, fun);
+    };
+    controller.middleware.receive.use(function(bot, message, next) {
+        if (RECEIVE_TYPES.includes(message.type)) {
+            try {
+                message.text = regexReduceArithmetic(message.text);
+            }
+            catch(err) {
+                handler.error(bot, message, err);
+            }
+        }
+        next();
+    });
+
+    // PROCESS DICE CODES
+    // TODO
+
+    // POST-PROCESS ARITHMETIC
+    controller.middleware.send.use(function(bot, message, next) {
+        try {
+            message.text = regexReduceArithmetic(message.text);
         }
         catch(err) {
             handler.error(bot, message, err);
         }
         next();
-    };
-    controller.middleware.receive.use(function(bot, message, next) {
-        if (RECEIVE_TYPES.includes(message.type)) {
-            arithmeticHandler(bot, message, next);
-        }
     });
 
-    // TODO: ROLLS
+    // POST-PROCESS BOUNDS
+    controller.middleware.send.use(function(bot, message, next) {
+        try {
+            const re = /([0-9]+)\s*(=|==|&gt;|&lt;|&gt;=|=&gt;|&lt;=|=&lt;|!=|&lt;&gt;|&gt;&lt;)\s*([0-9]+)/g;
+            const fun = function(match, x, relop, y) {
+                x = parseInt(x);
+                y = parseInt(y);
 
-    // POST-PROCESS ARITHMETIC
-    controller.middleware.send.use(arithmeticHandler);
+                let flag;
+                if (relop == '=' || relop == '==')
+                    flag = (x == y);
+                else if (relop == '&gt;')
+                    flag = (x > y);
+                else if (relop == '&lt;')
+                    flag = (x < y);
+                else if (relop == '&gt;=' || relop == '=&gt;')
+                    flag = (x >= y);
+                else if (relop == '&lt;=' || relop == '=&lt;')
+                    flag = (x <= y);
+                else if (relop == '!=' || relop == '&lt;&gt;' || relop == '&gt;&lt;')
+                    flag = (x != y);
 
-    // POST-PROCESS BOUNDS CHECKS
+                let answer = `${x} [_*${flag ? 'Yes' : 'No'}*_]`;
+
+                return answer;
+            };
+
+            message.text = message.text.replace(re, fun);
+        }
+        catch(err) {
+            handler.error(bot, message, err);
+        }
+        next();
+    });
 
     // POST-PROCESS FUNCTIONS
+    // TODO
 
-    // BOLD ALL NUMBERS, EXCEPT IN EMOJI
+    // POST-PROCESS NUMBER BOLDING
     controller.middleware.send.use(function(bot, message, next) {
-        const re = /\b[0-9]+(?!:)\b/g;
-
         try {
+            const re = /\b[0-9]+(?!:)\b/g;
+
             message.text = message.text.replace(re, '*$&*');
         }
         catch(err) {
