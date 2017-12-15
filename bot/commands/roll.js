@@ -17,10 +17,29 @@ module.exports = function(controller, handler) {
         next();
     };
 
-    // PRE-PROCESS +/- ARITHMETIC REDUCER
+    // PRE-PROCESS MACRO REPLACEMENTS
     controller.middleware.receive.use(function(bot, message, next) {
+        const MACROS = {
+            '/adv': '2d20H',
+            '/a':   '2d20H',
+            '/r':   '1d20',
+            '/dis': '2d20L',
+            '/d':   '2d20L',
+            'd%':   'd100',
+            'TEST': '41'
+        };
+
         processMessage(bot, message, next, function() {
-            const re = /([+-])\s*([0-9]+)\s*([+-])\s*([0-9]+)/;
+            for (let macro in MACROS) {
+                message.text = message.text.replace(macro, MACROS[macro]);
+            }
+        });
+    });
+
+    // PRE- AND POST-PROCESS +/- ARITHMETIC
+    var arithmeticHandler = function(bot, message, next) {
+        processMessage(bot, message, next, function() {
+            const re = /([+-]|\b)([0-9]+)\s*([+-])\s*([0-9]+)\b/;
             const fun = function (match, sign, x, op, y) {
                 x = parseInt(sign+x);
                 y = parseInt(op+y);
@@ -33,6 +52,8 @@ module.exports = function(controller, handler) {
 
             message.text = regexReduce(message.text, re, fun);
         });
-    });
+    };
+    controller.middleware.receive.use(arithmeticHandler);
+    // controller.middleware.send.use(arithmeticHandler);
 
 };

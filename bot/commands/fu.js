@@ -20,9 +20,9 @@ module.exports = function(controller, handler) {
 
             var modifier = 0;
             var found = message.text.trim().match(/[+-][0-9]*/ig);
-            if (found) for (let element in found) {
-                modifier += (parseInt(element) || (element == 0 ? 0 : parseInt(element + "1")));
-            }
+            if (found) found.forEach(function(element) {
+                modifier += (parseInt(element) || (element === 0 ? 0 : parseInt(element + "1")));
+            });
             var dice = 1 + Math.abs(modifier);
             if (dice > MAX_DICE)
                 throw new Error(`Total number of dice must be ${MAX_DICE} or less.`);
