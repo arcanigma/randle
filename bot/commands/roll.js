@@ -3,19 +3,9 @@ var regexReduce = require('regex-reduce');
 
 const MAX_ATTACH = 10;
 
-module.exports = function(controller, handler) {
+const RECEIVE_TYPES = ['direct_message', 'direct_mention', 'mention', 'ambient'];
 
-    var processMessage = function(bot, message, next, callback) {
-        if (['direct_message', 'direct_mention', 'mention', 'ambient'].includes(message.type)) {
-            try {
-                callback();
-            }
-            catch(err) {
-                handler.error(bot, message, err);
-            }
-        }
-        next();
-    };
+module.exports = function(controller, handler) {
 
     // PRE-PROCESS MACRO REPLACEMENTS
     controller.middleware.receive.use(function(bot, message, next) {
@@ -29,16 +19,22 @@ module.exports = function(controller, handler) {
             'TEST': '41'
         };
 
-        processMessage(bot, message, next, function() {
-            for (let macro in MACROS) {
-                message.text = message.text.replace(macro, MACROS[macro]);
+        if (RECEIVE_TYPES.includes(message.type)) {
+            try {
+                for (let macro in MACROS) {
+                    message.text = message.text.replace(macro, MACROS[macro]);
+                }
             }
-        });
+            catch(err) {
+                handler.error(bot, message, err);
+            }
+        }
+        next();
     });
 
-    // PRE- AND POST-PROCESS +/- ARITHMETIC
+    // PRE-PROCESS ARITHMETIC
     var arithmeticHandler = function(bot, message, next) {
-        processMessage(bot, message, next, function() {
+        try {
             const re = /([+-]|\b)([0-9]+)\s*([+-])\s*([0-9]+)\b/;
             const fun = function (match, sign, x, op, y) {
                 x = parseInt(sign+x);
@@ -51,9 +47,38 @@ module.exports = function(controller, handler) {
             };
 
             message.text = regexReduce(message.text, re, fun);
-        });
+        }
+        catch(err) {
+            handler.error(bot, message, err);
+        }
+        next();
     };
-    controller.middleware.receive.use(arithmeticHandler);
-    // controller.middleware.send.use(arithmeticHandler);
+    controller.middleware.receive.use(function(bot, message, next) {
+        if (RECEIVE_TYPES.includes(message.type)) {
+            arithmeticHandler(bot, message, next);
+        }
+    });
+
+    // TODO: ROLLS
+
+    // POST-PROCESS ARITHMETIC
+    controller.middleware.send.use(arithmeticHandler);
+
+    // POST-PROCESS BOUNDS CHECKS
+
+    // POST-PROCESS FUNCTIONS
+
+    // BOLD ALL NUMBERS, EXCEPT IN EMOJI
+    controller.middleware.send.use(function(bot, message, next) {
+        const re = /\b[0-9]+(?!:)\b/g;
+
+        try {
+            message.text = message.text.replace(re, '*$&*');
+        }
+        catch(err) {
+            handler.error(bot, message, err);
+        }
+        next();
+    });
 
 };
