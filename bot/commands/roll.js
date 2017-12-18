@@ -31,8 +31,8 @@ module.exports = function(controller, handler) {
         next();
     });
 
-    // PRE-PROCESS ARITHMETIC
-    var regexReduceArithmetic = function(text) {
+    // PRE-PROCESS ADDITION AND SUBTRACTION
+    var regexReduceAddSub = function(text) {
         const re = /([+-]|\b)([0-9]+(?:\.[0-9]+)?)\s*([+-])\s*([0-9]+(?:\.[0-9]+)?)\b/;
         const fun = function (match, sign, x, op, y) {
             x = parseFloat(sign+x);
@@ -49,7 +49,7 @@ module.exports = function(controller, handler) {
     controller.middleware.receive.use(function(bot, message, next) {
         if (RECEIVE_TYPES.includes(message.type)) {
             try {
-                message.text = regexReduceArithmetic(message.text);
+                message.text = regexReduceAddSub(message.text);
             }
             catch(err) {
                 handler.error(bot, message, err);
@@ -61,7 +61,7 @@ module.exports = function(controller, handler) {
     // PROCESS DICE CODES
     const parens = /\(([^()]+)\)/g;
     controller.hears(parens, ['direct_message', 'direct_mention', 'mention', 'ambient'], function(bot, message) {
-        const code = /(\B~)?(([1-9][0-9]*)?d([1-9][0-9]*)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?)(?:([*])([1-9][0-9]*))?\b/ig;
+        const code = /(\B~)?(([1-9][0-9]*)?d([1-9][0-9]*)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?)(?:(\^)([1-9][0-9]*))?\b/ig;
 
         try {
             // bot.startTyping(message);
@@ -143,10 +143,39 @@ module.exports = function(controller, handler) {
         }
     });
 
-    // POST-PROCESS ARITHMETIC
+    // POST-PROCESS ADDITION AND SUBTRACTION
     controller.middleware.send.use(function(bot, message, next) {
         try {
-            message.text = regexReduceArithmetic(message.text);
+            message.text = regexReduceAddSub(message.text);
+        }
+        catch(err) {
+            handler.error(bot, message, err);
+        }
+        next();
+    });
+
+    // POST-PROCESS MULTIPLICATION AND DIVISION
+    // TODO: refactor into rolling process
+    var regexReduceMultDiv = function(text) {
+        const re = /([+-]|\b)([0-9]+(?:\.[0-9]+)?)\s*(\*|\/|\\|\|)\s*([+-]?[0-9]+(?:\.[0-9]+)?)\b/;
+        const fun = function (match, sign, x, op, y) {
+            x = parseFloat(sign+x);
+            y = parseFloat(y);
+            if (op == '\*')
+                return Math.floor(x * y);
+            else if (op == '\/')
+                return Math.floor(x / y);
+            else if (op == '\\')
+                return Math.ceil(x / y);
+            else if (op == '\|')
+                return Math.round(x / y);
+        };
+
+        return regexReduce(text, re, fun);
+    };
+    controller.middleware.send.use(function(bot, message, next) {
+        try {
+            message.text = regexReduceMultDiv(message.text);
         }
         catch(err) {
             handler.error(bot, message, err);
