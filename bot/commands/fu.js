@@ -14,7 +14,7 @@ const MAX_ATTACH = 10,
 
 module.exports = function(controller, handler) {
 
-    controller.hears([/!fu/i], ['direct_message', 'direct_mention', 'mention', 'ambient'], function(bot, message) {
+    controller.hears(/^!fu/i, ['direct_message', 'direct_mention', 'mention', 'ambient'], function(bot, message) {
         try {
             bot.startTyping(message);
 
@@ -87,4 +87,5 @@ module.exports = function(controller, handler) {
             handler.error(bot, message, err);
         }
     });
+
 };

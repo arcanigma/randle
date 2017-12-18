@@ -15,8 +15,7 @@ module.exports = function(controller, handler) {
             '/r':   '1d20',
             '/dis': '2d20L',
             '/d':   '2d20L',
-            'd%':   'd100',
-            'TEST': '41'
+            'd%':   'd100'
         };
 
         if (RECEIVE_TYPES.includes(message.type)) {
@@ -34,10 +33,10 @@ module.exports = function(controller, handler) {
 
     // PRE-PROCESS ARITHMETIC
     var regexReduceArithmetic = function(text) {
-        const re = /([+-]|\b)([0-9]+)\s*([+-])\s*([0-9]+)\b/;
+        const re = /([+-]|\b)([0-9]+(?:\.[0-9]+)?)\s*([+-])\s*([0-9]+(?:\.[0-9]+)?)\b/;
         const fun = function (match, sign, x, op, y) {
-            x = parseInt(sign+x);
-            y = parseInt(op+y);
+            x = parseFloat(sign+x);
+            y = parseFloat(op+y);
             let sum = x+y;
             if (sign && sum >= 0)
                 return '+' + sum;
@@ -60,7 +59,89 @@ module.exports = function(controller, handler) {
     });
 
     // PROCESS DICE CODES
-    // TODO
+    const parens = /\(([^()]+)\)/g;
+    controller.hears(parens, ['direct_message', 'direct_mention', 'mention', 'ambient'], function(bot, message) {
+        const code = /(\B~)?(([1-9][0-9]*)?d([1-9][0-9]*)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?)(?:([*])([1-9][0-9]*))?\b/ig;
+
+        try {
+            // bot.startTyping(message);
+
+            let attach = [],
+                inline = [];
+            const fun = function(match, avg, slug, count, size, hilo, keep, mod, times, reps) {
+                let expand = [];
+
+                count = parseInt(count) || 1;
+                size = parseInt(size) || 1;
+                mod = parseFloat(mod) || 0;
+
+                reps = (times ? parseInt(reps) : 1);
+                for (let rep = 1; rep <= reps; rep++) {
+                    if (avg) {
+                        // if (hilo) {
+                        //     expansion.push('_error_');
+                        //     attach.push({
+                        //         'text': `*${slug}* → Keeping high/low is not allowed in averages.`,
+                        //         'mrkdwn_in': ['text'],
+                        //         'color': 'warning'
+                        //     });
+                        // }
+                        //
+                        // if (times) {
+                        //     expansion.push('_error_');
+                        //     attach.push({
+                        //         'text': `*${slug}* → Repetition is not allowed in averages.`,
+                        //         'mrkdwn_in': ['text'],
+                        //         'color': 'warning'
+                        //     });
+                        // }
+
+                        let average = (count * ((1 + size) / 2)) + mod;
+                        expand.push(average);
+                        attach.push({
+                            'text': `*${slug}* ≈ ${average}`,
+                            'mrkdwn_in': ['text'],
+                            'color': '#439FE0'
+                        });
+                    }
+                    else {
+                        expand.push('_unknown_');
+                        attach.push({
+                            'text': `*${slug}* → Not yet implemented.`,
+                            'mrkdwn_in': ['text'],
+                            'color': 'warning'
+                        });
+                    }
+                }
+
+                if (reps == 1)
+                    return expand.shift();
+                else
+                    return '[' + expand.join(', ') + ']';
+            };
+
+            let match;
+            while ((match = parens.exec(message.text)) != null) {
+                let content = match[1],
+                    old = content;
+                content = content.replace(code, fun);
+                if (content != old)
+                    inline.push(content);
+            }
+            let results = inline.join('; ');
+
+            if (results) {
+                bot.reply(message, {
+                    'response_type': 'in_channel',
+                    'text': `<@${message.user}> rolled ${results}.`,
+                    'attachments': attach
+                });
+            }
+        }
+        catch(err) {
+            handler.error(bot, message, err);
+        }
+    });
 
     // POST-PROCESS ARITHMETIC
     controller.middleware.send.use(function(bot, message, next) {
@@ -76,10 +157,10 @@ module.exports = function(controller, handler) {
     // POST-PROCESS BOUNDS
     controller.middleware.send.use(function(bot, message, next) {
         try {
-            const re = /([0-9]+)\s*(=|==|&gt;|&lt;|&gt;=|=&gt;|&lt;=|=&lt;|!=|&lt;&gt;|&gt;&lt;)\s*([0-9]+)/g;
+            const re = /([0-9]+(?:\.[0-9]+)?)\s*(=|==|&gt;|&lt;|&gt;=|=&gt;|&lt;=|=&lt;|!=|&lt;&gt;|&gt;&lt;)\s*([0-9]+(?:\.[0-9]+)?)/g;
             const fun = function(match, x, relop, y) {
-                x = parseInt(x);
-                y = parseInt(y);
+                x = parseFloat(x);
+                y = parseFloat(y);
 
                 let flag;
                 if (relop == '=' || relop == '==')
@@ -114,7 +195,7 @@ module.exports = function(controller, handler) {
     // POST-PROCESS NUMBER BOLDING
     controller.middleware.send.use(function(bot, message, next) {
         try {
-            const re = /\b[0-9]+(?!:)\b/g;
+            const re = /\b[0-9]+(?:\.[0-9]+)?(?!:)\b/g;
 
             message.text = message.text.replace(re, '*$&*');
         }
