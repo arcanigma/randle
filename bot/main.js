@@ -28,7 +28,7 @@ var handler = {
     }
 };
 
-require('./commands/echo')(controller);
-require('./commands/roll')(controller, handler);
-require('./commands/deck')(controller, handler);
-require('./commands/fu')(controller, handler);
+require('echo')(controller);
+require('roll')(controller, handler);
+require('deck')(controller, handler);
+require('fu')(controller, handler);
