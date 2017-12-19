@@ -61,20 +61,38 @@ module.exports = function(controller, handler) {
     // PROCESS DICE CODES
     const parens = /\(([^()]+)\)/g;
     controller.hears(parens, ['direct_message', 'direct_mention', 'mention', 'ambient'], function(bot, message) {
-        const code = /(\B~)?(([1-9][0-9]*)?d([1-9][0-9]*)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?)(?:(\^)([1-9][0-9]*))?\b/ig;
+        const code = /(\B~)?(([1-9][0-9]*)?d([1-9][0-9]*)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\|\/\/)([0-9]+(?:\.[0-9]+)?))?)(?:(\^)([1-9][0-9]*))?\b/ig;
 
         try {
-            // bot.startTyping(message);
+            bot.startTyping(message);
 
             let attach = [],
                 inline = [],
                 overflow = 0;
-            const fun = function(match, avg, slug, count, size, hilo, keep, mod, times, reps) {
+            const fun = function(match, avg, slug, count, size, hilo, keep, mod, muldev, fact, times, reps) {
                 let expand = [];
 
                 count = parseInt(count) || 1;
                 size = parseInt(size) || 1;
                 mod = parseFloat(mod) || 0;
+
+                fact = parseFloat(fact) || 1;
+                let trans;
+                if (muldev) {
+                    if (muldev == '\*')
+                        trans = x => x * fact;
+                    else if (muldev == '\/')
+                        trans = x => Math.floor(x / fact);
+                    else if (muldev == '\|')
+                        trans = x => Math.round(x / fact);
+                    else if (muldev == '\\')
+                        trans = x => Math.ceil(x / fact);
+                    else
+                        trans = x => Math.round(x / fact * 1000) / 1000;
+                }
+                else {
+                    trans = x => x;
+                }
 
                 reps = (times ? parseInt(reps) : 1);
                 for (let rep = 1; rep <= reps; rep++) {
@@ -97,7 +115,7 @@ module.exports = function(controller, handler) {
                         //     });
                         // }
 
-                        let average = (count * ((1 + size) / 2)) + mod;
+                        let average = trans((count * ((1 + size) / 2)) + mod);
                         expand.push(average);
                         if (attach.length < MAX_ATTACH)
                             attach.push({
@@ -156,35 +174,6 @@ module.exports = function(controller, handler) {
     controller.middleware.send.use(function(bot, message, next) {
         try {
             message.text = regexReduceAddSub(message.text);
-        }
-        catch(err) {
-            handler.error(bot, message, err);
-        }
-        next();
-    });
-
-    // POST-PROCESS MULTIPLICATION AND DIVISION
-    // TODO: refactor into rolling process
-    var regexReduceMultDiv = function(text) {
-        const re = /([+-]|\b)([0-9]+(?:\.[0-9]+)?)\s*(\*|\/|\\|\|)\s*([+-]?[0-9]+(?:\.[0-9]+)?)\b/;
-        const fun = function (match, sign, x, op, y) {
-            x = parseFloat(sign+x);
-            y = parseFloat(y);
-            if (op == '\*')
-                return Math.floor(x * y);
-            else if (op == '\/')
-                return Math.floor(x / y);
-            else if (op == '\\')
-                return Math.ceil(x / y);
-            else if (op == '\|')
-                return Math.round(x / y);
-        };
-
-        return regexReduce(text, re, fun);
-    };
-    controller.middleware.send.use(function(bot, message, next) {
-        try {
-            message.text = regexReduceMultDiv(message.text);
         }
         catch(err) {
             handler.error(bot, message, err);
