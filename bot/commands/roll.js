@@ -1,7 +1,8 @@
 var randomInt = require('random-int');
 var regexReduce = require('regex-reduce');
 
-const MAX_ATTACH = 15;
+const MAX_ATTACH = 15,
+      MAX_CHARS = 100;
 
 const RECEIVE_TYPES = ['direct_message', 'direct_mention', 'mention', 'ambient'];
 
@@ -148,14 +149,24 @@ module.exports = function(controller, handler) {
                 if (content != old)
                     inline.push(content);
             }
-            let results = inline.join('; ');
 
-            if (overflow > 0)
+            let results = inline.join('; ');
+            if (results.length > MAX_CHARS) {
                 attach.push({
-                    'text': `Only showing the first _${MAX_ATTACH}_ out of _${MAX_ATTACH+overflow}_ detailed results.`,
+                    'text': `Message too long. Only showing the first _${MAX_CHARS}_ of _${results.length}_ characters.`,
                     'mrkdwn_in': ['text'],
                     'color': 'warning'
                 });
+                results = results.substring(0, MAX_CHARS) + '...';
+            }
+
+            if (overflow > 0) {
+                attach.push({
+                    'text': `Too many results. Only showing the first _${MAX_ATTACH}_ of _${MAX_ATTACH+overflow}_ details.`,
+                    'mrkdwn_in': ['text'],
+                    'color': 'warning'
+                });
+            }
 
             if (results) {
                 bot.reply(message, {
