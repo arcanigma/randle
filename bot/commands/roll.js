@@ -1,7 +1,7 @@
 var randomInt = require('random-int');
 var regexReduce = require('regex-reduce');
 
-const MAX_ATTACH = 10;
+const MAX_ATTACH = 15;
 
 const RECEIVE_TYPES = ['direct_message', 'direct_mention', 'mention', 'ambient'];
 
@@ -67,7 +67,8 @@ module.exports = function(controller, handler) {
             // bot.startTyping(message);
 
             let attach = [],
-                inline = [];
+                inline = [],
+                overflow = 0;
             const fun = function(match, avg, slug, count, size, hilo, keep, mod, times, reps) {
                 let expand = [];
 
@@ -98,26 +99,27 @@ module.exports = function(controller, handler) {
 
                         let average = (count * ((1 + size) / 2)) + mod;
                         expand.push(average);
-                        attach.push({
-                            'text': `*${slug}* ≈ ${average}`,
-                            'mrkdwn_in': ['text'],
-                            'color': '#439FE0'
-                        });
+                        if (attach.length < MAX_ATTACH)
+                            attach.push({
+                                'text': `*${slug}* ≈ ${average}`,
+                                'mrkdwn_in': ['text'],
+                                'color': '#439FE0'
+                            });
+                        else overflow++;
                     }
                     else {
                         expand.push('_unknown_');
-                        attach.push({
-                            'text': `*${slug}* → Not yet implemented.`,
-                            'mrkdwn_in': ['text'],
-                            'color': 'warning'
-                        });
+                        if (attach.length < MAX_ATTACH)
+                            attach.push({
+                                'text': `*${slug}* → Not yet implemented.`,
+                                'mrkdwn_in': ['text'],
+                                'color': 'warning'
+                            });
+                        else overflow++;
                     }
                 }
 
-                if (reps == 1)
-                    return expand.shift();
-                else
-                    return '[' + expand.join(', ') + ']';
+                return expand.join(', ');
             };
 
             let match;
@@ -129,6 +131,13 @@ module.exports = function(controller, handler) {
                     inline.push(content);
             }
             let results = inline.join('; ');
+
+            if (overflow > 0)
+                attach.push({
+                    'text': `Only showing the first _${MAX_ATTACH}_ out of _${MAX_ATTACH+overflow}_ detailed results.`,
+                    'mrkdwn_in': ['text'],
+                    'color': 'warning'
+                });
 
             if (results) {
                 bot.reply(message, {
