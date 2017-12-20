@@ -1,4 +1,5 @@
-var Botkit = require('botkit');
+var Botkit = require('botkit'),
+    MongoDB = require('botkit-storage-mongo');
 
 if (!process.env.SLACK_BOT_TOKEN) {
     console.log('Missing environment variable: Slack bot token.');
@@ -7,7 +8,11 @@ if (!process.env.SLACK_BOT_TOKEN) {
 
 var controller = Botkit.slackbot({
     debug: false,
-    require_delivery: true
+    require_delivery: true,
+    storage: MongoDB({
+        mongoUri: process.env.MONGODB_URI,
+        tables: undefined
+    })
 });
 
 controller.spawn({

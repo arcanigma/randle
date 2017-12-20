@@ -10,7 +10,8 @@
         "node": "^8.0.0"
     },
     "dependencies": {
-        "botkit": "^0.6.0"
+        "botkit": "^0.6.0",
+        "botkit-storage-mongo": "^1.0.0"
     },
     "author": {
         "name": "Ron Reaser",
