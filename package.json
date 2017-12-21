@@ -12,6 +12,7 @@
     "dependencies": {
         "botkit": "^0.6.0",
         "botkit-storage-mongo": "^1.0.0",
+        "php-random-int": "^0.1.1",
         "string-natural-compare": "^2.0.0"
     },
     "license": "MIT",
@@ -20,8 +21,6 @@
         "email": "ron@reaser.org",
         "url": "https://github.com/ron-reaser"
     },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ron-reaser/randle.git"
-    }
+    "repository": "github:ron-reaser/randle",
+    "private": true
 }

@@ -1,5 +1,5 @@
 const CONFIG = require('../config');
-var randomInt = require('../functions/random-int'),
+var randomInt = require('php-random-int'),
     regexReduce = require('../functions/regex-reduce'),
     naturalCompare = require('string-natural-compare');
 
