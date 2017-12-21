@@ -2,20 +2,18 @@
     "name": "randle",
     "description": "Dice rolling and randomization bot for Slack.",
     "version": "1.0.0",
-
     "main": "bot/main.js",
     "scripts": {
         "start": "node bot/main.js"
     },
-
     "engines": {
         "node": "^8.0.0"
     },
     "dependencies": {
         "botkit": "^0.6.0",
-        "botkit-storage-mongo": "^1.0.0"
+        "botkit-storage-mongo": "^1.0.0",
+        "string-natural-compare": "^2.0.0"
     },
-
     "license": "MIT",
     "author": {
         "name": "Ron Reaser",
