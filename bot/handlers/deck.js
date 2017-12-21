@@ -1,4 +1,4 @@
-var fyShuffle = require('fisher-yates');
+var fyShuffle = require('../functions/fisher-yates');
 
 module.exports = function(controller, handler) {
 

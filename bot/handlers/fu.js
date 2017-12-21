@@ -1,5 +1,5 @@
-const CONFIG = require('config');
-var randomInt = require('random-int');
+const CONFIG = require('../config');
+var randomInt = require('../functions/random-int');
 
 // TODO: refactor into a 'macro plugin' for roll.js
 module.exports = function(controller, handler) {

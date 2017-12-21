@@ -6,6 +6,11 @@ if (!process.env.SLACK_BOT_TOKEN) {
     process.exit(1);
 }
 
+if (!process.env.MONGODB_URI) {
+    console.log('Missing environment variable: MongoDB URI.');
+    process.exit(1);
+}
+
 var controller = Botkit.slackbot({
     debug: false,
     require_delivery: true,
@@ -33,7 +38,7 @@ var handler = {
     }
 };
 
-require('echo')(controller);
-require('roll')(controller, handler);
-require('deck')(controller, handler);
-require('fu')(controller, handler);
+require('./handlers/echo')(controller);
+require('./handlers/roll')(controller, handler);
+require('./handlers/fu')(controller, handler);
+require('./handlers/deck')(controller, handler);

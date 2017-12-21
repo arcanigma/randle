@@ -1,4 +1,4 @@
-var randomInt = require('random-int');
+var randomInt = require('./random-int');
 
 module.exports = function(array) {
     for (let i = array.length-1; i >= 1; i--) {

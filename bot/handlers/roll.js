@@ -1,6 +1,6 @@
-const CONFIG = require('config');
-var randomInt = require('random-int'),
-    regexReduce = require('regex-reduce'),
+const CONFIG = require('../config');
+var randomInt = require('../functions/random-int'),
+    regexReduce = require('../functions/regex-reduce'),
     naturalCompare = require('string-natural-compare');
 
 module.exports = function(controller, handler) {
