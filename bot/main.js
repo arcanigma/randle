@@ -1,5 +1,6 @@
 var Botkit = require('botkit'),
-    MongoDB = require('botkit-storage-mongo');
+    MongoDB = require('botkit-storage-mongo'),
+    NodeCache = require('node-cache');
 
 if (!process.env.SLACK_BOT_TOKEN) {
     console.log('Missing environment variable: Slack bot token.');
@@ -38,7 +39,13 @@ var handler = {
     }
 };
 
+var users_cache = new NodeCache({
+    'stdTTL': 60 * 30,
+    'checkperiod': 60 * 60 * 3
+});
+
 require('./handlers/echo')(controller);
-require('./handlers/roll')(controller, handler);
+require('./handlers/macro')(controller, handler, users_cache);
+require('./handlers/roll')(controller, handler, users_cache);
 require('./handlers/fu')(controller, handler);
 require('./handlers/deck')(controller, handler);

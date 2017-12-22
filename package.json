@@ -12,6 +12,7 @@
     "dependencies": {
         "botkit": "^0.6.0",
         "botkit-storage-mongo": "^1.0.0",
+        "node-cache": "^4.1.1",
         "php-random-int": "^0.1.1",
         "string-natural-compare": "^2.0.0"
     },

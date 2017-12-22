@@ -3,11 +3,39 @@ var randomInt = require('php-random-int'),
     regexReduce = require('../functions/regex-reduce'),
     naturalCompare = require('string-natural-compare');
 
-module.exports = function(controller, handler) {
+module.exports = function(controller, handler, users_cache) {
 
+    // INJECT USER CACHE INTO MESSAGE
+    controller.middleware.heard.use(function(bot, message, next) {
+        try {
+            users_cache.get(message.user, function(err, cached_data) {
+                if (cached_data) {
+                    // if (message.user == 'U648Z6196')
+                    //     bot.whisper(message, "Reusing cache.");
+                    message.user_cache = cached_data;
+                    next();
+                }
+                else {
+                    // if (message.user == 'U648Z6196')
+                    //     bot.whisper(message, "Updating cache.");
+                    controller.storage.users.get(message.user, function(err, fresh_data) {
+                        users_cache.set(message.user, fresh_data);
+                        message.user_cache = fresh_data;
+                        next();
+                    });
+                }
+            });
+        }
+        catch(err) {
+            handler.error(bot, message, err);
+        }
+    });
+
+    // TODO: implement freeform arithmetic
+    
     // PROCESS DICE CODES
     const parens = /\(([^'()][^()]*)\)/g;
-    const code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\|\/\/|\\\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
+    const code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\|\/\/|\\\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
     const lead = /^[!/]?roll(?:s|ed|ing)?\s[\s.;,]*([\s\S]*?)[\s.;,]*$/i;
     controller.hears([lead, parens, code], CONFIG.HEAR_ANYWHERE, function(bot, message) {
         try {
@@ -32,7 +60,7 @@ module.exports = function(controller, handler) {
                 let expand = [];
 
                 count = parseInt(count) || 1;
-                size = parseInt(size) || 1;
+                size = (size != '%' ? parseInt(size) || 1 : 100);
                 let rolls = [];
                 let generate = (!avg ?
                     randomInt :
@@ -145,11 +173,11 @@ module.exports = function(controller, handler) {
 
             let inline = [];
             for (let i = 0; i < clauses.length; i++) {
-                let content = preProcess(clauses[i]),
+                let content = preProcess(clauses[i], bot, message, controller),
                     old = content;
                 content = content.replace(code, fun);
                 if (content != old)
-                    inline.push(postProcess(content));
+                    inline.push(postProcess(content, bot, message, controller));
             }
             let results = inline.join('; ')
                 .replace(/<[@#][\w|]+?>/, '')
@@ -174,8 +202,8 @@ module.exports = function(controller, handler) {
     });
 
     // PRE-PROCESS PARENTHETICAL CONTENT
-    function preProcess(content) {
-        content = expandMacros(content);
+    function preProcess(content, bot, message, controller) {
+        content = expandMacros(content, bot, message, controller);
         content = reduceArithmeticOps(content);
         content = expandRepsArrays(content);
 
@@ -183,7 +211,7 @@ module.exports = function(controller, handler) {
     }
 
     // POST-PROCESS PARENTHETICAL CONTENT
-    function postProcess(content) {
+    function postProcess(content, bot, message, controller) {
         content = reduceArithmeticOps(content);
         content = evaluateComparisonOps(content);
         content = evaluateFunctions(content);
@@ -192,12 +220,22 @@ module.exports = function(controller, handler) {
         return content;
     }
 
-    function expandMacros(content) {
-        // TODO: register custom macros
+    function expandMacros(content, bot, message, controller) {
+        // if (message.user == 'U648Z6196')
+        //     bot.whisper(message, JSON.stringify(message));
 
-        return content.replace(/\badv\b/i, '2d20H')
-                      .replace(/\bdis\b/i, '2d20L')
-                      .replace(/d%/i, 'd100');
+        let custom = {};
+        if (message.user_cache && message.user_cache.macros)
+            custom = message.user_cache.macros;
+        let macros = Object.assign({
+            'adv': '2d20H',
+            'dis': '2d20L'
+        }, custom);
+
+        for (let name in macros)
+            content = content.replace(new RegExp(`\\b${name}\\b`, 'ig'), macros[name]);
+
+        return content;
     }
 
     function reduceArithmeticOps(content) {
@@ -271,7 +309,7 @@ module.exports = function(controller, handler) {
         return content;
     }
 
-    // TODO: bold numbers after they are replaced
+    // TODO: bold numbers by "highlighting" known replacements
     function applyNumberBolding(content) {
         const re = /\b[0-9]+(?:\.[0-9]+)?(?!:)\b/g;
 
