@@ -8,21 +8,21 @@ module.exports = function(controller, handler) {
     // PROCESS DICE CODES
     const parens = /\(([^'()][^()]*)\)/g;
     const code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\|\/\/|\\\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
-    const lead = /^[!/]?roll(?:s|ed|ing)?(?:[\s.;,]+|\b)(.*?)(?:[\s.;,]*)$/i;
+    const lead = /^[!/]?roll(?:s|ed|ing)?\s[\s.;,]*([\s\S]*?)[\s.;,]*$/i;
     controller.hears([lead, parens, code], CONFIG.HEAR_ANYWHERE, function(bot, message) {
         try {
             let clauses;
-            if (message.match[0].match(lead)) {
-                clauses = [message.match[1]];
+            if (match[0].match(lead)) {
+                clauses = [match[1]];
             }
             else {
-                if (message.match[0].startsWith('(')) {
+                if (match[0].startsWith('(')) {
                     clauses = [];
-                    for (let i = 0; i < message.match.length; i++)
-                        clauses[i] = message.match[i].slice(1, -1).trim();
+                    for (let i = 0; i < match.length; i++)
+                        clauses[i] = match[i].slice(1, -1).trim();
                 }
                 else if (CONFIG.HEAR_EXPLICIT.includes(message.type)) {
-                    clauses = [`!roll ${message.text}`.match(lead)[1]];
+                    clauses = [`!roll ${match[0]}`.match(lead)[1]];
                 }
                 else return;
             }
@@ -152,7 +152,7 @@ module.exports = function(controller, handler) {
                     inline.push(postProcess(content));
             }
             let results = inline.join('; ')
-                .replace(/<[@#].*?>/, '')
+                .replace(/<[@#][\w|]+?>/, '')
                 .replace(/[\s.;,]+$/, '')
                 .replace(/\s+/, ' ');
 
@@ -216,7 +216,7 @@ module.exports = function(controller, handler) {
     }
 
     function expandRepsArrays(content) {
-        const re = /^(.+?)\.\.\.([\w ]+(?:,[\w ]+)*)$/;
+        const re = /^([\s\S]+?)\.\.\.([\w\s]+(?:,[\w\s]+)*)$/;
         const fun = function(match, phrase, list) {
             phrase = phrase.trim();
 
@@ -271,6 +271,7 @@ module.exports = function(controller, handler) {
         return content;
     }
 
+    // TODO: bold numbers after they are replaced
     function applyNumberBolding(content) {
         const re = /\b[0-9]+(?:\.[0-9]+)?(?!:)\b/g;
 

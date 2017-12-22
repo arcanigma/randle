@@ -2,7 +2,7 @@ var fyShuffle = require('../functions/fisher-yates');
 
 module.exports = function(controller, handler) {
 
-    controller.hears( /^!shuffle\b(.*)/i, ['direct_message', 'direct_mention', 'mention', 'ambient'], function(bot, message) {
+    controller.hears(/^!shuffle\b(.*)/i, ['direct_message', 'direct_mention', 'mention', 'ambient'], function(bot, message) {
         try {
             bot.startTyping(message);
             let shuffled = shuffleHelper(message.match[1]).join('*, *');
