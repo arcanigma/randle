@@ -3,35 +3,15 @@ var randomInt = require('php-random-int'),
     regexReduce = require('../functions/regex-reduce'),
     naturalCompare = require('string-natural-compare');
 
-module.exports = function(controller, handler, users_cache) {
+module.exports = function(controller, handler, user_db) {
 
-    // INJECT USER CACHE INTO MESSAGE
+    // INJECT USER DATA INTO MESSAGE
     controller.middleware.heard.use(function(bot, message, next) {
-        try {
-            users_cache.get(message.user, function(err, cached_data) {
-                if (cached_data) {
-                    // if (message.user == 'U648Z6196')
-                    //     bot.whisper(message, "Reusing cache.");
-                    message.user_cache = cached_data;
-                    next();
-                }
-                else {
-                    // if (message.user == 'U648Z6196')
-                    //     bot.whisper(message, "Updating cache.");
-                    controller.storage.users.get(message.user, function(err, fresh_data) {
-                        users_cache.set(message.user, fresh_data);
-                        message.user_cache = fresh_data;
-                        next();
-                    });
-                }
-            });
-        }
-        catch(err) {
-            handler.error(bot, message, err);
-        }
+        user_db.get(message.user, function(err, data) {
+            if (!err) message.user_data = data;
+            next();
+        });
     });
-
-    // TODO: implement freeform arithmetic
 
     // PROCESS DICE CODES
     const parens = /\(([^'()][^()]*)\)/g;
@@ -230,12 +210,10 @@ module.exports = function(controller, handler, users_cache) {
     }
 
     function expandMacros(content, bot, message, controller) {
-        // if (message.user == 'U648Z6196')
-        //     bot.whisper(message, JSON.stringify(message));
-
         let custom = {};
-        if (message.user_cache && message.user_cache.macros)
-            custom = message.user_cache.macros;
+        if (message.user_data && message.user_data.macros)
+            custom = message.user_data.macros;
+
         let macros = Object.assign({
             'adv': '2d20H',
             'dis': '2d20L'
@@ -247,6 +225,7 @@ module.exports = function(controller, handler, users_cache) {
         return content;
     }
 
+    // TODO: implement freeform arithmetic
     function reduceArithmeticOps(content) {
         const re = /([+-]|\b)([0-9]+(?:\.[0-9]+)?)\s*([+-])\s*([0-9]+(?:\.[0-9]+)?)\b/;
         const fun = function (match, sign, x, op, y) {

@@ -1,28 +1,25 @@
 const CONFIG = require('../config');
 
-module.exports = function(controller, handler, users_cache) {
-
-    // TODO: use the user_cache
+module.exports = function(controller, handler, user_db) {
 
     const set = /^[!\/]?(?:set|create|update|add|remember|make|save|new)\s*macro[s]?\s+([a-z][a-z0-9_]*)\s*=\s*"[\s.;,]*([^"]+?)[\s.;,]*"\s*$/i;
     controller.hears(set, CONFIG.HEAR_ANYWHERE, function(bot, message) {
         let name = match[1].toLowerCase(),
             replace = match[2];
 
-        controller.storage.users.get(message.user, function(err, user) {
-            user = user || {'id': message.user};
-            user.macros = user.macros || {};
-            let updated = user.macros[name];
-            user.macros[name] = replace;
+        user_db.get(message.user, function(err, data) {
+            data = data || {};
+            data.id = data.id || message.user;
+            data.macros = data.macros || {};
+            let updated = data.macros[name];
+            data.macros[name] = replace;
 
-            controller.storage.users.save(user, function(err) {
+            user_db.set(data, function(err) {
                 let verb = updated ? 'updated' : 'created';
                 bot.whisper(message, {
                     'text': `You ${verb} macro \`${name}\` with \`${replace}\` value.`
                 });
             });
-
-            users_cache.set(message.user, user);
         });
     });
 
@@ -30,12 +27,12 @@ module.exports = function(controller, handler, users_cache) {
     controller.hears(del, CONFIG.HEAR_ANYWHERE, function(bot, message) {
         let name = match[1].toLowerCase();
 
-        controller.storage.users.get(message.user, function(err, user) {
-            if (user && user.macros && user.macros[name]) {
-                let replace = user.macros[name];
-                delete user.macros[name];
+        user_db.get(message.user, function(err, data) {
+            if (data && data.macros && data.macros[name]) {
+                let replace = data.macros[name];
+                delete data.macros[name];
 
-                controller.storage.users.save(user, function(err) {
+                user_db.set(data, function(err) {
                     bot.whisper(message, {
                         'text': `You removed macro \`${name}\` with value \`${replace}\`.`
                     });
@@ -46,8 +43,6 @@ module.exports = function(controller, handler, users_cache) {
                     'text': `You have no macro \`${name}\`.`
                 });
             }
-
-            users_cache.set(message.user, user);
         });
     });
 
@@ -55,12 +50,12 @@ module.exports = function(controller, handler, users_cache) {
     controller.hears(get, CONFIG.HEAR_ANYWHERE, function(bot, message) {
         let name = match[1];
 
-        controller.storage.users.get(message.user, function(err, user) {
+        user_db.get(message.user, function(err, data) {
             if (name) {
                 name = name.toLowerCase();
-                if (user && user.macros && user.macros[name]) {
+                if (data && data.macros && data.macros[name]) {
                     bot.whisper(message, {
-                        'text': `You have macro \`${name}\` with value \`${user.macros[name]}\`.`
+                        'text': `You have macro \`${name}\` with value \`${data.macros[name]}\`.`
                     });
                 }
                 else {
@@ -70,8 +65,8 @@ module.exports = function(controller, handler, users_cache) {
                 }
             }
             else {
-                if (user && user.macros && Object.keys(user.macros).length > 0) {
-                    let names = Object.keys(user.macros).sort().join('`, `');
+                if (data && data.macros && Object.keys(data.macros).length > 0) {
+                    let names = Object.keys(data.macros).sort().join('`, `');
                     bot.whisper(message, {
                         'text': `You have the macros \`${names}\`.`
                     });
@@ -82,8 +77,6 @@ module.exports = function(controller, handler, users_cache) {
                     });
                 }
             }
-
-            users_cache.set(message.user, user);
         });
     });
 
