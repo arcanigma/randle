@@ -39,8 +39,8 @@ module.exports = function(controller, handler, users_cache) {
     const lead = /^[!/]?roll(?:s|ed|ing)?\s[\s.;,]*([\s\S]*?)[\s.;,]*$/i;
     controller.hears([lead, parens, code], CONFIG.HEAR_ANYWHERE, function(bot, message) {
         try {
-            // if (message.user == 'U648Z6196')
-            //     bot.whisper(message, JSON.stringify(message));
+            if (CONFIG.IGNORE_THREADS && message.thread_ts)
+                return;
 
             let clauses;
             if (match[0].match(lead)) {
@@ -318,7 +318,7 @@ module.exports = function(controller, handler, users_cache) {
         return content;
     }
 
-    // TODO: bold numbers by "highlighting" known replacements
+    // TODO: bold numbers using replacement mask
     function applyNumberBolding(content) {
         const re = /\b[0-9]+(?:\.[0-9]+)?(?!:)\b/g;
 
