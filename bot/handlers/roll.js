@@ -32,13 +32,16 @@ module.exports = function(controller, handler, users_cache) {
     });
 
     // TODO: implement freeform arithmetic
-    
+
     // PROCESS DICE CODES
     const parens = /\(([^'()][^()]*)\)/g;
     const code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\|\/\/|\\\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
     const lead = /^[!/]?roll(?:s|ed|ing)?\s[\s.;,]*([\s\S]*?)[\s.;,]*$/i;
     controller.hears([lead, parens, code], CONFIG.HEAR_ANYWHERE, function(bot, message) {
         try {
+            // if (message.user == 'U648Z6196')
+            //     bot.whisper(message, JSON.stringify(message));
+
             let clauses;
             if (match[0].match(lead)) {
                 clauses = [match[1]];
@@ -55,7 +58,8 @@ module.exports = function(controller, handler, users_cache) {
                 else return;
             }
 
-            let attach = [];
+            let attach = [],
+                overflow = false;
             const fun = function(expr, avg, count, size, hilo, keep, mod, muldev, fact) {
                 let expand = [];
 
@@ -159,14 +163,13 @@ module.exports = function(controller, handler, users_cache) {
                     atoms[0] = `_undefined_`;
                 atoms = [`*${expr}*`, '→', ...atoms];
 
-                let text = atoms.join(' ');
                 if (attach.length < CONFIG.MAX_ATTACH)
                     attach.push({
-                        'text': text,
+                        'text': atoms.join(' '),
                         'mrkdwn_in': ['text'],
                         'color': color
                     });
-                else throw new Error(`Exceeded the ${CONFIG.MAX_ATTACH} roll limit.`);
+                else overflow = true;
 
                 return total;
             };
@@ -181,16 +184,22 @@ module.exports = function(controller, handler, users_cache) {
             }
             let results = inline.join('; ')
                 .replace(/<[@#][\w|]+?>/, '')
-                .replace(/[\s.;,]+$/, '')
+                .replace(/^[\s.;,]+|[\s.;,]+$/, '')
                 .replace(/\s+/, ' ');
-
-            let response = {
-                'text': `<@${message.user}> rolled ${results}.`,
-                'attachments': attach
-            };
+            if (overflow)
+                attach = [{
+                    'text': `You must roll *${CONFIG.MAX_ATTACH}* or fewer dice codes to see the roll details.`,
+                    'mrkdwn_in': ['text'],
+                    'color': 'warning'
+                }];
 
             if (results) {
                 if (JSON.stringify(results).length <= CONFIG.MAX_MESSAGE) {
+                    let response = {
+                        'text': `<@${message.user}> rolled ${results}.`,
+                        'attachments': attach
+                    };
+
                     bot.replyWithTyping(message, response);
                 }
                 else throw new Error(`Exceeded the ${CONFIG.MAX_MESSAGE} character message limit.`);
