@@ -3,15 +3,7 @@ var randomInt = require('php-random-int'),
     regexReduce = require('../functions/regex-reduce'),
     naturalCompare = require('string-natural-compare');
 
-module.exports = function(controller, handler, user_db) {
-
-    // INJECT USER DATA INTO MESSAGE
-    controller.middleware.heard.use(function(bot, message, next) {
-        user_db.get(message.user, function(err, data) {
-            if (!err) message.user_data = data;
-            next();
-        });
-    });
+module.exports = function(controller, handler) {
 
     // PROCESS DICE CODES
     const parens = /\(([^'()][^()]*)\)/g;

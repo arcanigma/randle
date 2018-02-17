@@ -2,6 +2,13 @@ const CONFIG = require('../config');
 
 module.exports = function(controller, handler, user_db) {
 
+    controller.middleware.heard.use(function(bot, message, next) {
+        user_db.get(message.user, function(err, data) {
+            if (!err) message.user_data = data;
+            next();
+        });
+    });
+    
     const set = /^[!\/]?(?:set|create|update|add|remember|make|save|new)\s*macro[s]?\s+([a-z][a-z0-9_]*)\s*=\s*"[\s.;,]*([^"]+?)[\s.;,]*"\s*$/i;
     controller.hears(set, CONFIG.HEAR_ANYWHERE, function(bot, message) {
         let name = match[1].toLowerCase(),

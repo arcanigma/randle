@@ -46,6 +46,7 @@ var user_db = new CachedStorage(controller.storage.users, {
 
 require('./handlers/echo')(controller);
 require('./handlers/macro')(controller, handler, user_db);
-require('./handlers/roll')(controller, handler, user_db);
+require('./handlers/roll')(controller, handler);
+// require('./handlers/roll2')(controller, handler, user_db);
 // require('./handlers/fu')(controller, handler);
 // require('./handlers/deck')(controller, handler);
