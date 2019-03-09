@@ -14,6 +14,10 @@ var Botkit = require('botkit'),
     CachedStorage = require('./classes/cached-storage');
 
 var controller = Botkit.slackbot({
+    clientId: process.env.SLACK_CLIENT_ID,
+    clientSecret: process.env.SLACK_CLIENT_SECRET,
+    clientSigningSecret: process.env.SLACK_SIGNING_SECRET,
+    scopes: ['bot'],
     require_delivery: true,
     storage: MongoDB({
         mongoUri: process.env.MONGODB_URI,

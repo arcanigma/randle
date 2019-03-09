@@ -15,17 +15,17 @@ module.exports = function(controller, handler) {
                 return;
 
             let clauses;
-            if (match[0].match(lead)) {
-                clauses = [match[1]];
+            if (message.match[0].match(lead)) {
+                clauses = [message.match[1]];
             }
             else {
-                if (match[0].startsWith('(')) {
+                if (message.match[0].startsWith('(')) {
                     clauses = [];
-                    for (let i = 0; i < match.length; i++)
-                        clauses[i] = match[i].slice(1, -1).trim();
+                    for (let i = 0; i < message.match.length; i++)
+                        clauses[i] = message.match[i].slice(1, -1).trim();
                 }
                 else if (CONFIG.HEAR_EXPLICIT.includes(message.type)) {
-                    clauses = [`!roll ${match[0]}`.match(lead)[1]];
+                    clauses = [`!roll ${message.match[0]}`.match(lead)[1]];
                 }
                 else return;
             }
@@ -220,7 +220,7 @@ module.exports = function(controller, handler) {
     // TODO: implement freeform arithmetic
     function evaluateArithmeticOps(content) {
         const re = /([+-]|\b)([0-9]+(?:\.[0-9]+)?)\s*([+-])\s*([0-9]+(?:\.[0-9]+)?)\b/;
-        const fun = function (match, sign, x, op, y) {
+        const fun = function (_, sign, x, op, y) {
             x = parseFloat(sign+x);
             y = parseFloat(op+y);
             let sum = x+y;
@@ -235,7 +235,7 @@ module.exports = function(controller, handler) {
 
     function expandRepsArrays(content) {
         const re = /^([\s\S]+?)\.\.\.([\w\s]+(?:,[\w\s]+)*)$/;
-        const fun = function(match, phrase, list) {
+        const fun = function(_, phrase, list) {
             phrase = phrase.trim();
 
             let atoms = [],
@@ -258,7 +258,7 @@ module.exports = function(controller, handler) {
 
     function evaluateComparisonOps(content) {
         const re = /([0-9]+(?:\.[0-9]+)?)\s*(=|==|&gt;|&lt;|&gt;=|=&gt;|&lt;=|=&lt;|!=|&lt;&gt;|&gt;&lt;)\s*([0-9]+(?:\.[0-9]+)?)/g;
-        const fun = function(match, x, relop, y) {
+        const fun = function(_, x, relop, y) {
             x = parseFloat(x);
             y = parseFloat(y);
 
