@@ -10,7 +10,7 @@ module.exports = function(controller, handler, user_db) {
     });
 
     const set = /^[!\/]?(?:set|create|update|add|remember|make|save|new)\s*macro[s]?\s+([a-z][a-z0-9_]*)\s*=\s*"[\s.;,]*([^"]+?)[\s.;,]*"\s*$/i;
-    controller.hears(set, CONFIG.HEAR_ANYWHERE, function(bot, message) {
+    controller.hears(set, CONFIG.HEAR_DIRECTLY, function(bot, message) {
         let name = message.match[1].toLowerCase(),
             replace = message.match[2];
 
@@ -31,7 +31,7 @@ module.exports = function(controller, handler, user_db) {
     });
 
     const del = /^[!\/]?(?:del|delete|rem|remove|drop|forget|unset|clear)\s*macro[s]?\s+([a-z][a-z0-9_]*)\s*$/i;
-    controller.hears(del, CONFIG.HEAR_ANYWHERE, function(bot, message) {
+    controller.hears(del, CONFIG.HEAR_DIRECTLY, function(bot, message) {
         let name = message.match[1].toLowerCase();
 
         user_db.get(message.user, function(err, data) {
@@ -54,7 +54,7 @@ module.exports = function(controller, handler, user_db) {
     });
 
     const get = /^[!\/]?(?:get|list|see|show|view|display|select|check|load)\s*macro[s]?(?:\s+([a-z][a-z0-9_]*))?\s*$/i;
-    controller.hears(get, CONFIG.HEAR_ANYWHERE, function(bot, message) {
+    controller.hears(get, CONFIG.HEAR_DIRECTLY, function(bot, message) {
         let name = message.match[1];
 
         user_db.get(message.user, function(err, data) {

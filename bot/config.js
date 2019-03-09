@@ -1,6 +1,7 @@
 module.exports = {
+    HEAR_DIRECTLY: ['direct_message'],
+    HEAR_EXPLICIT: ['direct_message', 'direct_mention', 'mention'],
     HEAR_ANYWHERE: ['direct_message', 'direct_mention', 'mention', 'ambient'],
-    HEAR_EXPLICIT: ['mention', 'direct_message', 'direct_mention'],
     IGNORE_THREADS: true,
     MAX_ATTACH: 20,
     MAX_MESSAGE: 1000,
