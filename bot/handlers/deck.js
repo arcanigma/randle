@@ -1,4 +1,4 @@
-var fyShuffle = require('../functions/fisher-yates');
+var fyShuffle = require('../functions/fisher-yates-shuffle');
 
 module.exports = function(controller, handler) {
 
@@ -6,7 +6,7 @@ module.exports = function(controller, handler) {
         try {
             bot.startTyping(message);
             let shuffled = shuffleHelper(message.match[1]).join('*, *');
-            bot.reply(message, {
+            bot.replyWithTyping(message, {
                 'text': `<@${message.user}>, you shuffled *${shuffled}*.`
             });
         }
@@ -19,7 +19,7 @@ module.exports = function(controller, handler) {
         try {
             bot.startTyping(message);
             let element = shuffleHelper(message.match[1]).shift();
-            bot.reply(message, {
+            bot.replyWithTyping(message, {
                 'text': `<@${message.user}>, you drew *${element}*.`
             });
         }

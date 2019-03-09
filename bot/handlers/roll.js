@@ -1,6 +1,6 @@
 const CONFIG = require('../config');
 var randomInt = require('php-random-int'),
-    regexReduce = require('../functions/regex-reduce'),
+    regexClosure = require('../functions/regex-closure'),
     naturalCompare = require('string-natural-compare');
 
 module.exports = function(controller, handler) {
@@ -8,7 +8,7 @@ module.exports = function(controller, handler) {
     // PROCESS DICE CODES
     const parens = /\(([^'()][^()]*)\)/g;
     const code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\|\/\/|\\\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
-    const lead = /^[!/]?roll(?:s|ed|ing)?\s[\s.;,]*([\s\S]*?)[\s.;,]*$/i;
+    const lead = /^[!\/]?roll(?:s|ed|ing)?\s[\s.;,]*([\s\S]*?)[\s.;,]*$/i;
     controller.hears([lead, parens, code], CONFIG.HEAR_ANYWHERE, function(bot, message) {
         try {
             if (CONFIG.IGNORE_THREADS && message.thread_ts)
@@ -185,7 +185,7 @@ module.exports = function(controller, handler) {
     // PRE-PROCESS PARENTHETICAL CONTENT
     function preProcess(content, bot, message, controller) {
         content = expandMacros(content, bot, message, controller);
-        content = reduceArithmeticOps(content);
+        content = evaluateArithmeticOps(content);
         content = expandRepsArrays(content);
 
         return content;
@@ -193,7 +193,7 @@ module.exports = function(controller, handler) {
 
     // POST-PROCESS PARENTHETICAL CONTENT
     function postProcess(content, bot, message, controller) {
-        content = reduceArithmeticOps(content);
+        content = evaluateArithmeticOps(content);
         content = evaluateComparisonOps(content);
         content = evaluateFunctions(content);
         content = applyNumberBolding(content);
@@ -218,7 +218,7 @@ module.exports = function(controller, handler) {
     }
 
     // TODO: implement freeform arithmetic
-    function reduceArithmeticOps(content) {
+    function evaluateArithmeticOps(content) {
         const re = /([+-]|\b)([0-9]+(?:\.[0-9]+)?)\s*([+-])\s*([0-9]+(?:\.[0-9]+)?)\b/;
         const fun = function (match, sign, x, op, y) {
             x = parseFloat(sign+x);
@@ -230,7 +230,7 @@ module.exports = function(controller, handler) {
                 return sum.toString();
         };
 
-        return regexReduce(content, re, fun);
+        return regexClosure(content, re, fun);
     }
 
     function expandRepsArrays(content) {
