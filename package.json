@@ -10,12 +10,12 @@
         "node": "^8.0.0"
     },
     "dependencies": {
-        "botkit": "^0.6.0",
-        "botkit-storage-mongo": "^1.0.0",
-        "deep-equal": "^1.0.0",
-        "node-cache": "^4.1.1",
+        "botkit": "^0.7.0",
+        "botkit-storage-mongo": "^1.0.7",
+        "deep-equal": "^1.0.1",
+        "node-cache": "^4.2.0",
         "php-random-int": "^0.1.1",
-        "string-natural-compare": "^2.0.0"
+        "string-natural-compare": "^2.0.3"
     },
     "license": "MIT",
     "author": {
