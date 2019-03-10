@@ -7,7 +7,7 @@
         "start": "node bot/main.js"
     },
     "engines": {
-        "node": "^8.0.0"
+        "node": "^10.0.0"
     },
     "dependencies": {
         "botkit": "^0.7.0",
