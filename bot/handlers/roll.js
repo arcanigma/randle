@@ -6,29 +6,24 @@ var randomInt = require('php-random-int'),
 module.exports = function(controller, handler) {
 
     // PROCESS DICE CODES
+    const lead = /^!?roll\b(.*)/i;
     const parens = /\(([^'()][^()]*)\)/g;
     const code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\|\/\/|\\\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
-    const lead = /^[!\/]?roll(?:s|ed|ing)?\s[\s.;,]*([\s\S]*?)[\s.;,]*$/i;
     controller.hears([lead, parens, code], CONFIG.HEAR_ANYWHERE, function(bot, message) {
         try {
-            if (CONFIG.IGNORE_THREADS && message.thread_ts)
-                return;
-
             let clauses;
-            if (message.match[0].match(lead)) {
+            if (message.match[0].startsWith('(') && !message.thread_ts) {
+                clauses = [];
+                for (let i = 0; i < message.match.length; i++)
+                    clauses[i] = message.match[i].slice(1, -1).trim();
+            }
+            else if (message.match[0].match(lead)) {
                 clauses = [message.match[1]];
             }
-            else {
-                if (message.match[0].startsWith('(')) {
-                    clauses = [];
-                    for (let i = 0; i < message.match.length; i++)
-                        clauses[i] = message.match[i].slice(1, -1).trim();
-                }
-                else if (CONFIG.HEAR_EXPLICIT.includes(message.type)) {
-                    clauses = [`!roll ${message.match[0]}`.match(lead)[1]];
-                }
-                else return;
+            else if (CONFIG.HEAR_EXPLICIT.includes(message.type)) {
+                clauses = [message.text];
             }
+            else return;
 
             let attach = [],
                 overflow = false;
@@ -195,7 +190,6 @@ module.exports = function(controller, handler) {
     function postProcess(content, bot, message, controller) {
         content = evaluateArithmeticOps(content);
         content = evaluateComparisonOps(content);
-        content = evaluateFunctions(content);
         content = applyNumberBolding(content);
 
         return content;
@@ -217,7 +211,6 @@ module.exports = function(controller, handler) {
         return content;
     }
 
-    // TODO: implement freeform arithmetic
     function evaluateArithmeticOps(content) {
         const re = /([+-]|\b)([0-9]+(?:\.[0-9]+)?)\s*([+-])\s*([0-9]+(?:\.[0-9]+)?)\b/;
         const fun = function (_, sign, x, op, y) {
@@ -283,13 +276,7 @@ module.exports = function(controller, handler) {
 
         return content.replace(re, fun);
     }
-
-    // TODO: implement function evaluation
-    function evaluateFunctions(content) {
-        return content;
-    }
-
-    // TODO: bold numbers using replacement mask
+    
     function applyNumberBolding(content) {
         const re = /\b[0-9]+(?:\.[0-9]+)?(?!:)\b/g;
 
