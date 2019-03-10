@@ -11,7 +11,7 @@ module.exports = function(controller, handler) {
         try {
             let clauses = [message.match[1]];
 
-            let [results, attachments] = processDiceCodes(clauses, bot, message);
+            let [results, attachments] = processDiceCodes(clauses, message);
 
             sendDiceResults(results, attachments, bot, message);
         }
@@ -29,7 +29,7 @@ module.exports = function(controller, handler) {
             for (let i = 0; i < message.match.length; i++)
                 clauses[i] = message.match[i].slice(1, -1).trim();
 
-            let [results, attachments] = processDiceCodes(clauses, bot, message);
+            let [results, attachments] = processDiceCodes(clauses, message);
 
             sendDiceResults(results, attachments, bot, message);
         }
@@ -43,7 +43,7 @@ module.exports = function(controller, handler) {
         try {
             let clauses = [message.text];
 
-            let [results, attachments] = processDiceCodes(clauses, bot, message);
+            let [results, attachments] = processDiceCodes(clauses, message);
 
             sendDiceResults(results, attachments, bot, message);
         }
@@ -193,11 +193,13 @@ module.exports = function(controller, handler) {
 
         let inline = [];
         for (let i = 0; i < clauses.length; i++) {
-            let content = preProcess(clauses[i], message),
-                old = content;
-            content = content.replace(code, fun);
-            if (content != old)
-                inline.push(postProcess(content, message));
+            let outcome = postProcess(
+                preProcess(
+                    expandMacros(clauses[i], message)
+                ).replace(code, fun)
+            );
+            if (outcome != clauses[i])
+                inline.push(outcome);
         }
         let results = inline.join('; ')
             .replace(/<[@#][\w|]+?>/, '')
@@ -213,24 +215,6 @@ module.exports = function(controller, handler) {
         return [results, attach];
     }
 
-    // PRE-PROCESS PARENTHETICAL CONTENT
-    function preProcess(content, message) {
-        content = expandMacros(content, message);
-        content = evaluateArithmeticOps(content);
-        content = expandRepsArrays(content);
-
-        return content;
-    }
-
-    // POST-PROCESS PARENTHETICAL CONTENT
-    function postProcess(content, message) {
-        content = evaluateArithmeticOps(content);
-        content = evaluateComparisonOps(content);
-        content = applyNumberBolding(content);
-
-        return content;
-    }
-
     function expandMacros(content, message) {
         let custom = {};
         if (message.user_data && message.user_data.macros)
@@ -243,6 +227,21 @@ module.exports = function(controller, handler) {
 
         for (let name in macros)
             content = content.replace(new RegExp(`\\b${name}\\b`, 'ig'), macros[name]);
+
+        return content;
+    }
+
+    function preProcess(content) {
+        content = evaluateArithmeticOps(content);
+        content = expandRepsArrays(content);
+
+        return content;
+    }
+
+    function postProcess(content) {
+        content = evaluateArithmeticOps(content);
+        content = evaluateComparisonOps(content);
+        content = applyNumberBolding(content);
 
         return content;
     }
