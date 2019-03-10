@@ -32,7 +32,7 @@ controller.spawn({
 });
 
 var handler = {
-    error: function(bot, message, err) {
+    error: function(err, bot, message) {
         bot.whisper(message, {
             'text': `<@${message.user}>, your command caused an error. Please report it to the developer.`,
             'attachments': [{
@@ -51,5 +51,5 @@ var user_db = new CachedStorage(controller.storage.users, {
 require('./handlers/macro')(controller, handler, user_db);
 require('./handlers/echo')(controller);
 require('./handlers/deck')(controller, handler);
-require('./handlers/fu')(controller, handler);
+// require('./handlers/fu')(controller, handler);
 require('./handlers/roll')(controller, handler);

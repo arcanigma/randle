@@ -11,12 +11,12 @@ module.exports = function(controller, handler) {
         try {
             let clauses = [message.match[1]];
 
-            let [results, attachments] = processDiceCodes(clauses, bot, message, controller);
+            let [results, attachments] = processDiceCodes(clauses, bot, message);
 
-            sendDiceResults(results, attachments, bot, message, controller);
+            sendDiceResults(results, attachments, bot, message);
         }
         catch(err) {
-            handler.error(bot, message, err);
+            handler.error(err, bot, message);
         }
     });
 
@@ -29,12 +29,12 @@ module.exports = function(controller, handler) {
             for (let i = 0; i < message.match.length; i++)
                 clauses[i] = message.match[i].slice(1, -1).trim();
 
-            let [results, attachments] = processDiceCodes(clauses, bot, message, controller);
+            let [results, attachments] = processDiceCodes(clauses, bot, message);
 
-            sendDiceResults(results, attachments, bot, message, controller);
+            sendDiceResults(results, attachments, bot, message);
         }
         catch(err) {
-            handler.error(bot, message, err);
+            handler.error(err, bot, message);
         }
     });
 
@@ -43,16 +43,16 @@ module.exports = function(controller, handler) {
         try {
             let clauses = [message.text];
 
-            let [results, attachments] = processDiceCodes(clauses, bot, message, controller);
+            let [results, attachments] = processDiceCodes(clauses, bot, message);
 
-            sendDiceResults(results, attachments, bot, message, controller);
+            sendDiceResults(results, attachments, bot, message);
         }
         catch(err) {
-            handler.error(bot, message, err);
+            handler.error(err, bot, message);
         }
     });
 
-    function sendDiceResults(results, attachments, bot, message, controller) {
+    function sendDiceResults(results, attachments, bot, message) {
           if (results) {
               let name = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
 
@@ -72,7 +72,7 @@ module.exports = function(controller, handler) {
     }
 
     // PROCESS DICE CODES
-    function processDiceCodes(clauses, bot, message, controller) {
+    function processDiceCodes(clauses, message) {
         const code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\|\/\/|\\\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
 
         let attach = [],
@@ -193,11 +193,11 @@ module.exports = function(controller, handler) {
 
         let inline = [];
         for (let i = 0; i < clauses.length; i++) {
-            let content = preProcess(clauses[i], bot, message, controller),
+            let content = preProcess(clauses[i], message),
                 old = content;
             content = content.replace(code, fun);
             if (content != old)
-                inline.push(postProcess(content, bot, message, controller));
+                inline.push(postProcess(content, message));
         }
         let results = inline.join('; ')
             .replace(/<[@#][\w|]+?>/, '')
@@ -214,8 +214,8 @@ module.exports = function(controller, handler) {
     }
 
     // PRE-PROCESS PARENTHETICAL CONTENT
-    function preProcess(content, bot, message, controller) {
-        content = expandMacros(content, bot, message, controller);
+    function preProcess(content, message) {
+        content = expandMacros(content, message);
         content = evaluateArithmeticOps(content);
         content = expandRepsArrays(content);
 
@@ -223,7 +223,7 @@ module.exports = function(controller, handler) {
     }
 
     // POST-PROCESS PARENTHETICAL CONTENT
-    function postProcess(content, bot, message, controller) {
+    function postProcess(content, message) {
         content = evaluateArithmeticOps(content);
         content = evaluateComparisonOps(content);
         content = applyNumberBolding(content);
@@ -231,7 +231,7 @@ module.exports = function(controller, handler) {
         return content;
     }
 
-    function expandMacros(content, bot, message, controller) {
+    function expandMacros(content, message) {
         let custom = {};
         if (message.user_data && message.user_data.macros)
             custom = message.user_data.macros;

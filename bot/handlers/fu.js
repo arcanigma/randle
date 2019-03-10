@@ -80,7 +80,7 @@ module.exports = function(controller, handler) {
             }
         }
         catch(err) {
-            handler.error(bot, message, err);
+            handler.error(err, bot, message);
         }
     });
 
