@@ -1,4 +1,5 @@
 const CONFIG = require('../config');
+
 var randomInt = require('php-random-int');
 
 // TODO: refactor into a 'macro plugin' for roll.js
@@ -44,12 +45,14 @@ module.exports = function(controller, handler) {
             }
             rolls.sort();
 
+            let whose = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>'s` : 'Your';
+
             if (dice == 1) {
                 let roll = rolls[0];
                 let phrase = ANSWERS[roll].phrase;
                 bot.replyWithTyping(message, {
                     'response_type': 'in_channel',
-                    'text': `<@${message.user}>, the answer is ${phrase}`,
+                    'text': `${whose} answer is ${phrase}`,
                     'attachments': attach
                 });
             }
@@ -66,12 +69,12 @@ module.exports = function(controller, handler) {
                     quality = 'worst';
                 }
 
+                let phrase = ANSWERS[roll].phrase;
                 let extra = dice - 1;
                 let cube = extra > 1 ? 'dice' : 'die';
-                let phrase = ANSWERS[roll].phrase;
+
                 bot.replyWithTyping(message, {
-                    'response_type': 'in_channel',
-                    'text': `<@${message.user}>, with ${extra} ${type} ${cube}, the *${quality}* answer is ${phrase}`,
+                    'text': `${whose} *${quality}* answer of ${extra} ${type} ${cube} is ${phrase}`,
                     'attachments': attach
                 });
             }

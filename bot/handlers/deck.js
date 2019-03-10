@@ -1,3 +1,5 @@
+const CONFIG = require('../config');
+
 var fyShuffle = require('../functions/fisher-yates-shuffle');
 
 module.exports = function(controller, handler) {
@@ -6,8 +8,11 @@ module.exports = function(controller, handler) {
         try {
             bot.startTyping(message);
             let shuffled = shuffleHelper(message.match[1]).join('*, *');
+
+            let name = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
+
             bot.replyWithTyping(message, {
-                'text': `<@${message.user}>, you shuffled *${shuffled}*.`
+                'text': `${name} shuffled *${shuffled}*.`
             });
         }
         catch(err) {
@@ -19,8 +24,11 @@ module.exports = function(controller, handler) {
         try {
             bot.startTyping(message);
             let element = shuffleHelper(message.match[1]).shift();
+
+            let name = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
+
             bot.replyWithTyping(message, {
-                'text': `<@${message.user}>, you drew *${element}*.`
+                'text': `${name} drew *${element}*.`
             });
         }
         catch(err) {

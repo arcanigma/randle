@@ -48,7 +48,8 @@ var user_db = new CachedStorage(controller.storage.users, {
     'checkperiod': CONFIG.CACHE_CHECK_PERIOD
 });
 
-require('./handlers/echo')(controller);
 require('./handlers/macro')(controller, handler, user_db);
-require('./handlers/roll')(controller, handler);
+require('./handlers/echo')(controller);
 require('./handlers/deck')(controller, handler);
+require('./handlers/fu')(controller, handler);
+require('./handlers/roll')(controller, handler);

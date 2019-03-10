@@ -1,181 +1,217 @@
 const CONFIG = require('../config');
+
 var randomInt = require('php-random-int'),
     regexClosure = require('../functions/regex-closure'),
     naturalCompare = require('string-natural-compare');
 
 module.exports = function(controller, handler) {
 
-    // PROCESS DICE CODES
-    const lead = /^!?roll\b(.*)/i;
-    const parens = /\(([^'()][^()]*)\)/g;
-    const code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\|\/\/|\\\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
-    controller.hears([lead, parens, code], CONFIG.HEAR_ANYWHERE, function(bot, message) {
+    // HEAR ROLL COMMAND
+    controller.hears(/^!?roll\b(.+)$/i, CONFIG.HEAR_ANYWHERE, function(bot, message) {
         try {
-            let clauses;
-            if (message.match[0].startsWith('(') && !message.thread_ts) {
-                clauses = [];
-                for (let i = 0; i < message.match.length; i++)
-                    clauses[i] = message.match[i].slice(1, -1).trim();
-            }
-            else if (message.match[0].match(lead)) {
-                clauses = [message.match[1]];
-            }
-            else if (CONFIG.HEAR_EXPLICIT.includes(message.type)) {
-                clauses = [message.text];
-            }
-            else return;
+            let clauses = [message.match[1]];
 
-            let attach = [],
-                overflow = false;
-            const fun = function(expr, avg, count, size, hilo, keep, mod, muldev, fact) {
-                let expand = [];
+            let [results, attachments] = processDiceCodes(clauses, bot, message, controller);
 
-                count = parseInt(count) || 1;
-                size = (size != '%' ? parseInt(size) || 1 : 100);
-                let rolls = [];
-                let generate = (!avg ?
-                    randomInt :
-                    (low, high) => (low+high)/2
-                );
-                for (let i = 1; i <= count; i++)
-                    rolls.push(generate(1, size));
-
-                let strikes = {};
-                if (hilo) {
-                    keep = Math.min(parseInt(keep) || 1, count);
-
-                    let sorted = rolls.slice();
-                    if (hilo.toUpperCase() == 'L')
-                        sorted.sort((x,y) => x-y);
-                    else
-                        sorted.sort((x,y) => y-x);
-                    for (let i = keep; i < sorted.length; i++) {
-                        let key = sorted[i].toString();
-                        strikes[key] = (strikes[key] || 0) + 1;
-                    }
-                }
-
-                mod = parseFloat(mod) || 0;
-                if (mod) rolls.push(mod);
-
-                let atoms = [],
-                    total = 0;
-                for (let i = 0; i < rolls.length; i++) {
-                    let roll = rolls[i],
-                        key = roll.toString(),
-                        face = Math.abs(roll),
-                        sign = roll >= 0 ? '+' : '-';
-
-                    if (atoms.length > 0 || sign == '-')
-                        atoms.push(sign);
-
-                    if (avg) face = `_${face}_`;
-
-                    if (!strikes[key]) {
-                        total += roll;
-                        atoms.push(face);
-                    }
-                    else {
-                        strikes[key]--;
-                        atoms.push(`~[${face}]~`);
-                    }
-                }
-
-                let color;
-                if (avg)
-                    color = '#2C9EE0';
-                else if (total == 1 * count + mod)
-                    color = 'danger';
-                else if (total == size * count + mod)
-                    color = 'good';
-
-                if (muldev) {
-                    fact = parseFloat(fact) || 1;
-
-                    if (atoms.length > 1)
-                        atoms = ['(', ...atoms, ')'];
-
-                    if (muldev == '\*') {
-                        atoms = [...atoms, '×', fact];
-                        total *= fact;
-                    }
-                    else {
-                        atoms = [...atoms, '÷', fact];
-                        let quotient = total / fact,
-                            fractional = !Number.isInteger(quotient);
-                        if (muldev == '\/') {
-                            if (fractional) atoms.push('rounded down');
-                            total = Math.floor(quotient);
-                        }
-                        else if (muldev == '\|') {
-                            if (fractional) atoms.push('rounded');
-                            total = Math.round(quotient);
-                        }
-                        else if (muldev == '\\') {
-                            if (fractional) atoms.push('rounded up');
-                            total = Math.ceil(quotient);
-                        }
-                        else {
-                            if (fractional) atoms.push('unrounded');
-                            total = Math.round(quotient * 1000) / 1000;
-                        }
-                    }
-                }
-
-                if (atoms.length > 1)
-                    atoms = [...atoms, '=', `*${total}*`];
-                else if (atoms.length == 1)
-                    atoms[0] = `*${atoms[0]}*`;
-                else
-                    atoms[0] = `_undefined_`;
-                atoms = [`*${expr}*`, '→', ...atoms];
-
-                if (attach.length < CONFIG.MAX_ATTACH)
-                    attach.push({
-                        'text': atoms.join(' '),
-                        'mrkdwn_in': ['text'],
-                        'color': color
-                    });
-                else overflow = true;
-
-                return total;
-            };
-
-            let inline = [];
-            for (let i = 0; i < clauses.length; i++) {
-                let content = preProcess(clauses[i], bot, message, controller),
-                    old = content;
-                content = content.replace(code, fun);
-                if (content != old)
-                    inline.push(postProcess(content, bot, message, controller));
-            }
-            let results = inline.join('; ')
-                .replace(/<[@#][\w|]+?>/, '')
-                .replace(/^[\s.;,]+|[\s.;,]+$/, '')
-                .replace(/\s+/, ' ');
-            if (overflow)
-                attach = [{
-                    'text': `You must roll *${CONFIG.MAX_ATTACH}* or fewer dice codes to see the roll details.`,
-                    'mrkdwn_in': ['text'],
-                    'color': 'warning'
-                }];
-
-            if (results) {
-                if (JSON.stringify(results).length <= CONFIG.MAX_MESSAGE) {
-                    let response = {
-                        'text': `<@${message.user}> rolled ${results}.`,
-                        'attachments': attach
-                    };
-
-                    bot.replyWithTyping(message, response);
-                }
-                else throw new Error(`Exceeded the ${CONFIG.MAX_MESSAGE} character message limit.`);
-            }
+            sendDiceResults(results, attachments, bot, message, controller);
         }
         catch(err) {
             handler.error(bot, message, err);
         }
     });
+
+    // HEAR PARENTHESES
+    controller.hears(/\(([^'()][^()]*)\)/g, CONFIG.HEAR_ANYWHERE, function(bot, message) {
+        try {
+            if (message.thread_ts) return;
+
+            let clauses = [];
+            for (let i = 0; i < message.match.length; i++)
+                clauses[i] = message.match[i].slice(1, -1).trim();
+
+            let [results, attachments] = processDiceCodes(clauses, bot, message, controller);
+
+            sendDiceResults(results, attachments, bot, message, controller);
+        }
+        catch(err) {
+            handler.error(bot, message, err);
+        }
+    });
+
+    // HEAR DIRECT MESSAGE OR MENTION
+    controller.hears(/^(.+)$/, CONFIG.HEAR_EXPLICIT, function(bot, message) {
+        try {
+            let clauses = [message.text];
+
+            let [results, attachments] = processDiceCodes(clauses, bot, message, controller);
+
+            sendDiceResults(results, attachments, bot, message, controller);
+        }
+        catch(err) {
+            handler.error(bot, message, err);
+        }
+    });
+
+    function sendDiceResults(results, attachments, bot, message, controller) {
+          if (results) {
+              let name = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
+
+              if (JSON.stringify(results).length <= CONFIG.MAX_MESSAGE)
+                  bot.replyWithTyping(message, {
+                      'text': `${name} rolled ${results}.`,
+                      'attachments': attachments
+                  });
+              else
+                  throw new Error(`Exceeded the ${CONFIG.MAX_MESSAGE} character message limit.`);
+          }
+          else if (CONFIG.HEAR_DIRECTLY.includes(message.type)) {
+              bot.replyWithTyping(message, {
+                  'text': 'Your message is unrecognized.'
+              });
+          }
+    }
+
+    // PROCESS DICE CODES
+    function processDiceCodes(clauses, bot, message, controller) {
+        const code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\|\/\/|\\\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
+
+        let attach = [],
+            overflow = false;
+        const fun = function(expr, avg, count, size, hilo, keep, mod, muldev, fact) {
+            let expand = [];
+
+            count = parseInt(count) || 1;
+            size = (size != '%' ? parseInt(size) || 1 : 100);
+            let rolls = [];
+            let generate = (!avg ?
+                randomInt :
+                (low, high) => (low+high)/2
+            );
+            for (let i = 1; i <= count; i++)
+                rolls.push(generate(1, size));
+
+            let strikes = {};
+            if (hilo) {
+                keep = Math.min(parseInt(keep) || 1, count);
+
+                let sorted = rolls.slice();
+                if (hilo.toUpperCase() == 'L')
+                    sorted.sort((x,y) => x-y);
+                else
+                    sorted.sort((x,y) => y-x);
+                for (let i = keep; i < sorted.length; i++) {
+                    let key = sorted[i].toString();
+                    strikes[key] = (strikes[key] || 0) + 1;
+                }
+            }
+
+            mod = parseFloat(mod) || 0;
+            if (mod) rolls.push(mod);
+
+            let atoms = [],
+                total = 0;
+            for (let i = 0; i < rolls.length; i++) {
+                let roll = rolls[i],
+                    key = roll.toString(),
+                    face = Math.abs(roll),
+                    sign = roll >= 0 ? '+' : '-';
+
+                if (atoms.length > 0 || sign == '-')
+                    atoms.push(sign);
+
+                if (avg) face = `_${face}_`;
+
+                if (!strikes[key]) {
+                    total += roll;
+                    atoms.push(face);
+                }
+                else {
+                    strikes[key]--;
+                    atoms.push(`~[${face}]~`);
+                }
+            }
+
+            let color;
+            if (avg)
+                color = '#2C9EE0';
+            else if (total == 1 * count + mod)
+                color = 'danger';
+            else if (total == size * count + mod)
+                color = 'good';
+
+            if (muldev) {
+                fact = parseFloat(fact) || 1;
+
+                if (atoms.length > 1)
+                    atoms = ['(', ...atoms, ')'];
+
+                if (muldev == '\*') {
+                    atoms = [...atoms, '×', fact];
+                    total *= fact;
+                }
+                else {
+                    atoms = [...atoms, '÷', fact];
+                    let quotient = total / fact,
+                        fractional = !Number.isInteger(quotient);
+                    if (muldev == '\/') {
+                        if (fractional) atoms.push('rounded down');
+                        total = Math.floor(quotient);
+                    }
+                    else if (muldev == '\|') {
+                        if (fractional) atoms.push('rounded');
+                        total = Math.round(quotient);
+                    }
+                    else if (muldev == '\\') {
+                        if (fractional) atoms.push('rounded up');
+                        total = Math.ceil(quotient);
+                    }
+                    else {
+                        if (fractional) atoms.push('unrounded');
+                        total = Math.round(quotient * 1000) / 1000;
+                    }
+                }
+            }
+
+            if (atoms.length > 1)
+                atoms = [...atoms, '=', `*${total}*`];
+            else if (atoms.length == 1)
+                atoms[0] = `*${atoms[0]}*`;
+            else
+                atoms[0] = `_undefined_`;
+            atoms = [`*${expr}*`, '→', ...atoms];
+
+            if (attach.length < CONFIG.MAX_ATTACH)
+                attach.push({
+                    'text': atoms.join(' '),
+                    'mrkdwn_in': ['text'],
+                    'color': color
+                });
+            else overflow = true;
+
+            return total;
+        };
+
+        let inline = [];
+        for (let i = 0; i < clauses.length; i++) {
+            let content = preProcess(clauses[i], bot, message, controller),
+                old = content;
+            content = content.replace(code, fun);
+            if (content != old)
+                inline.push(postProcess(content, bot, message, controller));
+        }
+        let results = inline.join('; ')
+            .replace(/<[@#][\w|]+?>/, '')
+            .replace(/^[\s.;,]+|[\s.;,]+$/, '')
+            .replace(/\s+/, ' ');
+        if (overflow)
+            attach = [{
+                'text': `You must roll *${CONFIG.MAX_ATTACH}* or fewer dice codes to see the roll details.`,
+                'mrkdwn_in': ['text'],
+                'color': 'warning'
+            }];
+
+        return [results, attach];
+    }
 
     // PRE-PROCESS PARENTHETICAL CONTENT
     function preProcess(content, bot, message, controller) {
@@ -276,7 +312,7 @@ module.exports = function(controller, handler) {
 
         return content.replace(re, fun);
     }
-    
+
     function applyNumberBolding(content) {
         const re = /\b[0-9]+(?:\.[0-9]+)?(?!:)\b/g;
 
