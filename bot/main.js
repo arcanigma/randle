@@ -58,13 +58,13 @@ var handler = {
                         'text': `*Location:* ${err.stack.match(/\w+.js:\d+:\d+/g)[0]}`
                     },
                     {
-                        'text': `*Context:*  ${JSON.stringify(message.type, null, ' ')}`
+                        'text': `*Context:*  ${JSON.stringify(message.type, null, '\t')}`
                     },
                     {
-                        'text': `*Message:*  ${JSON.stringify(message.text, null, ' ')}`
+                        'text': `*Message:*  ${JSON.stringify(message.text, null, '\t')}`
                     },
                     {
-                        'text': `*Matches:*  ${JSON.stringify(message.match, null, ' ')}`
+                        'text': `*Matches:*  ${JSON.stringify(message.match, null, '\t')}`
                     }
                 ]
             });

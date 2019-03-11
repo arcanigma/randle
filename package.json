@@ -14,6 +14,7 @@
         "botkit-storage-mongo": "^1.0.7",
         "deep-equal": "^1.0.1",
         "node-cache": "^4.2.0",
+        "ordinal":  "^1.0.2",
         "php-random-int": "^0.1.1",
         "string-natural-compare": "^2.0.3"
     },

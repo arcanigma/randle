@@ -9,8 +9,8 @@ module.exports = function(controller, handler, user_table) {
         });
     });
 
-    const set = /^!?(?:add|create|edit|insert|make|new|put|remember|save|set|update)\s+macro[s]?\s+([a-z][a-z0-9_]*)\s*=\s*"[\s.;,]*([^"]+?)[\s.;,]*"\s*$/i;
-    controller.hears(set, CONFIG.HEAR_DIRECTLY, function(bot, message) {
+    const add = /^!?(?:add|create|edit|insert|make|new|put|remember|save|set|update)\s+macro[s]?\s+([a-z][a-z0-9_]*)\s*=\s*"[\s.;,]*([^"]+?)[\s.;,]*"\s*$/i;
+    controller.hears(add, CONFIG.HEAR_DIRECTLY, function(bot, message) {
         try {
             let name = message.match[1].toLowerCase(),
                 replace = message.match[2];
@@ -35,8 +35,8 @@ module.exports = function(controller, handler, user_table) {
         }
     });
 
-    const del = /^!?(?:cancel|clear|delete|drop|erase|forget|remove|unset)\s+macro[s]?\s+([a-z][a-z0-9_]*)\s*$/i;
-    controller.hears(del, CONFIG.HEAR_DIRECTLY, function(bot, message) {
+    const drop = /^!?(?:cancel|clear|delete|drop|erase|forget|remove|unset)\s+macro[s]?\s+([a-z][a-z0-9_]*)\s*$/i;
+    controller.hears(drop, CONFIG.HEAR_DIRECTLY, function(bot, message) {
         try {
             let name = message.match[1].toLowerCase();
 
@@ -63,8 +63,8 @@ module.exports = function(controller, handler, user_table) {
         }
     });
 
-    const get = /^!?(?:check|display|find|get|list|load|see|select|show|view)\s+macro[s]?(?:\s+([a-z][a-z0-9_]*))?\s*$/i;
-    controller.hears(get, CONFIG.HEAR_DIRECTLY, function(bot, message) {
+    const select = /^!?(?:check|display|find|get|list|load|see|select|show|view)\s+macro[s]?(?:\s+([a-z][a-z0-9_]*))?\s*$/i;
+    controller.hears(select, CONFIG.HEAR_DIRECTLY, function(bot, message) {
         try {
             let name = message.match[1];
 
