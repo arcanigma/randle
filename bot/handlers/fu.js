@@ -5,7 +5,7 @@ var randomInt = require('php-random-int');
 // TODO: refactor into a 'macro plugin' for roll.js
 module.exports = function(controller, handler) {
 
-    const MAX_DICE = 20;
+    const MAX_DICE = Math.min(10, CONFIG.MAX_ATTACH);
 
     const ANSWERS = {
         1: {'phrase': '*no*, *and*...',  'color': '#E8E8E8'},
@@ -25,7 +25,7 @@ module.exports = function(controller, handler) {
             });
             var dice = 1 + Math.abs(modifier);
             if (dice > MAX_DICE)
-                throw new Error(`Total number of dice must be ${MAX_DICE} or less.`);
+                throw new handler.UserError(`You can roll at most ${MAX_DICE} dice.`);
 
             var attach = [];
             var rolls = [];
@@ -35,13 +35,11 @@ module.exports = function(controller, handler) {
 
                 let phrase = ANSWERS[roll].phrase;
                 let color = ANSWERS[roll].color;
-                if (attach.length < CONFIG.MAX_ATTACH)
-                    attach.push({
-                        'text': `${roll} → ${phrase}`,
-                        'mrkdwn_in': ['text'],
-                        'color': color
-                    });
-                else throw new Error(`Exceeded the ${CONFIG.MAX_ATTACH} roll limit.`);
+                attach.push({
+                    'text': `${roll} → ${phrase}`,
+                    'mrkdwn_in': ['text'],
+                    'color': color
+                });
             }
             rolls.sort();
 
@@ -74,7 +72,7 @@ module.exports = function(controller, handler) {
                 let cube = extra > 1 ? 'dice' : 'die';
 
                 bot.replyWithTyping(message, {
-                    'text': `${whose} *${quality}* answer of ${extra} ${type} ${cube} is ${phrase}`,
+                    'text': `${whose} *${quality}* answer with ${extra} ${type} ${cube} is ${phrase}`,
                     'attachments': attach
                 });
             }

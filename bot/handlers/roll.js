@@ -56,18 +56,13 @@ module.exports = function(controller, handler) {
           if (results) {
               let name = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
 
-              if (JSON.stringify(results).length <= CONFIG.MAX_MESSAGE)
+              if (JSON.stringify(results).length + JSON.stringify(attachments).length <= CONFIG.MAX_RESPONSE)
                   bot.replyWithTyping(message, {
                       'text': `${name} rolled ${results}.`,
                       'attachments': attachments
                   });
               else
-                  throw new Error(`Exceeded the ${CONFIG.MAX_MESSAGE} character message limit.`);
-          }
-          else if (CONFIG.HEAR_DIRECTLY.includes(message.type)) {
-              bot.replyWithTyping(message, {
-                  'text': 'Your message is unrecognized.'
-              });
+                  throw new handler.UserError('Your command was too long to answer.');
           }
     }
 
@@ -207,7 +202,7 @@ module.exports = function(controller, handler) {
             .replace(/\s+/, ' ');
         if (overflow)
             attach = [{
-                'text': `You must roll *${CONFIG.MAX_ATTACH}* or fewer dice codes to see the roll details.`,
+                'text': 'You rolled too many dice to show detailed results.',
                 'mrkdwn_in': ['text'],
                 'color': 'warning'
             }];

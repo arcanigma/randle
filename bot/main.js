@@ -9,6 +9,7 @@ if (!process.env.MONGODB_URI) {
 }
 
 const CONFIG = require('./config');
+
 var Botkit = require('botkit'),
     MongoDB = require('botkit-storage-mongo'),
     CachedStorage = require('./classes/cached-storage');
@@ -32,24 +33,52 @@ controller.spawn({
 });
 
 var handler = {
+    UserError: class extends Error {},
     error: function(err, bot, message) {
-        bot.whisper(message, {
-            'text': `<@${message.user}>, your command caused an error. Please report it to the developer.`,
-            'attachments': [{
-                'text': err.toString(),
-                'color': 'danger'
-            }]
-        });
+        if (err instanceof this.UserError) {
+            bot.whisper(message, {
+                'text': 'Your command has a problem.',
+                'attachments': [
+                    {
+                        'text': `${err.message}`,
+                        'color': 'warning'
+                    }
+                ]
+            });
+        }
+        else {
+            bot.whisper(message, {
+                'text': 'Your message caused an error. Please report these details to the developer.',
+                'attachments': [
+                    {
+                        'text': `*${err.name}:* ${err.message}`,
+                        'color': 'danger'
+                    },
+                    {
+                        'text': `*Location:* ${err.stack.match(/\w+.js:\d+:\d+/g)[0]}`
+                    },
+                    {
+                        'text': `*Context:*  ${JSON.stringify(message.type, null, ' ')}`
+                    },
+                    {
+                        'text': `*Message:*  ${JSON.stringify(message.text, null, ' ')}`
+                    },
+                    {
+                        'text': `*Matches:*  ${JSON.stringify(message.match, null, ' ')}`
+                    }
+                ]
+            });
+        }
     }
 };
 
-var user_db = new CachedStorage(controller.storage.users, {
+var user_table = new CachedStorage(controller.storage.users, {
     'stdTTL': CONFIG.CACHE_TTL,
     'checkperiod': CONFIG.CACHE_CHECK_PERIOD
 });
 
-require('./handlers/macro')(controller, handler, user_db);
-require('./handlers/echo')(controller);
+require('./handlers/macro')(controller, handler, user_table);
+require('./handlers/echo')(controller, handler);
 require('./handlers/deck')(controller, handler);
-// require('./handlers/fu')(controller, handler);
+require('./handlers/fu')(controller, handler);
 require('./handlers/roll')(controller, handler);

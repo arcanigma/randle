@@ -40,7 +40,7 @@ module.exports = function(controller, handler) {
         var elements = expression.trim().split(/\s*,\s*/);
 
         if (elements.length < 2)
-            throw new Error('You must provide at least two elements separated by commas.');
+            throw new handler.UserError('You must list at least two items separated by commas.');
 
         fyShuffle(elements);
 
