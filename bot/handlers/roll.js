@@ -72,7 +72,7 @@ module.exports = function(controller, handler) {
     // PROCESS DICE CODES
     function processDiceCodes(clauses, message) {
         let elements;
-        const code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\|\/\/|\\\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
+        const code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
         const fun = function(expr, avg, count, size, hilo, keep, mod, muldev, fact) {
             count = parseInt(count) || 1;
             size = (size != '%' ? parseInt(size) || 1 : 100);
@@ -154,16 +154,12 @@ module.exports = function(controller, handler) {
                         total = Math.floor(quotient);
                     }
                     else if (muldev == '\|') {
-                        if (fractional) atoms.push('rounded');
+                        if (fractional) atoms.push('rounded naturally');
                         total = Math.round(quotient);
                     }
                     else if (muldev == '\\') {
                         if (fractional) atoms.push('rounded up');
                         total = Math.ceil(quotient);
-                    }
-                    else {
-                        if (fractional) atoms.push('unrounded');
-                        total = Math.round(quotient * 1000) / 1000;
                     }
                 }
             }
