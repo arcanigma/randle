@@ -35,6 +35,7 @@ module.exports = function(controller, handler) {
 
                 let phrase = ANSWERS[roll].phrase;
                 let color = ANSWERS[roll].color;
+                // TODO: refactor legacy attachments into blocks
                 attach.push({
                     'text': `${roll} → ${phrase}`,
                     'mrkdwn_in': ['text'],

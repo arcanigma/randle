@@ -9,10 +9,10 @@ module.exports = function(controller, handler) {
             bot.startTyping(message);
             let shuffled = shuffleHelper(message.match[1]).join('*, *');
 
-            let name = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
+            let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
 
             bot.replyWithTyping(message, {
-                'text': `${name} shuffled *${shuffled}*.`
+                'text': `${who} shuffled *${shuffled}*.`
             });
         }
         catch(err) {
@@ -25,10 +25,10 @@ module.exports = function(controller, handler) {
             bot.startTyping(message);
             let element = shuffleHelper(message.match[1]).shift();
 
-            let name = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
+            let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
 
             bot.replyWithTyping(message, {
-                'text': `${name} drew *${element}*.`
+                'text': `${who} drew *${element}*.`
             });
         }
         catch(err) {

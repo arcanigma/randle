@@ -32,39 +32,68 @@ controller.spawn({
     if (err) throw new Error(err);
 });
 
+var user_table = new CachedStorage(controller.storage.users, {
+    'stdTTL': CONFIG.CACHE_TTL,
+    'checkperiod': CONFIG.CACHE_CHECK_PERIOD
+});
+
 var handler = {
     UserError: class extends Error {},
     error: function(err, bot, message) {
         if (err instanceof this.UserError) {
             bot.whisper(message, {
                 'text': 'Your command has a problem.',
-                'attachments': [
+                'blocks': [
                     {
-                        'text': `${err.message}`,
-                        'color': 'warning'
+                        'type': 'section',
+                        'text': {
+                            'type': 'plain_text',
+                            'text': 'Your command has a problem. Please fix the problem and try again.'
+                        }
+                    },
+                    {
+                        'type': 'context',
+                        'elements': [
+                            {
+                              'type': 'mrkdwn',
+                              'text': `:warning: ${err.message}`
+                            }
+                        ]
                     }
                 ]
             });
         }
         else {
             bot.whisper(message, {
-                'text': 'Your message caused an error. Please report these details to the developer.',
-                'attachments': [
+                'text': 'Your message caused an error.',
+                'blocks': [
                     {
-                        'text': `*${err.name}:* ${err.message}`,
-                        'color': 'danger'
+                        'type': 'section',
+                        'text': {
+                            'type': 'plain_text',
+                            'text': 'Your message caused an error. Please report these details to the developer.'
+                        }
                     },
                     {
-                        'text': `*Location:* ${err.stack.match(/\w+.js:\d+:\d+/g)[0]}`
-                    },
-                    {
-                        'text': `*Context:*  ${JSON.stringify(message.type, null, '\t')}`
-                    },
-                    {
-                        'text': `*Message:*  ${JSON.stringify(message.text, null, '\t')}`
-                    },
-                    {
-                        'text': `*Matches:*  ${JSON.stringify(message.match, null, '\t')}`
+                        'type': 'context',
+                        'elements': [
+                            {
+                              'type': 'mrkdwn',
+                              'text': `*${err.name}:* ${err.message}`
+                            },
+                            {
+                              'type': 'mrkdwn',
+                              'text': `*Location:* ${err.stack.match(/\w+.js:\d+:\d+/g)[0]}`
+                            },
+                            {
+                              'type': 'mrkdwn',
+                              'text': `*Context:*  ${JSON.stringify(message.type)}`
+                            },
+                            {
+                              'type': 'mrkdwn',
+                              'text': `*Message:*  ${JSON.stringify(message.text)}`
+                            }
+                        ]
                     }
                 ]
             });
@@ -72,13 +101,8 @@ var handler = {
     }
 };
 
-var user_table = new CachedStorage(controller.storage.users, {
-    'stdTTL': CONFIG.CACHE_TTL,
-    'checkperiod': CONFIG.CACHE_CHECK_PERIOD
-});
-
 require('./handlers/macro')(controller, handler, user_table);
 require('./handlers/echo')(controller, handler);
 require('./handlers/deck')(controller, handler);
-require('./handlers/fu')(controller, handler);
+// require('./handlers/fu')(controller, handler);
 require('./handlers/roll')(controller, handler);

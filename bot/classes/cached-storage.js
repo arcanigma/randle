@@ -11,6 +11,7 @@ module.exports = class CachedStorage {
     get(id, callback) {
         let cache = this.cache,
             backing = this.backing;
+        
         cache.get(id, function(err, cached_obj) {
             if (cached_obj) {
                 callback(err, cached_obj);

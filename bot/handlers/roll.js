@@ -55,10 +55,10 @@ module.exports = function(controller, handler) {
 
     function sendDiceResults(summary, blocks, bot, message) {
           if (blocks) {
-              let name = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
+              let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
 
               let reply = {
-                  'text': `${name} rolled ${summary}.`,
+                  'text': `${who} rolled ${summary}.`,
                   'blocks': blocks
               };
 
@@ -199,13 +199,13 @@ module.exports = function(controller, handler) {
                 phrases.push(outcome);
 
                 if (blocks.length == 0) {
-                    let name = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
+                    let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
 
                     blocks.push({
                         'type': 'section',
                         'text': {
                             'type': 'mrkdwn',
-                            'text': `${name} rolled ${outcome}.`
+                            'text': `${who} rolled ${outcome}.`
                           }
                     });
                 }
