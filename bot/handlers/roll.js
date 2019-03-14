@@ -12,9 +12,9 @@ module.exports = function(controller, handler) {
         try {
             let clauses = [message.match[1]];
 
-            let [results, attachments] = processDiceCodes(clauses, message);
+            let [summary, blocks] = processDiceCodes(clauses, message);
 
-            sendDiceResults(results, attachments, bot, message);
+            sendDiceResults(summary, blocks, bot, message);
         }
         catch(err) {
             handler.error(err, bot, message);
@@ -30,9 +30,9 @@ module.exports = function(controller, handler) {
             for (let i = 0; i < message.match.length; i++)
                 clauses.push(...cloneEllipses(message.match[i].slice(1, -1).trim()));
 
-            let [results, attachments] = processDiceCodes(clauses, message);
+            let [summary, blocks] = processDiceCodes(clauses, message);
 
-            sendDiceResults(results, attachments, bot, message);
+            sendDiceResults(summary, blocks, bot, message);
         }
         catch(err) {
             handler.error(err, bot, message);
@@ -44,24 +44,26 @@ module.exports = function(controller, handler) {
         try {
             let clauses = [message.text];
 
-            let [results, attachments] = processDiceCodes(clauses, message);
+            let [summary, blocks] = processDiceCodes(clauses, message);
 
-            sendDiceResults(results, attachments, bot, message);
+            sendDiceResults(summary, blocks, bot, message);
         }
         catch(err) {
             handler.error(err, bot, message);
         }
     });
 
-    function sendDiceResults(results, attachments, bot, message) {
-          if (results) {
+    function sendDiceResults(summary, blocks, bot, message) {
+          if (blocks) {
               let name = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
 
-              if (JSON.stringify(results).length + JSON.stringify(attachments).length <= CONFIG.MAX_RESPONSE)
-                  bot.replyWithTyping(message, {
-                      'text': `${name} rolled ${results}.`,
-                      'attachments': attachments
-                  });
+              let reply = {
+                  'text': `${name} rolled ${summary}.`,
+                  'blocks': blocks
+              };
+
+              if (JSON.stringify(reply).length <= CONFIG.MAX_REPLY_SIZE)
+                  bot.replyWithTyping(message, reply);
               else
                   throw new handler.UserError('Your command was too long to answer.');
           }
@@ -69,12 +71,9 @@ module.exports = function(controller, handler) {
 
     // PROCESS DICE CODES
     function processDiceCodes(clauses, message) {
-        let attach = [],
-            overflow = false;
+        let elements;
         const code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\|\/\/|\\\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
         const fun = function(expr, avg, count, size, hilo, keep, mod, muldev, fact) {
-            let expand = [];
-
             count = parseInt(count) || 1;
             size = (size != '%' ? parseInt(size) || 1 : 100);
             let rolls = [];
@@ -126,13 +125,15 @@ module.exports = function(controller, handler) {
                 }
             }
 
-            let color;
+            let prefix;
             if (avg)
-                color = '#2C9EE0';
+                prefix = ':bar_chart:';
             else if (total == 1 * count + mod)
-                color = 'danger';
+                prefix = ':heavy_multiplication_x:';
             else if (total == size * count + mod)
-                color = 'good';
+                prefix = ':heavy_check_mark:';
+            else
+                prefix = ':white_square:';
 
             if (muldev) {
                 fact = parseFloat(fact) || 1;
@@ -173,37 +174,70 @@ module.exports = function(controller, handler) {
                 atoms[0] = `*${atoms[0]}*`;
             else
                 atoms[0] = `_undefined_`;
-            atoms = [`*${expr}*`, '→', ...atoms];
+            atoms = [`*${expr}:*`, ...atoms];
 
-            if (attach.length < CONFIG.MAX_ATTACH)
-                attach.push({
-                    'text': atoms.join(' '),
-                    'mrkdwn_in': ['text'],
-                    'color': color
+            const MAX_ELEMENTS = 10;
+            if (elements.length < MAX_ELEMENTS - 1) {
+                elements.push({
+                    'type': 'mrkdwn',
+                    'text': `${prefix} ${atoms.join(' ')}`
                 });
-            else overflow = true;
+            }
+            else if (elements.length == MAX_ELEMENTS - 1) {
+                elements.push({
+                    'type': 'mrkdwn',
+                    'text': `:warning: Too many rolls to show.`
+                });
+            }
 
             return total;
         };
 
-        let inline = [];
+        let phrases = [];
+        let blocks = [];
         for (let i = 0; i < clauses.length; i++) {
+            elements = [];
             let outcome = postProcessChain(preProcessChain(clauses[i], message).replace(code, fun), message);
-            if (outcome != clauses[i])
-                inline.push(outcome);
+
+            if (outcome != clauses[i]) {
+                phrases.push(outcome);
+
+                if (blocks.length == 0) {
+                    let name = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
+
+                    blocks.push({
+                        'type': 'section',
+                        'text': {
+                            'type': 'mrkdwn',
+                            'text': `${name} rolled ${outcome}.`
+                          }
+                    });
+                }
+                else {
+                    // blocks.push({
+                    //     'type': 'divider'
+                    // });
+                    blocks.push({
+                        'type': 'section',
+                        'text': {
+                            'type': 'mrkdwn',
+                            'text': `Then ${outcome}.`
+                          }
+                    });
+                }
+                blocks.push({
+                    'type': 'context',
+                    'elements': elements
+                });
+            }
         }
-        let results = inline.join('; ')
+
+        let summary = phrases.join('; ')
             .replace(/<[@#][\w|]+?>/, '')
             .replace(/^[\s.;,]+|[\s.;,]+$/, '')
             .replace(/\s+/, ' ');
-        if (overflow)
-            attach = [{
-                'text': 'You rolled too many dice to show detailed results.',
-                'mrkdwn_in': ['text'],
-                'color': 'warning'
-            }];
 
-        return [results, attach];
+        return [summary, blocks];
     }
 
     function cloneEllipses(clause) {
@@ -217,7 +251,7 @@ module.exports = function(controller, handler) {
             let clones = [];
             if (over.length == 1 && reps >= 1) {
                 for (let i = 1; i <= reps; i++)
-                    clones.push(`${phrase} the ${toOrdinal(i)} time`);
+                    clones.push(`${phrase} on the ${toOrdinal(i)} roll`);
             }
             else {
                 for (let i = 0; i < over.length; i++)

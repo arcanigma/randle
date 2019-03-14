@@ -5,7 +5,7 @@ var randomInt = require('php-random-int');
 // TODO: refactor into a 'macro plugin' for roll.js
 module.exports = function(controller, handler) {
 
-    const MAX_DICE = Math.min(10, CONFIG.MAX_ATTACH);
+    const MAX_DICE = 10;
 
     const ANSWERS = {
         1: {'phrase': '*no*, *and*...',  'color': '#E8E8E8'},
