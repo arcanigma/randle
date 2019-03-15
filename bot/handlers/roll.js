@@ -246,10 +246,13 @@ module.exports = function(controller, handler) {
                           }
                     });
                 }
-                blocks.push({
-                    'type': 'context',
-                    'elements': elements
-                });
+
+                if (elements.length > 0) {
+                    blocks.push({
+                        'type': 'context',
+                        'elements': elements
+                    });
+                }
             }
         }
 
