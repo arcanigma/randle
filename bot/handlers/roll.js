@@ -28,7 +28,7 @@ module.exports = function(controller, handler) {
 
             let clauses = [];
             for (let i = 0; i < message.match.length; i++)
-                clauses.push(...cloneEllipses(message.match[i].slice(1, -1).trim()));
+                clauses.push(...cloneEllipses(message.match[i].slice(1, -1)));
 
             let [summary, blocks] = processDiceCodes(clauses, message);
 
@@ -54,7 +54,7 @@ module.exports = function(controller, handler) {
     });
 
     function sendDiceResults(summary, blocks, bot, message) {
-          if (blocks) {
+          if (summary) {
               let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
 
               let reply = {
@@ -69,7 +69,31 @@ module.exports = function(controller, handler) {
           }
     }
 
-    // PROCESS DICE CODES
+    function cloneEllipses(clause) {
+        const ellipsis = /^\s*(.+)\s*\.\.\.\s*(\w+(?:\s*,\s*\w+)*)\s*$/;
+
+        let match = clause.match(ellipsis);
+        if (match) {
+            let phrase = match[1].replace(/^[\s.;,]+|[\s.;,]+$/g, ''),
+                over = match[2].split(/\s*,\s*/),
+                reps = parseInt(over[0]);
+            let clones = [];
+            if (over.length == 1 && reps >= 1) {
+                for (let i = 1; i <= reps; i++)
+                    clones.push(`${phrase} on the ${toOrdinal(i)} roll`);
+            }
+            else {
+                for (let i = 0; i < over.length; i++)
+                    clones.push(`${phrase} for ${over[i]}`);
+            }
+
+            return clones;
+        }
+        else {
+            return [clause];
+        }
+    }
+
     function processDiceCodes(clauses, message) {
         let elements;
         const code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
@@ -196,6 +220,7 @@ module.exports = function(controller, handler) {
             let outcome = postProcessChain(preProcessChain(clauses[i], message).replace(code, fun), message);
 
             if (outcome != clauses[i]) {
+                outcome = prettyMarkup(outcome);
                 phrases.push(outcome);
 
                 if (blocks.length == 0) {
@@ -228,51 +253,30 @@ module.exports = function(controller, handler) {
             }
         }
 
-        let summary = phrases.join('; ')
-            .replace(/<[@#][\w|]+?>/, '')
-            .replace(/^[\s.;,]+|[\s.;,]+$/, '')
-            .replace(/\s+/, ' ');
+        let summary = phrases.join('; ');
 
         return [summary, blocks];
     }
 
-    function cloneEllipses(clause) {
-        const re = /^(.+)\s*\.\.\.\s*(\w+(?:\s*,\s*\w+)*)$/;
-        let match = clause.trim().match(re);
-
-        if (match) {
-            let phrase = match[1].trim(),
-                over = match[2].trim().split(/\s*,\s*/),
-                reps = parseInt(over[0]);
-            let clones = [];
-            if (over.length == 1 && reps >= 1) {
-                for (let i = 1; i <= reps; i++)
-                    clones.push(`${phrase} on the ${toOrdinal(i)} roll`);
-            }
-            else {
-                for (let i = 0; i < over.length; i++)
-                    clones.push(`${phrase} for ${over[i]}`);
-            }
-            return clones;
-        }
-        else {
-            return [clause];
-        }
-    }
-
     function preProcessChain(content, message) {
-        content = evaluateMacros(content, message);
-        content = evaluateArithmeticOps(content);
-
-        return content;
+        return evaluateArithmeticOps(
+            evaluateMacros(content, message)
+        );
     }
 
     function postProcessChain(content, message) {
-        content = evaluateArithmeticOps(content);
-        content = evaluateComparisonOps(content);
-        content = applyNumberBolding(content);
+        return evaluateComparisonOps(
+            evaluateArithmeticOps(content)
+        );
+    }
 
-        return content;
+    function prettyMarkup(content) {
+        // TODO: in ES9 add lookbehind (?<![#_*])
+
+        return content.replace(/\b[0-9]+(?:\.[0-9]+)?(?![:_*])\b/g, '*$&*')
+            .replace(/<[@#][\w|]+?>/g, '')
+            .replace(/^[\s.;,]+|[\s.;,]+$/g, '')
+            .replace(/\s+/g, ' ');
     }
 
     function evaluateMacros(content, message) {
@@ -332,13 +336,6 @@ module.exports = function(controller, handler) {
         };
 
         return content.replace(re, fun);
-    }
-
-    function applyNumberBolding(content) {
-        // TODO: in ES9 add lookbehind (?<![#_*])
-        const re = /\b[0-9]+(?:\.[0-9]+)?(?![:_*])\b/g;
-
-        return content.replace(re, '*$&*');
     }
 
 };
