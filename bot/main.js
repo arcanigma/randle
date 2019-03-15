@@ -27,9 +27,10 @@ var controller = Botkit.slackbot({
 });
 
 controller.spawn({
+    retry: 5,
     token: process.env.SLACK_BOT_TOKEN
 }).startRTM(function(err) {
-    if (err) throw new Error(err);
+    if (err) console.log(err);
 });
 
 var user_table = new CachedStorage(controller.storage.users, {
