@@ -96,6 +96,8 @@ module.exports = function(controller, handler) {
 
     function processDiceCodes(clauses, message) {
         let elements;
+        let maxed;
+
         const code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
         const fun = function(expr, avg, count, size, hilo, keep, mod, muldev, fact) {
             count = parseInt(count) || 1;
@@ -196,18 +198,21 @@ module.exports = function(controller, handler) {
                 atoms[0] = `_undefined_`;
             atoms = [`*${expr}:*`, ...atoms];
 
-            const MAX_ELEMENTS = 10;
-            if (elements.length < MAX_ELEMENTS - 1) {
-                elements.push({
-                    'type': 'mrkdwn',
-                    'text': `${prefix} ${atoms.join(' ')}`
-                });
-            }
-            else if (elements.length == MAX_ELEMENTS - 1) {
-                elements.push({
-                    'type': 'mrkdwn',
-                    'text': `:warning: Too many rolls to show.`
-                });
+            if (!maxed) {
+                const MAX_ELEMENTS = 10;
+                if (elements.length < MAX_ELEMENTS) {
+                    elements.push({
+                        'type': 'mrkdwn',
+                        'text': `${prefix} ${atoms.join(' ')}`
+                    });
+                }
+                else {
+                    maxed = true;
+                    elements[MAX_ELEMENTS-1] = {
+                        'type': 'mrkdwn',
+                        'text': `:warning: Too many rolls to show.`
+                    };
+                }
             }
 
             return total;
@@ -217,6 +222,7 @@ module.exports = function(controller, handler) {
         let blocks = [];
         for (let i = 0; i < clauses.length; i++) {
             elements = [];
+            maxed = false;
             let outcome = postProcessChain(preProcessChain(clauses[i], message).replace(code, fun), message);
 
             if (outcome != clauses[i]) {
