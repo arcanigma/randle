@@ -154,9 +154,9 @@ module.exports = function(controller, handler) {
             let prefix;
             if (avg)
                 prefix = ':bar_chart:';
-            else if (total == 1 * count + mod)
+            else if (total == 1 * (!hilo ? count : keep) + mod)
                 prefix = ':heavy_multiplication_x:';
-            else if (total == size * count + mod)
+            else if (total == size * (!hilo ? count : keep) + mod)
                 prefix = ':heavy_check_mark:';
             else
                 prefix = ':white_square:';
