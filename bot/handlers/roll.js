@@ -8,52 +8,52 @@ var randomInt = require('php-random-int'),
 module.exports = function(controller, handler) {
 
     // HEAR ROLL COMMAND
-    controller.hears(/^!?roll\b(.+)$/i, CONFIG.HEAR_ANYWHERE, function(bot, message) {
+    controller.hears(/^!?roll\b(.+)$/i, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
         try {
-            let clauses = [message.match[1]];
+            let clauses = [message.matches[1]];
 
             let [summary, blocks] = processDiceCodes(clauses, message);
 
-            sendDiceResults(summary, blocks, bot, message);
+            await sendDiceResults(summary, blocks, bot, message);
         }
         catch(err) {
-            handler.error(err, bot, message);
+            await handler.error(err, bot, message);
         }
     });
 
     // HEAR PARENTHESES
-    controller.hears(/\(([^'()][^()]*)\)/g, CONFIG.HEAR_ANYWHERE, function(bot, message) {
+    controller.hears(/\(([^'()][^()]*)\)/g, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
         try {
             if (message.thread_ts) return;
 
             let clauses = [];
-            for (let i = 0; i < message.match.length; i++)
-                clauses.push(...cloneEllipses(message.match[i].slice(1, -1)));
+            for (let i = 0; i < message.matches.length; i++)
+                clauses.push(...cloneEllipses(message.matches[i].slice(1, -1)));
 
             let [summary, blocks] = processDiceCodes(clauses, message);
 
-            sendDiceResults(summary, blocks, bot, message);
+            await sendDiceResults(summary, blocks, bot, message);
         }
         catch(err) {
-            handler.error(err, bot, message);
+            await handler.error(err, bot, message);
         }
     });
 
     // HEAR DIRECT MESSAGE OR MENTION
-    controller.hears(/^(.+)$/, CONFIG.HEAR_EXPLICIT, function(bot, message) {
+    controller.hears(/^(.+)$/, CONFIG.HEAR_EXPLICIT, async(bot, message) => {
         try {
             let clauses = [message.text];
 
             let [summary, blocks] = processDiceCodes(clauses, message);
 
-            sendDiceResults(summary, blocks, bot, message);
+            await sendDiceResults(summary, blocks, bot, message);
         }
         catch(err) {
-            handler.error(err, bot, message);
+            await handler.error(err, bot, message);
         }
     });
 
-    function sendDiceResults(summary, blocks, bot, message) {
+    async function sendDiceResults(summary, blocks, bot, message) {
           if (summary) {
               let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
 
@@ -63,7 +63,7 @@ module.exports = function(controller, handler) {
               };
 
               if (JSON.stringify(reply).length <= CONFIG.MAX_REPLY_SIZE)
-                  bot.replyWithTyping(message, reply);
+                  await bot.reply(message, reply);
               else
                   throw new handler.UserError('Your command was too long to answer.');
           }

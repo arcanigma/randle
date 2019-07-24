@@ -4,35 +4,33 @@ var fyShuffle = require('../functions/fisher-yates-shuffle');
 
 module.exports = function(controller, handler) {
 
-    controller.hears(/^!?shuffle\b(.*)/i, ['direct_message', 'direct_mention', 'mention', 'ambient'], function(bot, message) {
+    controller.hears(/^!?shuffle\b(.*)/i, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
         try {
-            bot.startTyping(message);
-            let shuffled = shuffleHelper(message.match[1]).join('*, *');
+            let shuffled = shuffleHelper(message.matches[1]).join('*, *');
 
             let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
 
-            bot.replyWithTyping(message, {
+            await bot.reply(message, {
                 'text': `${who} shuffled *${shuffled}*.`
             });
         }
         catch(err) {
-            handler.error(err, bot, message);
+            await handler.error(err, bot, message);
         }
     });
 
-    controller.hears( /^!?draw\b(.*)/i, ['direct_message', 'direct_mention', 'mention', 'ambient'], function(bot, message) {
+    controller.hears(/^!?draw\b(.*)/i, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
         try {
-            bot.startTyping(message);
-            let element = shuffleHelper(message.match[1]).shift();
+            let element = shuffleHelper(message.matches[1]).shift();
 
             let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
 
-            bot.replyWithTyping(message, {
+            await bot.reply(message, {
                 'text': `${who} drew *${element}*.`
             });
         }
         catch(err) {
-            handler.error(err, bot, message);
+            await handler.error(err, bot, message);
         }
     });
 

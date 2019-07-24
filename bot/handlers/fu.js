@@ -19,7 +19,7 @@ module.exports = function(controller, handler) {
     controller.hears(/^!?fu\b(.*)/i, CONFIG.HEAR_ANYWHERE, function(bot, message) {
         try {
             var modifier = 0;
-            var found = message.match[1].match(/[+-][0-9]*/ig);
+            var found = message.matches[1].match(/[+-][0-9]*/ig);
             if (found) found.forEach(function(element) {
                 modifier += (parseInt(element) || (element === 0 ? 0 : parseInt(element + "1")));
             });
