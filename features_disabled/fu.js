@@ -1,5 +1,4 @@
 const CONFIG = require('../config'),
-      { UserError } = require('../errors'),
       randomInt = require('php-random-int');
 
 // TODO: refactor into a 'macro plugin' for roll.js
@@ -25,7 +24,7 @@ module.exports = function(controller) {
             });
             var dice = 1 + Math.abs(modifier);
             if (dice > MAX_DICE)
-                throw new UserError(`You can roll at most ${MAX_DICE} dice.`);
+                await controller.plugins.handler.raise(`You can roll at most ${MAX_DICE} dice.`);
 
             var attach = [];
             var rolls = [];
@@ -79,7 +78,7 @@ module.exports = function(controller) {
             }
         }
         catch(err) {
-            controller.handle(err, bot, message);
+            await controller.plugins.handler.explain(err, bot, message);
         }
     });
 

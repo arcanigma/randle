@@ -33,7 +33,7 @@ module.exports = function(controller) {
             });
         }
         catch(err) {
-            controller.handle(err, bot, message);
+            await controller.plugins.handler.explain(err, bot, message);
         }
     });
 
@@ -61,7 +61,7 @@ module.exports = function(controller) {
             });
         }
         catch(err) {
-            controller.handle(err, bot, message);
+            await controller.plugins.handler.explain(err, bot, message);
         }
     });
 
@@ -100,7 +100,7 @@ module.exports = function(controller) {
             });
         }
         catch(err) {
-            controller.handle(err, bot, message);
+            await controller.plugins.handler.explain(err, bot, message);
         }
     });
 

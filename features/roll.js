@@ -1,5 +1,4 @@
 const CONFIG = require('../config'),
-      { UserError } = require('../errors'),
       regexClosure = require('../functions/regex-closure'),
       randomInt = require('php-random-int'),
       naturalCompare = require('string-natural-compare'),
@@ -17,7 +16,7 @@ module.exports = function(controller) {
             await sendDiceResults(summary, blocks, bot, message);
         }
         catch(err) {
-            await controller.handle(err, bot, message);
+            await controller.plugins.handler.explain(err, bot, message);
         }
     });
 
@@ -35,7 +34,7 @@ module.exports = function(controller) {
             await sendDiceResults(summary, blocks, bot, message);
         }
         catch(err) {
-            await controller.handle(err, bot, message);
+            await controller.plugins.handler.explain(err, bot, message);
         }
     });
 
@@ -49,7 +48,7 @@ module.exports = function(controller) {
             await sendDiceResults(summary, blocks, bot, message);
         }
         catch(err) {
-            await controller.handle(err, bot, message);
+            await controller.plugins.handler.explain(err, bot, message);
         }
     });
 
@@ -65,7 +64,7 @@ module.exports = function(controller) {
               if (JSON.stringify(reply).length <= CONFIG.MAX_REPLY_SIZE)
                   await bot.reply(message, reply);
               else
-                  throw new UserError('Your command was too long to answer.');
+                  await controller.plugins.handler.raise('Your command was too long to answer.');
           }
     }
 

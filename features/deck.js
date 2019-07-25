@@ -1,5 +1,4 @@
 const CONFIG = require('../config'),
-      { UserError } = require('../errors'),
       fyShuffle = require('../functions/fisher-yates-shuffle');
 
 module.exports = function(controller) {
@@ -7,6 +6,8 @@ module.exports = function(controller) {
     controller.hears(/^!?shuffle\b(.*)/i, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
         try {
             let shuffled = shuffleHelper(message.matches[1]).join('*, *');
+            if (shuffled.length < 2)
+                await controller.plugins.handler.raise('You must list at least two items separated by commas.');
 
             let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
 
@@ -15,13 +16,15 @@ module.exports = function(controller) {
             });
         }
         catch(err) {
-            await controller.handle(err, bot, message);
+            await controller.plugins.handler.explain(err, bot, message);
         }
     });
 
     controller.hears(/^!?draw\b(.*)/i, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
         try {
             let element = shuffleHelper(message.matches[1]).shift();
+            if (shuffled.length < 2)
+                await controller.plugins.handler.raise('You must list at least two items separated by commas.');
 
             let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
 
@@ -30,18 +33,13 @@ module.exports = function(controller) {
             });
         }
         catch(err) {
-            await controller.handle(err, bot, message);
+            await controller.plugins.handler.explain(err, bot, message);
         }
     });
 
     function shuffleHelper(expression) {
-        var elements = expression.trim().split(/\s*,\s*/);
-
-        if (elements.length < 2)
-            throw new UserError('You must list at least two items separated by commas.');
-
+        let elements = expression.trim().split(/\s*,\s*/).filter(Boolean);
         fyShuffle(elements);
-
         return elements;
     }
 

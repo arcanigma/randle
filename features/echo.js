@@ -1,5 +1,4 @@
-const CONFIG = require('../config'),
-      { UserError } = require('../errors');
+const CONFIG = require('../config');
 
 module.exports = function(controller) {
 
@@ -8,7 +7,7 @@ module.exports = function(controller) {
             await bot.reply(message, message.matches[1].trim());
         }
         catch(err) {
-            await controller.handle(err, bot, message);
+            await controller.plugins.handler.explain(err, bot, message);
         }
     });
 
@@ -17,10 +16,10 @@ module.exports = function(controller) {
             if (message.matches[1] == 'system')
                 throw new Error(message.matches[2] || 'undefined');
             else if (message.matches[1] == 'user')
-                throw new UserError(message.matches[2] || 'undefined');
+                await controller.plugins.handler.raise(message.matches[2] || 'undefined');
         }
         catch(err) {
-            await controller.handle(err, bot, message);
+            await controller.plugins.handler.explain(err, bot, message);
         }
     });
 
