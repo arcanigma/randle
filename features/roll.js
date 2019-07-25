@@ -289,13 +289,15 @@ module.exports = function(controller) {
 
     function evaluateMacros(content, message) {
         let custom = {};
-        if (message.user_data && message.user_data.macros)
-            custom = message.user_data.macros;
+        if (message.injection && message.injection.macros)
+            custom = message.injection.macros;
 
-        let macros = Object.assign({
+        let standard = {
             'adv': '2d20H',
             'dis': '2d20L'
-        }, custom);
+        };
+        
+        let macros = Object.assign(standard, custom);
 
         for (let name in macros)
             content = content.replace(new RegExp(`\\b${name}\\b`, 'ig'), macros[name]);

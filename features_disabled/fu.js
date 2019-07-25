@@ -1,7 +1,6 @@
 const CONFIG = require('../config'),
       randomInt = require('php-random-int');
 
-// TODO: refactor into a 'macro plugin' for roll.js
 module.exports = function(controller) {
 
     const MAX_DICE = 10;

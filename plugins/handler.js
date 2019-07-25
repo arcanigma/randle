@@ -2,7 +2,7 @@ module.exports = function(botkit) {
     class UserError extends Error {};
 
     return {
-        name: 'Botkit Error Handler',
+        name: 'Error Handler',
 
         init: function(controller) {
             controller.addPluginExtension('handler', this);

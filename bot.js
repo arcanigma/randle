@@ -12,19 +12,19 @@ let adapter = new SlackAdapter({
 });
 
 let controller = new Botkit({
-    webhook_uri: '/api/messages',
     adapter: adapter,
-    storage: undefined /* new MongoDbStorage({
-        url : process.env.MONGODB_URI,
-        database: 'randle',
-        collection: 'colletion'
-    }) */ // TODO: enable state storage
+    // storage: new MongoDbStorage({
+    //     url: process.env.MONGODB_URI,
+    //     database: CONFIG.DATABASE,
+    //     collection: CONFIG.CONVERSATION_STATE
+    // })
 });
 
 adapter.use(new SlackEventMiddleware());
 adapter.use(new SlackMessageTypeMiddleware());
 
 controller.usePlugin(require('./plugins/handler'));
+controller.usePlugin(require('./plugins/states'));
 
 controller.ready(() => {
     controller.loadModules(__dirname + '/features');
