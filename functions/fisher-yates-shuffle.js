@@ -1,4 +1,4 @@
-var randomInt = require('php-random-int');
+const randomInt = require('php-random-int');
 
 module.exports = function(array) {
     for (let i = array.length-1; i >= 1; i--) {

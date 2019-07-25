@@ -1,8 +1,8 @@
-const CONFIG = require('../config');
+const CONFIG = require('../config'),
+      { UserError } = require('../errors'),
+      fyShuffle = require('../functions/fisher-yates-shuffle');
 
-var fyShuffle = require('../functions/fisher-yates-shuffle');
-
-module.exports = function(controller, handler) {
+module.exports = function(controller) {
 
     controller.hears(/^!?shuffle\b(.*)/i, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
         try {
@@ -15,7 +15,7 @@ module.exports = function(controller, handler) {
             });
         }
         catch(err) {
-            await handler.error(err, bot, message);
+            await controller.handle(err, bot, message);
         }
     });
 
@@ -30,7 +30,7 @@ module.exports = function(controller, handler) {
             });
         }
         catch(err) {
-            await handler.error(err, bot, message);
+            await controller.handle(err, bot, message);
         }
     });
 
@@ -38,7 +38,7 @@ module.exports = function(controller, handler) {
         var elements = expression.trim().split(/\s*,\s*/);
 
         if (elements.length < 2)
-            throw new handler.UserError('You must list at least two items separated by commas.');
+            throw new UserError('You must list at least two items separated by commas.');
 
         fyShuffle(elements);
 

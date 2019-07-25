@@ -2,9 +2,9 @@
     "name": "randle",
     "description": "Dice rolling and randomization bot for Slack.",
     "version": "2.0.0",
-    "main": "bot/main.js",
+    "main": "bot.js",
     "scripts": {
-        "start": "node bot/main.js"
+        "start": "node bot.js"
     },
     "engines": {
         "node": "^10.16.0"

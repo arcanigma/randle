@@ -1,11 +1,11 @@
-const CONFIG = require('../config');
+const CONFIG = require('../config'),
+      { UserError } = require('../errors'),
+      regexClosure = require('../functions/regex-closure'),
+      randomInt = require('php-random-int'),
+      naturalCompare = require('string-natural-compare'),
+      toOrdinal = require('ordinal');
 
-var randomInt = require('php-random-int'),
-    regexClosure = require('../functions/regex-closure'),
-    naturalCompare = require('string-natural-compare'),
-    toOrdinal = require('ordinal');
-
-module.exports = function(controller, handler) {
+module.exports = function(controller) {
 
     // HEAR ROLL COMMAND
     controller.hears(/^!?roll\b(.+)$/i, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
@@ -17,7 +17,7 @@ module.exports = function(controller, handler) {
             await sendDiceResults(summary, blocks, bot, message);
         }
         catch(err) {
-            await handler.error(err, bot, message);
+            await controller.handle(err, bot, message);
         }
     });
 
@@ -35,7 +35,7 @@ module.exports = function(controller, handler) {
             await sendDiceResults(summary, blocks, bot, message);
         }
         catch(err) {
-            await handler.error(err, bot, message);
+            await controller.handle(err, bot, message);
         }
     });
 
@@ -49,7 +49,7 @@ module.exports = function(controller, handler) {
             await sendDiceResults(summary, blocks, bot, message);
         }
         catch(err) {
-            await handler.error(err, bot, message);
+            await controller.handle(err, bot, message);
         }
     });
 
@@ -65,7 +65,7 @@ module.exports = function(controller, handler) {
               if (JSON.stringify(reply).length <= CONFIG.MAX_REPLY_SIZE)
                   await bot.reply(message, reply);
               else
-                  throw new handler.UserError('Your command was too long to answer.');
+                  throw new UserError('Your command was too long to answer.');
           }
     }
 

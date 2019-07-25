@@ -1,13 +1,14 @@
-const CONFIG = require('../config');
+const CONFIG = require('../config'),
+      { UserError } = require('../errors');
 
-module.exports = function(controller, handler) {
+module.exports = function(controller) {
 
     controller.hears(/^!?echo\b(.*)/i, CONFIG.HEAR_EXPLICIT, async(bot, message) => {
         try {
             await bot.reply(message, message.matches[1].trim());
         }
         catch(err) {
-            await handler.error(err, bot, message);
+            await controller.handle(err, bot, message);
         }
     });
 
@@ -16,10 +17,10 @@ module.exports = function(controller, handler) {
             if (message.matches[1] == 'system')
                 throw new Error(message.matches[2] || 'undefined');
             else if (message.matches[1] == 'user')
-                throw new handler.UserError(message.matches[2] || 'undefined');
+                throw new UserError(message.matches[2] || 'undefined');
         }
         catch(err) {
-            await handler.error(err, bot, message);
+            await controller.handle(err, bot, message);
         }
     });
 
