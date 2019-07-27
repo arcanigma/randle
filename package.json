@@ -1,30 +1,36 @@
 {
-    "name": "randle",
-    "description": "Dice rolling and randomization bot for Slack.",
-    "version": "2.0.0",
-    "main": "bot.js",
-    "scripts": {
-        "start": "node bot.js"
-    },
-    "engines": {
-        "node": "^10.16.0"
-    },
-    "dependencies": {
-        "botkit": "^4.0.2",
-        "botbuilder-adapter-slack": "^1.0.3",
-        "botbuilder-storage-mongodb": "^0.9.5",
-        "deep-equal": "^1.0.1",
-        "node-cache": "^4.2.0",
-        "ordinal":  "^1.0.3",
-        "php-random-int": "^0.1.2",
-        "string-natural-compare": "^2.0.3"
-    },
-    "license": "MIT",
-    "author": {
-        "name": "Ron Reaser",
-        "email": "ron@reaser.org",
-        "url": "https://github.com/ron-reaser"
-    },
-    "repository": "github:ron-reaser/randle",
-    "private": true
+  "name": "randle",
+  "description": "Dice rolling and randomization bot for Slack.",
+  "version": "2.0.0",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "nodemon bot.js"
+  },
+  "engines": {
+    "node": "^10.16.0"
+  },
+  "dependencies": {
+    "botbuilder": "4.x",
+    "botbuilder-adapter-slack": "1.x",
+    "botbuilder-storage-mongodb": "0.x",
+    "botkit": "4.x",
+    "deep-equal": "*",
+    "ordinal": "*",
+    "php-random-int": "*",
+    "string-natural-compare": "*"
+  },
+  "devDependencies": {
+    "dotenv": "*",
+    "ngrok": "*",
+    "nodemon": "*"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Ron Reaser",
+    "email": "ron@reaser.org",
+    "url": "https://github.com/ron-reaser"
+  },
+  "repository": "github:ron-reaser/randle",
+  "private": true
 }

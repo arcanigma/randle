@@ -1,17 +1,22 @@
 const CONFIG = require('./config');
 
+if (process.env.NODE_ENV !== 'production')
+    require('dotenv').config();
+
 const { Botkit } = require('botkit'),
-      { SlackAdapter, SlackEventMiddleware, SlackMessageTypeMiddleware  } = require('botbuilder-adapter-slack'),
-      { MongoDbStorage } = require('botbuilder-storage-mongodb');
+      { MongoDbStorage } = require('botbuilder-storage-mongodb'),
+      { SlackAdapter, SlackEventMiddleware, SlackMessageTypeMiddleware  } = require('botbuilder-adapter-slack');
 
 let adapter = new SlackAdapter({
     botToken: process.env.SLACK_BOT_TOKEN,
     clientId: process.env.SLACK_CLIENT_ID,
     clientSecret: process.env.SLACK_CLIENT_SECRET,
-    clientSigningSecret: process.env.SLACK_SIGNING_SECRET
+    clientSigningSecret: process.env.SLACK_SIGNING_SECRET,
+    scopes: ['bot']
 });
 
 let controller = new Botkit({
+    webhook_uri: '/api/messages',
     adapter: adapter,
     // storage: new MongoDbStorage({
     //     url: process.env.MONGODB_URI,
