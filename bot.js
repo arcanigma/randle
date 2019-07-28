@@ -18,18 +18,18 @@ let adapter = new SlackAdapter({
 let controller = new Botkit({
     webhook_uri: '/api/messages',
     adapter: adapter,
-    // storage: new MongoDbStorage({
-    //     url: process.env.MONGODB_URI,
-    //     database: CONFIG.DATABASE,
-    //     collection: CONFIG.CONVERSATION_STATE
-    // })
+    storage: new MongoDbStorage({
+        url: process.env.MONGODB_URI,
+        database: CONFIG.DATABASE,
+        collection: CONFIG.COLLECTIONS.CONVERSATION
+    })
 });
 
 adapter.use(new SlackEventMiddleware());
 adapter.use(new SlackMessageTypeMiddleware());
 
 controller.usePlugin(require('./plugins/handler'));
-controller.usePlugin(require('./plugins/states'));
+controller.usePlugin(require('./plugins/macros'));
 
 controller.ready(() => {
     controller.loadModules(__dirname + '/features');

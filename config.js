@@ -1,8 +1,10 @@
 module.exports = {
 
     DATABASE: 'randle',
-    // CONVERSATION_STATE: 'conversation',
-    USER_STATE: 'user',
+    COLLECTIONS: {
+        CONVERSATION: 'conversation',
+        MACRO: 'macro'
+    },
 
     HEAR_DIRECTLY: ['direct_message'],
     HEAR_EXPLICIT: ['direct_message', 'direct_mention', 'mention'],

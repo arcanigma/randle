@@ -7,7 +7,8 @@ const CONFIG = require('../config'),
 module.exports = function(controller) {
 
     // HEAR ROLL COMMAND
-    controller.hears(/^!?roll\b(.+)$/i, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
+    const command = /^!?roll\b(.+)$/i;
+    controller.hears(controller.plugins.macros.matches(command), CONFIG.HEAR_ANYWHERE, async(bot, message) => {
         try {
             let clauses = [message.matches[1]];
 
@@ -21,7 +22,8 @@ module.exports = function(controller) {
     });
 
     // HEAR PARENTHESES
-    controller.hears(/\(([^'()][^()]*)\)/g, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
+    const parens = /\(([^'()][^()]*)\)/g;
+    controller.hears(controller.plugins.macros.matches(parens), CONFIG.HEAR_ANYWHERE, async(bot, message) => {
         try {
             if (message.thread_ts) return;
 
@@ -39,7 +41,8 @@ module.exports = function(controller) {
     });
 
     // HEAR DIRECT MESSAGE OR MENTION
-    controller.hears(/^(.+)$/, CONFIG.HEAR_EXPLICIT, async(bot, message) => {
+    const any = /^(.+)$/;
+    controller.hears(controller.plugins.macros.matches(any), CONFIG.HEAR_EXPLICIT, async(bot, message) => {
         try {
             let clauses = [message.text];
 
@@ -266,10 +269,10 @@ module.exports = function(controller) {
         return [summary, blocks];
     }
 
+    // TODO: refactor into a proper parser
+
     function preProcessChain(content, message) {
-        return evaluateArithmeticOps(
-            evaluateMacros(content, message)
-        );
+        return evaluateArithmeticOps(content);
     }
 
     function postProcessChain(content, message) {
@@ -285,24 +288,6 @@ module.exports = function(controller) {
             .replace(/<[@#][\w|]+?>/g, '')
             .replace(/^[\s.;,]+|[\s.;,]+$/g, '')
             .replace(/\s+/g, ' ');
-    }
-
-    function evaluateMacros(content, message) {
-        let custom = {};
-        if (message.injection && message.injection.macros)
-            custom = message.injection.macros;
-
-        let standard = {
-            'adv': '2d20H',
-            'dis': '2d20L'
-        };
-        
-        let macros = Object.assign(standard, custom);
-
-        for (let name in macros)
-            content = content.replace(new RegExp(`\\b${name}\\b`, 'ig'), macros[name]);
-
-        return content;
     }
 
     function evaluateArithmeticOps(content) {
