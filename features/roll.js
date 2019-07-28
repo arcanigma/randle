@@ -1,5 +1,4 @@
 const CONFIG = require('../config'),
-      regexClosure = require('../functions/regex-closure'),
       randomInt = require('php-random-int'),
       naturalCompare = require('string-natural-compare'),
       toOrdinal = require('ordinal');
@@ -333,4 +332,12 @@ module.exports = function(controller) {
         return content.replace(re, fun);
     }
 
+    function regexClosure(text, re, fun) {
+        let old;
+        do {
+            old = text;
+            text = text.replace(re, fun);
+        } while (text != old);
+        return text;
+    };
 };
