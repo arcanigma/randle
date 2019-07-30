@@ -15,7 +15,7 @@ module.exports = function(controller) {
 
             let [summary, blocks] = processDiceCodes(clauses, message);
 
-            await sendDiceResults(summary, blocks, bot, message);
+            await sendDiceResults(bot, message, summary, blocks);
         }
         catch(err) {
             await controller.plugins.handler.explain(err, bot, message);
@@ -35,7 +35,7 @@ module.exports = function(controller) {
 
             let [summary, blocks] = processDiceCodes(clauses, message);
 
-            await sendDiceResults(summary, blocks, bot, message);
+            await sendDiceResults(bot, message, summary, blocks);
         }
         catch(err) {
             await controller.plugins.handler.explain(err, bot, message);
@@ -51,27 +51,30 @@ module.exports = function(controller) {
 
             let [summary, blocks] = processDiceCodes(clauses, message);
 
-            await sendDiceResults(summary, blocks, bot, message);
+            await sendDiceResults(bot, message, summary, blocks);
         }
         catch(err) {
             await controller.plugins.handler.explain(err, bot, message);
         }
     });
 
-    async function sendDiceResults(summary, blocks, bot, message) {
-          if (summary) {
-              let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
+    async function sendDiceResults(bot, message, summary, blocks) {
+        if (!summary && CONFIG.HEAR_EXPLICIT.includes(message.type))
+            summary = message.text;
 
-              let reply = {
-                  'text': `${who} rolled ${summary}.`,
-                  'blocks': blocks
-              };
+        if (summary) {
+            let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
 
-              if (JSON.stringify(reply).length <= CONFIG.MAX_REPLY_SIZE)
-                  await bot.reply(message, reply);
-              else
-                  await controller.plugins.handler.raise('Your command was too long to answer.');
-          }
+            let reply = {
+                'text': `${who} rolled ${summary}.`,
+                'blocks': blocks
+            };
+
+            if (JSON.stringify(reply).length <= CONFIG.MAX_REPLY_SIZE)
+                await bot.reply(message, reply);
+            else
+                await controller.plugins.handler.raise('Your command was too long to answer.');
+        }
     }
 
     function cloneEllipses(clause) {
