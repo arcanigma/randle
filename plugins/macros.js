@@ -3,48 +3,30 @@ const CONFIG = require('../config'),
 
 module.exports = function(botkit) {
 
+    const DICTIONARY = {
+        'adv': '2d20H',
+        'dis': '2d20L'
+    };
+
+    let storage = new MongoDbStorage({
+        url: process.env.MONGODB_URI,
+        database: CONFIG.DATABASE,
+        collection: CONFIG.COLLECTIONS.MACRO
+    });
+
     return {
         name: 'Macros',
 
         init: function(controller) {
-            let storage = new MongoDbStorage({
-                url: process.env.MONGODB_URI,
-                database: CONFIG.DATABASE,
-                collection: CONFIG.COLLECTIONS.MACRO
-            });
-
-            const dictionary = {
-                'adv': '2d20H',
-                'dis': '2d20L'
-            };
-
-            controller.middleware.receive.use(async(bot, message, next) => {
-                if (CONFIG.HEAR_ANYWHERE.includes(message.type) && !message.macro_text) {
-                    let macros = (await storage.read([message.user]))[message.user];
-                    delete macros.eTag;
-                    Object.assign(macros, controller.plugins.macros.dictionary);
-
-                    let regex = new RegExp('\\b(' + Object.keys(macros).join('|') + ')\\b', 'gi');
-                    let replaced;
-                    if (message.text) replaced = message.text.replace(regex, function(match) {
-                        return macros[match];
-                    });
-                    if (message.text !== replaced)
-                        message.macro_text = replaced
-                }
-
-                next();
-            });
-
             const add = /^!?(?:add|change|create|edit|insert|make|new|put|remember|save|set|update)\s+macro[s]?\s+([a-z][a-z0-9_]*)\s*=\s*"[\s.;,]*([^"]+?)[\s.;,]*"\s*$/i;
             controller.interrupts(add, CONFIG.HEAR_DIRECTLY, async(bot, message) => {
                 try {
                     let name = message.matches[1].toLowerCase(),
                         replace = message.matches[2];
 
-                    if (name in dictionary) {
+                    if (name in DICTIONARY) {
                         await bot.replyEphemeral(message, {
-                            'text': `You can't do that: everyone has the macro \`${name}\` with the value \`${dictionary[name]}\`.`
+                            'text': `You can't do that: everyone has the macro \`${name}\` with the value \`${DICTIONARY[name]}\`.`
                         });
                     }
                     else {
@@ -74,9 +56,9 @@ module.exports = function(botkit) {
                     let macros = (await storage.read([message.user]))[message.user];
                     delete macros.eTag;
 
-                    if (name in dictionary) {
+                    if (name in DICTIONARY) {
                         await bot.replyEphemeral(message, {
-                            'text': `You can't do that: everyone has the macro \`${name}\` with the value \`${dictionary[name]}\`.`
+                            'text': `You can't do that: everyone has the macro \`${name}\` with the value \`${DICTIONARY[name]}\`.`
                         });
                     }
                     else if (macros[name]) {
@@ -110,9 +92,9 @@ module.exports = function(botkit) {
 
                     if (name) {
                         name = name.toLowerCase();
-                        if (name in dictionary) {
+                        if (name in DICTIONARY) {
                             await bot.replyEphemeral(message, {
-                                'text': `Everyone has the macro \`${name}\` with the value \`${dictionary[name]}\`.`
+                                'text': `Everyone has the macro \`${name}\` with the value \`${DICTIONARY[name]}\`.`
                             });
                         }
                         else if (macros[name]) {
@@ -149,21 +131,16 @@ module.exports = function(botkit) {
             controller.addPluginExtension('macros', this);
         },
 
-        matches: function(regex) {
-            return async function(message) {
-                if (message.macro_text)
-                    message.text = message.macro_text;
+        prepare: async function(message, regex) {
+            let macros = (await storage.read([message.user]))[message.user];
+            delete macros.eTag;
+            Object.assign(macros, DICTIONARY);
 
-                if (message.text) {
-                    let matches = message.text.match(regex);
-                    if (matches) {
-                        message.matches = matches;
-                        return true;
-                    }
-                }
-
-                return false;
-            }
+            message.text = message.text.replace(
+                new RegExp('\\b(' + Object.keys(macros).join('|') + ')\\b', 'gi'),
+                (match) => macros[match]
+            );
+            message.matches = message.text.match(regex);
         }
     };
 

@@ -7,7 +7,9 @@ module.exports = function(controller) {
 
     // HEAR ROLL COMMAND
     const command = /^!?roll\b(.+)$/i;
-    controller.hears(controller.plugins.macros.matches(command), CONFIG.HEAR_ANYWHERE, async(bot, message) => {
+    controller.hears(command, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
+        await controller.plugins.macros.prepare(message, command);
+
         try {
             let clauses = [message.matches[1]];
 
@@ -22,7 +24,8 @@ module.exports = function(controller) {
 
     // HEAR PARENTHESES
     const parens = /\(([^'()][^()]*)\)/g;
-    controller.hears(controller.plugins.macros.matches(parens), CONFIG.HEAR_ANYWHERE, async(bot, message) => {
+    controller.hears(parens, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
+        await controller.plugins.macros.prepare(message, parens);
         try {
             if (message.thread_ts) return;
 
@@ -41,7 +44,8 @@ module.exports = function(controller) {
 
     // HEAR DIRECT MESSAGE OR MENTION
     const any = /^(.+)$/;
-    controller.hears(controller.plugins.macros.matches(any), CONFIG.HEAR_EXPLICIT, async(bot, message) => {
+    controller.hears(any, CONFIG.HEAR_EXPLICIT, async(bot, message) => {
+        await controller.plugins.macros.prepare(message, any);
         try {
             let clauses = [message.text];
 
