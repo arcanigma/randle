@@ -285,9 +285,7 @@ module.exports = function(controller) {
     }
 
     function prettyMarkup(content) {
-        // TODO: in ES9 add lookbehind (?<![#_*])
-
-        return content.replace(/\b[0-9]+(?:\.[0-9]+)?(?![:_*])\b/g, '*$&*')
+        return content.replace(/\b(?<![#_*])[0-9]+(?:\.[0-9]+)?(?![:_*])\b/g, '*$&*')
             .replace(/<[@#][\w|]+?>/g, '')
             .replace(/^[\s.;,]+|[\s.;,]+$/g, '')
             .replace(/\s+/g, ' ');
