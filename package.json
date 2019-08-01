@@ -15,7 +15,6 @@
     "botbuilder-adapter-slack": "1.x",
     "botbuilder-storage-mongodb": "0.x",
     "botkit": "4.x",
-    "deep-equal": "*",
     "ordinal": "*",
     "php-random-int": "*",
     "string-natural-compare": "*"
