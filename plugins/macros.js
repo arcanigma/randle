@@ -133,6 +133,8 @@ module.exports = function(botkit) {
 
         prepare: async function(message, regex) {
             let macros = (await storage.read([message.user]))[message.user];
+            if (!macros) return;
+
             delete macros.eTag;
             Object.assign(macros, DICTIONARY);
 
