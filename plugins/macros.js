@@ -140,7 +140,7 @@ module.exports = function(botkit) {
 
             message.text = message.text.replace(
                 new RegExp('\\b(' + Object.keys(macros).join('|') + ')\\b', 'gi'),
-                (match) => macros[match]
+                (match) => macros[match.toLowerCase()]
             );
             message.matches = message.text.match(regex);
         }
