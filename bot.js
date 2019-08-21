@@ -35,5 +35,10 @@ controller.ready(() => {
     controller.webserver.get('/status', async(req, res) => {
          res.send('UP')
     });
+
+    controller.webserver.get(['/', '/logo', '/face'], async(req, res) => {
+         res.sendFile(__dirname + '/static/img/logo.png');
+    });
+
     controller.loadModules(__dirname + '/features');
 });
