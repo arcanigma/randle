@@ -32,5 +32,8 @@ controller.usePlugin(require('./plugins/handler'));
 controller.usePlugin(require('./plugins/macros'));
 
 controller.ready(() => {
+    controller.webserver.get('/status', async(req, res) => {
+         res.send('UP')
+    });
     controller.loadModules(__dirname + '/features');
 });
