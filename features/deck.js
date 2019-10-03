@@ -5,14 +5,14 @@ module.exports = function(controller) {
 
     controller.hears(/^!?shuffle\b(.*)/i, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
         try {
-            let shuffled = shuffleHelper(message.matches[1]).join('*, *');
+            let shuffled = shuffleHelper(message.matches[1]);
             if (shuffled.length < 2)
                 await controller.plugins.handler.raise('You must list at least two items separated by commas.');
 
             let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
 
             await bot.reply(message, {
-                'text': `${who} shuffled *${shuffled}*.`
+                'text': `${who} shuffled *${shuffled.join('*, *')}*.`
             });
         }
         catch(err) {
@@ -22,14 +22,14 @@ module.exports = function(controller) {
 
     controller.hears(/^!?draw\b(.*)/i, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
         try {
-            let element = shuffleHelper(message.matches[1]).shift();
+            let shuffled = shuffleHelper(message.matches[1]);
             if (shuffled.length < 2)
                 await controller.plugins.handler.raise('You must list at least two items separated by commas.');
 
             let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
 
             await bot.reply(message, {
-                'text': `${who} drew *${element}*.`
+                'text': `${who} drew *${shuffled.shift()}*.`
             });
         }
         catch(err) {
