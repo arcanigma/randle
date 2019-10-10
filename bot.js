@@ -30,6 +30,7 @@ adapter.use(new SlackMessageTypeMiddleware());
 
 controller.usePlugin(require('./plugins/handler'));
 controller.usePlugin(require('./plugins/macros'));
+// TODO add Help system to explain command syntax
 
 controller.ready(() => {
     controller.webserver.get('/status', async(req, res) => {
