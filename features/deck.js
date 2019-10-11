@@ -39,40 +39,93 @@ module.exports = function(controller) {
         }
     });
 
-    // TODO add "showing X:A, Y:B, Z:C" clause
-    controller.hears(/^!?deal\s+(.+)$/i, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
+    // TODO add "show" clause semantics
+    controller.hears(/^!?deal\s+([^&]+?)(?:\s+&amp;\s+show\s+([^&]+?))?\s*$/i, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
         try {
-            const lexer = /([(),:*])/;
-            let tokens = lex(message.matches[1], lexer);
+            let tokens = lex(message.matches[1], /([(,):*])/);
 
             let deck = parse_list(tokens);
             if (tokens.length > 0)
                 await controller.plugins.handler.raise(`Unexpected ${tokens[0]}`)
 
+            let shows = {};
+            if (message.matches[2]) {
+                let phrases = lex(message.matches[2]);
+                for (phrase of phrases) {
+                    let items = lex(phrase, /\s+to\s+/i);
+                    if (items.length != 2)
+                        await controller.plugins.handler.raise(`You must show a _target_ item _to_ a _source_ item.`);
+
+                    let target, source;
+                    [target, source] = items;
+
+                    if (!shows[source])
+                        shows[source] = [target];
+                    else
+                        shows[source].push(target);
+                }
+            }
+
             let uids = (await bot.api.conversations.members({channel: message.channel})).members;
 
             let dealt = {};
+            let held = {};
             for (uid of uids) {
                 let user = (await bot.api.users.info({user: uid})).user;
                 if (!user.is_bot) {
-                    if (deck.length > 0)
-                        dealt[uid] = deck.shift();
-                    else
-                        await controller.plugins.handler.raise(`You must deal enough items for all users.`)
+                    if (deck.length > 0) {
+                        let item = deck.shift();
+
+                        dealt[uid] = item;
+
+                        if (!held[item])
+                            held[item] = [uid];
+                        else
+                            held[item].push(uid);
+                    }
+                    else await controller.plugins.handler.raise(`You must deal enough items for all users.`)
                 }
             }
 
             for (uid in dealt) {
-                let who = uid != message.user ? `<@${message.user}>` : 'You';
+                let item = dealt[uid];
+
+                let summary = `${uid != message.user ? `<@${message.user}>` : 'You'} dealt ${uid != message.user ? 'you' : 'yourself'} *${item}* from <#${message.channel}>.`;
+                let details = [];
+
+                if (shows[item]) for (target of shows[item]) {
+                    if (held[target]) for (tuid of held[target]) {
+                        if (tuid != uid) details.push({
+                            'type': 'mrkdwn',
+                            'text': `:eye-in-speech-bubble: You see <@${tuid}> was dealt *${target}*.`
+                        });
+                    }
+                }
+
+                let blocks = [{
+                    'type': 'section',
+                    'text': {
+                        'type': 'mrkdwn',
+                        'text': summary
+                    }
+                }];
+                if (details.length > 0)
+                    blocks.push({
+                        'type': 'context',
+                        'elements': details
+                    })
 
                 await bot.startPrivateConversation(uid);
-                await bot.say({'text': `${who} dealt ${who != 'You' ? 'you' : 'yourself'} *${dealt[uid]}*.`});
+                await bot.say({
+                    'text': summary,
+                    'blocks': blocks
+                });
             }
 
             let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
+            dealt = Object.keys(dealt);
 
             await bot.startConversationInChannel(message.channel, message.user);
-            dealt = Object.keys(dealt);
             if (deck.length == 0)
                 await bot.reply(message, {
                     'text': `${who} dealt *${dealt.length}* item${dealt.length != 1 ? 's' : ''} to <@${dealt.join('>, <@')}> by direct message.`
