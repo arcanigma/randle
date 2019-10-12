@@ -39,32 +39,33 @@ module.exports = function(controller) {
         }
     });
 
-    // TODO add "show" clause semantics
-    controller.hears(/^!?deal\s+([^&]+?)(?:\s+&amp;\s+show\s+([^&]+?))?\s*$/i, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
+    controller.hears(/^!?deal\s+(.+?)(?:\s*&amp;\s*show\s+(.+?))?\s*$/is, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
         try {
             let tokens = lex(message.matches[1], /([(,):*])/);
 
             let deck = parse_list(tokens);
             if (tokens.length > 0)
-                await controller.plugins.handler.raise(`Unexpected ${tokens[0]}`)
+                await controller.plugins.handler.raise(`Unexpected \`${tokens[0].trim()}\` at \`${tokens.join(' ').replace(/\s+/g, ' ').trim()}\`.`)
 
             let shows = {};
             if (message.matches[2]) {
                 let phrases = lex(message.matches[2]);
                 for (phrase of phrases) {
-                    let items = lex(phrase, /\s+to\s+/i);
-                    if (items.length != 2)
-                        await controller.plugins.handler.raise(`You must show a _target_ item _to_ a _source_ item.`);
+                    const reveal = /^([^:=]+)\s*:\s*([^:=]+?)(?:\s*=\s*([^:=]+))?$/;
+                    let [, source, target, alias] = phrase.trim().match(reveal) || [];
 
-                    let target, source;
-                    [target, source] = items;
-
-                    if (!shows[source])
-                        shows[source] = [target];
-                    else
-                        shows[source].push(target);
+                    if (deck.includes(source) && deck.includes(target)) {
+                        if (!shows[source])
+                            shows[source] = [[target, alias]];
+                        else
+                            shows[source].push([target, alias]);
+                    }
+                    else if (!source || !target) {
+                        await controller.plugins.handler.raise('To show, you must list at least one `Source: Target` or `Source: Target=Alias` separated by commas.')
+                    }
                 }
             }
+            console.log(shows);
 
             let uids = (await bot.api.conversations.members({channel: message.channel})).members;
 
@@ -91,13 +92,13 @@ module.exports = function(controller) {
                 let item = dealt[uid];
 
                 let summary = `${uid != message.user ? `<@${message.user}>` : 'You'} dealt ${uid != message.user ? 'you' : 'yourself'} *${item}* from <#${message.channel}>.`;
-                let details = [];
 
-                if (shows[item]) for (target of shows[item]) {
+                let details = [];
+                if (shows[item]) for ([target, alias] of shows[item]) {
                     if (held[target]) for (tuid of held[target]) {
                         if (tuid != uid) details.push({
                             'type': 'mrkdwn',
-                            'text': `:eye-in-speech-bubble: You see <@${tuid}> was dealt *${target}*.`
+                            'text': `:eye-in-speech-bubble: You see <@${tuid}> was dealt *${alias ? alias : target}*.`
                         });
                     }
                 }
@@ -122,31 +123,44 @@ module.exports = function(controller) {
                 });
             }
 
-            let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
             dealt = Object.keys(dealt);
 
+            let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
+            let summary = `${who} dealt *${dealt.length}* item${dealt.length != 1 ? 's' : ''} to <@${dealt.join('>, <@')}> by direct message.`;
+
+            let blocks = [{
+                'type': 'section',
+                'text': {
+                    'type': 'mrkdwn',
+                    'text': summary
+                }
+            }];
+            if (deck.length > 0)
+                blocks.push({
+                    'type': 'context',
+                    'elements': [{
+                        'type': 'mrkdwn',
+                        'text': `:warning: There were *${deck.length}* item${deck.length != 1 ? 's' : ''} leftover.`
+                    }]
+                })
+
             await bot.startConversationInChannel(message.channel, message.user);
-            if (deck.length == 0)
-                await bot.reply(message, {
-                    'text': `${who} dealt *${dealt.length}* item${dealt.length != 1 ? 's' : ''} to <@${dealt.join('>, <@')}> by direct message.`
-                });
-            else
-                await bot.reply(message, {
-                    'text': `${who} dealt *${dealt.length}* item${dealt.length != 1 ? 's' : ''} to <@${dealt.join('>, <@')}> by direct message with *${deck.length}* item${deck.length != 1 ? 's' : ''} leftover.`
-                });
+            await bot.reply(message, {
+                'text': summary,
+                'blocks': blocks
+            });
         }
         catch(err) {
             await controller.plugins.handler.explain(err, bot, message);
         }
     });
 
-    // TODO refactor optional second parameter
     const commas = /\s*,\s*/;
     function lex(expression, on=commas) {
         return expression.trim().split(on).filter(it => it.trim()).filter(Boolean);
     }
 
-    // FISHER YATES
+    // FISHER YATES SHUFFLE
     function shuffle(list) {
         for (let i = list.length-1; i >= 1; i--) {
             let j = randomInt(0, i);
