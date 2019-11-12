@@ -133,10 +133,13 @@ module.exports = function(botkit) {
 
         prepare: async function(message, regex) {
             let macros = (await storage.read([message.user]))[message.user];
-            if (!macros) return;
-
-            delete macros.eTag;
-            Object.assign(macros, DICTIONARY);
+            if (macros) {
+                if (macros.eTag) delete macros.eTag;
+                Object.assign(macros, DICTIONARY);
+            }
+            else {
+                macros = DICTIONARY;
+            }
 
             message.text = message.text.replace(
                 new RegExp('\\b(' + Object.keys(macros).join('|') + ')\\b', 'gi'),
