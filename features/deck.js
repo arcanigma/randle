@@ -2,7 +2,7 @@ const CONFIG = require('../config'),
       randomInt = require('php-random-int');
 
 module.exports = function(controller) {
-
+    // TODO refactor using the !deal functionality
     controller.hears(/^!?shuffle\s+(.*)$/i, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
         try {
             let items = lex(message.matches[1]);
@@ -21,6 +21,7 @@ module.exports = function(controller) {
         }
     });
 
+    // TODO refactor using the !deal functionality
     controller.hears(/^!?draw\s+(.*)$/i, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
         try {
             let items = lex(message.matches[1]);
@@ -39,6 +40,7 @@ module.exports = function(controller) {
         }
     });
 
+    // TODO allow dealing "to" subset of channels or users
     controller.hears(/^!?deal\s+(.+?)(?:\s*&amp;\s*show\s+(.+?))?\s*$/is, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
         try {
             let tokens = lex(message.matches[1], /([(,):*])/);
@@ -65,7 +67,6 @@ module.exports = function(controller) {
                     }
                 }
             }
-            console.log(shows);
 
             let uids = (await bot.api.conversations.members({channel: message.channel})).members;
 
@@ -93,10 +94,10 @@ module.exports = function(controller) {
 
                 let summary = `${uid != message.user ? `<@${message.user}>` : 'You'} dealt ${uid != message.user ? 'you' : 'yourself'} *${item}* from <#${message.channel}>.`;
 
-                let details = [];
+                let seen = [];
                 if (shows[item]) for ([target, alias] of shows[item]) {
                     if (held[target]) for (tuid of held[target]) {
-                        if (tuid != uid) details.push({
+                        if (tuid != uid) seen.push({
                             'type': 'mrkdwn',
                             'text': `:eye-in-speech-bubble: You see <@${tuid}> was dealt *${alias ? alias : target}*.`
                         });
@@ -110,11 +111,13 @@ module.exports = function(controller) {
                         'text': summary
                     }
                 }];
-                if (details.length > 0)
+                if (seen.length > 0) {
+                    shuffle(seen);
                     blocks.push({
                         'type': 'context',
-                        'elements': details
-                    })
+                        'elements': seen
+                    });
+                }
 
                 await bot.startPrivateConversation(uid);
                 await bot.say({
