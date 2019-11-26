@@ -4,6 +4,7 @@ module.exports = function(controller) {
 
     controller.hears(/^!?echo\b(.*)/i, CONFIG.HEAR_EXPLICIT, async(bot, message) => {
         try {
+            console.log(message);
             await bot.reply(message, message.matches[1].trim());
         }
         catch(err) {
@@ -13,6 +14,7 @@ module.exports = function(controller) {
 
     controller.hears(/^!?throw\s+(system|user)\s+error\b(.*)/i, CONFIG.HEAR_EXPLICIT, async(bot, message) => {
         try {
+            console.log(message);
             if (message.matches[1] == 'system')
                 throw new Error(message.matches[2] || 'undefined');
             else if (message.matches[1] == 'user')
