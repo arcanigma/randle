@@ -1,28 +1,29 @@
 {
   "name": "randle",
   "description": "Dice rolling and game randomization bot for Slack.",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
     "dev": "nodemon bot.js"
   },
   "engines": {
-    "node": "^10.16.0"
+    "node": "^12.x"
   },
   "dependencies": {
     "botbuilder": "4.x",
     "botbuilder-adapter-slack": "1.x",
     "botbuilder-storage-mongodb": "0.x",
     "botkit": "4.x",
+    "cldrjs": "*",
     "ordinal": "*",
     "php-random-int": "*",
     "string-natural-compare": "*"
   },
   "devDependencies": {
-    "dotenv": "*",
-    "ngrok": "*",
-    "nodemon": "*"
+    "dotenv": "8.x",
+    "ngrok": "3.x",
+    "nodemon": "2.x"
   },
   "license": "MIT",
   "author": {

@@ -43,6 +43,7 @@ module.exports = function(controller) {
     });
 
     // HEAR DIRECT MESSAGE OR MENTION
+    // TODO only show results with rolls
     const any = /^(.+)$/;
     controller.hears(any, CONFIG.HEAR_EXPLICIT, async(bot, message) => {
         await controller.plugins.macros.prepare(message, any);

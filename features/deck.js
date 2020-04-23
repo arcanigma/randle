@@ -144,7 +144,7 @@ module.exports = function(controller) {
                     'elements': [{
                         'type': 'mrkdwn',
                         'text': `:warning: There were *${deck.length}* item${deck.length != 1 ? 's' : ''} leftover.`
-                    }]
+                    }] // TODO were/was
                 })
 
             await bot.startConversationInChannel(message.channel, message.user);
