@@ -1,7 +1,6 @@
 const CONFIG = require('./config');
 
-const { dotenv } = require('dotenv').config(),
-    { Botkit } = require('botkit'),
+const { Botkit } = require('botkit'),
     { MongoDbStorage } = require('botbuilder-storage-mongodb'),
     { SlackAdapter, SlackEventMiddleware, SlackMessageTypeMiddleware  } = require('botbuilder-adapter-slack');
 

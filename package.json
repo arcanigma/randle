@@ -1,11 +1,11 @@
 {
   "name": "randle",
   "description": "Dice rolling and game randomization bot for Slack.",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
-    "dev": "nodemon bot.js"
+    "dev": "nodemon -r dotenv/config bot.js"
   },
   "engines": {
     "node": "^12.x"
