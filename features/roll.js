@@ -3,88 +3,91 @@ const CONFIG = require('../config'),
       naturalCompare = require('string-natural-compare'),
       toOrdinal = require('ordinal');
 
-module.exports = function(controller) {
+const { who, blame} = require('../plugins/factory.js');
+const { no_thread, anywhere, direct, limit } = require('../plugins/listen.js');
 
-    // HEAR ROLL COMMAND
-    const command = /^!?roll\b(.+)$/i;
-    controller.hears(command, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
-        await controller.plugins.macros.prepare(message, command);
+module.exports = (app) => {
+
+    const re_roll = /^!?roll\b(.+)$/i;
+    app.message(anywhere, re_roll, limit, async ({ message, context, say }) => {
+        // await controller.plugins.macros.prepare(message, command);
 
         try {
-            let clauses = [message.matches[1]];
+            let clauses = [context.matches[1]];
 
             let [summary, blocks] = processDiceCodes(clauses, message);
 
-            await sendDiceResults(bot, message, summary, blocks);
+            await sendDiceResults(app, message, context, summary, blocks);
         }
-        catch(err) {
-            await controller.plugins.handler.explain(err, bot, message);
+        catch (err) {
+            await say(blame(err, message));
         }
     });
 
-    // HEAR PARENTHESES
-    const parens = /\(([^'()][^()]*)\)/g;
-    controller.hears(parens, CONFIG.HEAR_ANYWHERE, async(bot, message) => {
-        await controller.plugins.macros.prepare(message, parens);
-        try {
-            if (message.thread_ts) return;
+    const re_parens = /\(([^'()][^()]*)\)/g;
+    app.message(no_thread, anywhere, re_parens, limit, async ({ message, context, say }) => {
+        // await controller.plugins.macros.prepare(message, parens);
 
+        try {
             let clauses = [];
-            for (let i = 0; i < message.matches.length; i++)
-                clauses.push(...cloneEllipses(message.matches[i].slice(1, -1)));
+            for (let i = 0; i < context.matches.length; i++)
+                clauses.push(...cloneEllipses(context.matches[i].slice(1, -1)));
 
             let [summary, blocks] = processDiceCodes(clauses, message);
 
-            await sendDiceResults(bot, message, summary, blocks);
+            await sendDiceResults(app, message, context, summary, blocks);
         }
-        catch(err) {
-            await controller.plugins.handler.explain(err, bot, message);
+        catch (err) {
+            await say(blame(err, message));
         }
     });
 
-    // HEAR DIRECT MESSAGE OR MENTION
-    // TODO only show results with rolls
-    const any = /^(.+)$/;
-    controller.hears(any, CONFIG.HEAR_EXPLICIT, async(bot, message) => {
-        await controller.plugins.macros.prepare(message, any);
+    const re_any = /^(.+)$/;
+    app.message(direct, re_any, limit, async ({ message, context, say }) => {
+        // await controller.plugins.macros.prepare(message, any);
+
         try {
             let clauses = [message.text];
 
             let [summary, blocks] = processDiceCodes(clauses, message);
 
-            await sendDiceResults(bot, message, summary, blocks);
+            // TODO make sure length check works with macros
+            if (blocks.length > 0)
+                await sendDiceResults(app, message, context, summary, blocks);
         }
-        catch(err) {
-            await controller.plugins.handler.explain(err, bot, message);
+        catch (err) {
+            await say(blame(err, message));
         }
     });
 
-    async function sendDiceResults(bot, message, summary, blocks) {
-        if (!summary && CONFIG.HEAR_EXPLICIT.includes(message.type))
+    async function sendDiceResults(app, message, context, summary, blocks) {
+        if (!summary)
             summary = message.text;
 
-        if (summary) {
-            let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
+        let reply = {
+            'text': `${who('You', message)} rolled ${summary}.`,
+            'blocks': blocks
+        };
 
-            let reply = {
-                'text': `${who} rolled ${summary}.`,
-                'blocks': blocks
-            };
+        if (JSON.stringify(reply).length > CONFIG.MAX_REPLY_SIZE)
+            reply = blame('The result was too long to send.');
 
-            if (JSON.stringify(reply).length <= CONFIG.MAX_REPLY_SIZE)
-                await bot.reply(message, reply);
-            else
-                await controller.plugins.handler.raise('Your command was too long to answer.');
-        }
+        reply.token = context.botToken;
+        reply.channel = message.channel;
+        if (message.thread_ts)
+            reply.thread_ts = message.thread_ts;
+
+        await app.client.chat.postMessage(reply);
     }
 
     function cloneEllipses(clause) {
-        const ellipsis = /^\s*(.+)\s*\.\.\.\s*(\w+(?:\s*,\s*\w+)*)\s*$/;
-
-        let match = clause.match(ellipsis);
+        const re_ellipsis = /^\s*(.+)\s*\.\.\.\s*(\w+(?:\s*,\s*\w+)*)\s*$/;
+        let match = clause.match(re_ellipsis);
         if (match) {
-            let phrase = match[1].replace(/^[\s.;,]+|[\s.;,]+$/g, ''),
-                over = match[2].split(/\s*,\s*/),
+            const re_trail = /^[\s.;,]+|[\s.;,]+$/g,
+                  re_sep = /\s*,\s*/;
+            let phrase = match[1].replace(re_trail, ''),
+                over = match[2].split(re_sep),
                 reps = parseInt(over[0]);
             let clones = [];
             if (over.length == 1 && reps >= 1) {
@@ -107,7 +110,7 @@ module.exports = function(controller) {
         let elements;
         let maxed;
 
-        const code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
+        const re_code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
         const fun = function(expr, avg, count, size, hilo, keep, mod, muldev, fact) {
             count = parseInt(count) || 1;
             size = (size != '%' ? parseInt(size) || 1 : 100);
@@ -232,20 +235,18 @@ module.exports = function(controller) {
         for (let i = 0; i < clauses.length; i++) {
             elements = [];
             maxed = false;
-            let outcome = postProcessChain(preProcessChain(clauses[i], message).replace(code, fun), message);
+            let outcome = postProcessChain(preProcessChain(clauses[i], message).replace(re_code, fun), message);
 
             if (outcome != clauses[i]) {
                 outcome = prettyMarkup(outcome);
                 phrases.push(outcome);
 
                 if (blocks.length == 0) {
-                    let who = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>` : 'You';
-
                     blocks.push({
                         'type': 'section',
                         'text': {
                             'type': 'mrkdwn',
-                            'text': `${who} rolled ${outcome}.`
+                            'text': `${who('You', message)} rolled ${outcome}.`
                           }
                     });
                 }
@@ -276,7 +277,7 @@ module.exports = function(controller) {
         return [summary, blocks];
     }
 
-    // TODO: refactor into a proper parser
+    // TODO: refactor into parser (see !deal)
 
     function preProcessChain(content, message) {
         return evaluateArithmeticOps(content);
@@ -289,14 +290,18 @@ module.exports = function(controller) {
     }
 
     function prettyMarkup(content) {
-        return content.replace(/\b(?<![#_*])[0-9]+(?:\.[0-9]+)?(?![:_*])\b/g, '*$&*')
-            .replace(/<[@#][\w|]+?>/g, '')
-            .replace(/^[\s.;,]+|[\s.;,]+$/g, '')
-            .replace(/\s+/g, ' ');
+        const re_number = /\b(?<![#_*])[0-9]+(?:\.[0-9]+)?(?![:_*])\b/g,
+            re_tag = /<[@#][\w|]+?>/g,
+            re_trail= /^[\s.;,]+|[\s.;,]+$/g,
+            re_wss = /\s+/g;
+        return content.replace(re_number, '*$&*')
+            .replace(re_tag, '')
+            .replace(re_trail, '')
+            .replace(re_wss, ' ');
     }
 
     function evaluateArithmeticOps(content) {
-        const re = /([+-]|\b)([0-9]+(?:\.[0-9]+)?)\s*([+-])\s*([0-9]+(?:\.[0-9]+)?)\b/;
+        const re_math = /([+-]|\b)([0-9]+(?:\.[0-9]+)?)\s*([+-])\s*([0-9]+(?:\.[0-9]+)?)\b/;
         const fun = function (_, sign, x, op, y) {
             x = parseFloat(sign+x);
             y = parseFloat(op+y);
@@ -307,11 +312,11 @@ module.exports = function(controller) {
                 return sum.toString();
         };
 
-        return regexClosure(content, re, fun);
+        return regexClosure(content, re_math, fun);
     }
 
     function evaluateComparisonOps(content) {
-        const re = /([0-9]+(?:\.[0-9]+)?)\s*(=|==|&gt;|&lt;|&gt;=|=&gt;|&lt;=|=&lt;|!=|&lt;&gt;|&gt;&lt;)\s*([0-9]+(?:\.[0-9]+)?)/g;
+        const re_op = /([0-9]+(?:\.[0-9]+)?)\s*(=|==|&gt;|&lt;|&gt;=|=&gt;|&lt;=|=&lt;|!=|&lt;&gt;|&gt;&lt;)\s*([0-9]+(?:\.[0-9]+)?)/g;
         const fun = function(_, x, relop, y) {
             x = parseFloat(x);
             y = parseFloat(y);
@@ -335,7 +340,7 @@ module.exports = function(controller) {
             return answer;
         };
 
-        return content.replace(re, fun);
+        return content.replace(re_op, fun);
     }
 
     function regexClosure(text, re, fun) {

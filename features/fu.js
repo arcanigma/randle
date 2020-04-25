@@ -1,7 +1,9 @@
-const CONFIG = require('../config'),
-      randomInt = require('php-random-int');
+const randomInt = require('php-random-int');
 
-module.exports = function(controller) {
+const { who, blame} = require('../plugins/factory.js');
+const { anywhere } = require('../plugins/listen.js');
+
+module.exports = (app) => {
 
     const MAX_DICE = 10;
 
@@ -14,16 +16,18 @@ module.exports = function(controller) {
         6: {'phrase': '*yes*, *and*...', 'color': '#2C9EE0'},
     };
 
-    controller.hears(/^!?fu\b(.*)/i, CONFIG.HEAR_ANYWHERE, function(bot, message) {
+    const re_fu = /^!?fu\b(.*)/i;
+    app.message(anywhere, re_fu, async ({ message, context, say }) => {
         try {
             var modifier = 0;
-            var found = message.matches[1].match(/[+-][0-9]*/ig);
+            const re_number = /[+-][0-9]*/ig;
+            var found = context.matches[1].match(re_number);
             if (found) found.forEach(function(element) {
                 modifier += (parseInt(element) || (element === 0 ? 0 : parseInt(element + "1")));
             });
             var dice = 1 + Math.abs(modifier);
             if (dice > MAX_DICE)
-                await controller.plugins.handler.raise(`You can roll at most ${MAX_DICE} dice.`);
+                return await say(blame(`You can roll at most ${MAX_DICE} dice.`));
 
             var attach = [];
             var rolls = [];
@@ -33,6 +37,7 @@ module.exports = function(controller) {
 
                 let phrase = ANSWERS[roll].phrase;
                 let color = ANSWERS[roll].color;
+
                 // TODO: refactor legacy attachments into blocks
                 attach.push({
                     'text': `${roll} → ${phrase}`,
@@ -42,14 +47,11 @@ module.exports = function(controller) {
             }
             rolls.sort();
 
-            let whose = !CONFIG.HEAR_DIRECTLY.includes(message.type) ? `<@${message.user}>'s` : 'Your';
-
             if (dice == 1) {
                 let roll = rolls[0];
                 let phrase = ANSWERS[roll].phrase;
-                bot.replyWithTyping(message, {
-                    'response_type': 'in_channel',
-                    'text': `${whose} answer is ${phrase}`,
+                say ({
+                    'text': `The answer for ${who('you', message)} is ${phrase}`,
                     'attachments': attach
                 });
             }
@@ -70,14 +72,14 @@ module.exports = function(controller) {
                 let extra = dice - 1;
                 let cube = extra > 1 ? 'dice' : 'die';
 
-                bot.replyWithTyping(message, {
-                    'text': `${whose} *${quality}* answer with ${extra} ${type} ${cube} is ${phrase}`,
+                say({
+                    'text': `The *${quality}* answer for ${who('you', message)} with ${extra} ${type} ${cube} is ${phrase}`,
                     'attachments': attach
                 });
             }
         }
-        catch(err) {
-            await controller.plugins.handler.explain(err, bot, message);
+        catch (err) {
+            await say(blame(err, message));
         }
     });
 

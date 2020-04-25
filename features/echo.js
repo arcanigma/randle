@@ -1,27 +1,28 @@
-const CONFIG = require('../config');
+const { blame } = require('../plugins/factory.js');
+const { direct, debug } = require('../plugins/listen.js');
 
-module.exports = function(controller) {
+module.exports = (app) => {
 
-    controller.hears(/^!?echo\b(.*)/i, CONFIG.HEAR_EXPLICIT, async(bot, message) => {
+    const re_echo = /^!?echo\b(.*)/i;
+    app.message(direct, re_echo, debug, async ({ message, context, say }) => {
         try {
-            console.log(message);
-            await bot.reply(message, message.matches[1].trim());
+            await say(context.matches[1].trim());
         }
-        catch(err) {
-            await controller.plugins.handler.explain(err, bot, message);
+        catch (err) {
+            await say(blame(err));
         }
     });
 
-    controller.hears(/^!?throw\s+(system|user)\s+error\b(.*)/i, CONFIG.HEAR_EXPLICIT, async(bot, message) => {
+    const re_throw = /^!?throw\s+(system|user)\s+error\b(.*)/i;
+    app.message(direct, re_throw, debug, async ({ message, context, say }) => {
         try {
-            console.log(message);
-            if (message.matches[1] == 'system')
-                throw new Error(message.matches[2] || 'undefined');
-            else if (message.matches[1] == 'user')
-                await controller.plugins.handler.raise(message.matches[2] || 'undefined');
+            if (context.matches[1] == 'system')
+                throw new Error(context.matches[2] || 'undefined');
+            else if (context.matches[1] == 'user')
+                await say(blame(context.matches[2] || 'undefined'));
         }
-        catch(err) {
-            await controller.plugins.handler.explain(err, bot, message);
+        catch (err) {
+            await say(blame(err, message));
         }
     });
 

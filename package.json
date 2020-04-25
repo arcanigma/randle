@@ -11,10 +11,7 @@
     "node": "^12.x"
   },
   "dependencies": {
-    "botbuilder": "4.x",
-    "botbuilder-adapter-slack": "1.x",
-    "botbuilder-storage-mongodb": "0.x",
-    "botkit": "4.x",
+    "@slack/bolt": "2.x",
     "cldrjs": "*",
     "ordinal": "*",
     "php-random-int": "*",

@@ -1,49 +1,36 @@
 const CONFIG = require('./config');
 
-const { Botkit } = require('botkit'),
-    { MongoDbStorage } = require('botbuilder-storage-mongodb'),
-    { SlackAdapter, SlackEventMiddleware, SlackMessageTypeMiddleware  } = require('botbuilder-adapter-slack');
+const { App, ExpressReceiver } = require('@slack/bolt');
 
-let adapter = new SlackAdapter({
-    oauthVersion: 'v2',
-    botToken: process.env.SLACK_BOT_TOKEN,
-    clientId: process.env.SLACK_CLIENT_ID,
-    clientSecret: process.env.SLACK_CLIENT_SECRET,
-    clientSigningSecret: process.env.SLACK_SIGNING_SECRET,
-    scopes: [
-      'chat:write',
-      'channels:history',
-      'groups:history',
-      'im:history',
-      'mpim:history'
-    ]
+const receiver = new ExpressReceiver({
+    signingSecret: process.env.SLACK_SIGNING_SECRET
 });
 
-adapter.use(new SlackEventMiddleware());
-adapter.use(new SlackMessageTypeMiddleware());
-
-let controller = new Botkit({
-    webhook_uri: '/api/messages',
-    adapter: adapter,
-    storage: new MongoDbStorage({
-        url: process.env.MONGODB_URI,
-        database: CONFIG.DATABASE,
-        collection: CONFIG.COLLECTIONS.CONVERSATION
-    })
+const app = new App({
+    token: process.env.SLACK_BOT_TOKEN,
+    receiver: receiver
 });
 
-controller.usePlugin(require('./plugins/handler'));
-controller.usePlugin(require('./plugins/macros'));
-// TODO add Help system to explain command syntax
-
-controller.ready(() => {
-    controller.webserver.get('/status', async(req, res) => {
-         res.send('UP')
-    });
-
-    controller.webserver.get(['/', '/logo', '/face'], async(req, res) => {
-         res.sendFile(__dirname + '/static/img/logo.png');
-    });
-
-    controller.loadModules(__dirname + '/features');
+app.use(async ({ message, next }) => {
+  if (!message.bot_id && !message.bot_profile)
+      await next();
 });
+
+receiver.app.get('/status', async (_, res) => {
+    res.sendStatus(200);
+});
+
+receiver.app.get(['/', '/logo', '/face'], async (_, res) => {
+    res.sendFile(__dirname + '/static/img/logo.png');
+});
+
+require('./features/echo.js')(app);
+require('./features/deck.js')(app);
+require('./features/roll.js')(app);
+require('./features/fu.js')(app);
+
+(async () => {
+    const port = process.env.PORT || 3000;
+    await app.start(port);
+    console.log(`Listening on port ${port}...`);
+})();

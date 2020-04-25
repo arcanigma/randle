@@ -1,4 +1,2 @@
 .env
-*.ini
-*.log
 /node_modules/
