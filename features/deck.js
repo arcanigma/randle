@@ -1,6 +1,6 @@
 const randomInt = require('php-random-int');
 
-const { who, blame} = require('../plugins/factory.js'),
+const { who, commas, blame} = require('../plugins/factory.js'),
       { nonthread, anywhere, community } = require('../plugins/listen.js');
 
 module.exports = (app) => {
@@ -15,7 +15,7 @@ module.exports = (app) => {
             shuffle(items);
 
             await say({
-                text: `${who('You', message)} shuffled *${items.join('*, *')}*.`
+                text: `${who(message, 'You')} shuffled *${items.join('*, *')}*.`
             });
         }
         catch (err) {
@@ -33,7 +33,7 @@ module.exports = (app) => {
             shuffle(items);
 
             await say({
-                text: `${who('You', message)} drew *${items.shift()}*.`
+                text: `${who(message, 'You')} drew *${items.shift()}*.`
             });
         }
         catch (err) {
@@ -106,7 +106,7 @@ module.exports = (app) => {
             for (uid in dealt) {
                 let item = dealt[uid];
 
-                let per_summary = `${who('You', message, uid)} dealt ${who('yourself', message, uid)} *${item}* from <#${message.channel}>.`;
+                let per_summary = `${message.user != uid ? `<@${message.user}>` : 'You'} dealt ${message.user != uid ? 'you' : 'yourself'} *${item}* from <#${message.channel}>.`;
 
                 let seen = [];
                 if (shows[item]) for ([target, alias] of shows[item]) {
@@ -141,9 +141,9 @@ module.exports = (app) => {
                 });
             }
 
-            dealt = Object.keys(dealt);
-
-            let all_summary = `${who('You', message)} dealt *${dealt.length}* item${dealt.length != 1 ? 's' : ''} to <@${dealt.join('>, <@')}> by direct message.`;
+            let items = Object.keys(dealt).length;
+            let targets = commas(Object.keys(dealt).map(u => u != message.user ? `<@${u}>` : 'themself'));
+            let all_summary = `${who(message, 'You')} dealt *${items}* item${items != 1 ? 's' : ''} to ${targets} by direct message.`;
 
             let blocks = [{
                 type: 'section',

@@ -30,7 +30,7 @@ module.exports = (app) => {
             if (!summary) return;
 
             let reply = {
-                text: `${who('You', message)} rolled ${summary}.`,
+                text: `${who(message, 'You')} rolled ${summary}.`,
                 blocks: blocks
             };
 
@@ -216,7 +216,7 @@ module.exports = (app) => {
                         type: 'section',
                         text: {
                             type: 'mrkdwn',
-                            text: `${who('You', message, message.user)} rolled ${outcome}.`
+                            text: `${who(message, 'You')} rolled ${outcome}.`
                           }
                     });
                 }

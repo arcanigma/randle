@@ -3,33 +3,41 @@ const CHANNEL = 'channel',
       DIRECT = 'im',
       MULTI_DIRECT = 'mpim';
 
-module.exports = {
+const debug = async ({ message, context, next }) => {
+    console.log({
+        message: message,
+        context: context
+    });
+    await next();
+};
 
-    debug: async ({ message, context, next }) => {
-        console.log({
-            message: message,
-            context: context
-        });
+const nonthread = async ({ message, next }) => {
+    if (!message.thread_ts)
         await next();
-    },
+};
 
-    nonthread: async ({ message, next }) => {
-        if (!message.thread_ts)
-            await next();
-    },
+const direct = async ({ message, next }) => {
+    const where = [DIRECT];
+    if (where.includes(message.channel_type))
+        await next();
+};
 
-    direct: async ({ message, next }) => {
-        if ([DIRECT].includes(message.channel_type))
-            await next();
-    },
+const community = async ({ message, next }) => {
+    const where = [CHANNEL, PRIVATE_CHANNEL, MULTI_DIRECT];
+    if (where.includes(message.channel_type))
+        await next();
+};
 
-    community: async ({ message, next }) => {
-        if ([CHANNEL, PRIVATE_CHANNEL, MULTI_DIRECT].includes(message.channel_type))
-            await next();
-    },
+const anywhere = async ({ message, next }) => {
+    const where = [CHANNEL, PRIVATE_CHANNEL, MULTI_DIRECT, DIRECT];
+    if (where.includes(message.channel_type))
+        await next();
+};
 
-    anywhere: async ({ message, next }) => {
-        if ([CHANNEL, PRIVATE_CHANNEL, MULTI_DIRECT, DIRECT].includes(message.channel_type))
-            await next();
-    }
-}
+module.exports = {
+    debug,
+    nonthread,
+    direct,
+    community,
+    anywhere
+};

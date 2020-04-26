@@ -1,6 +1,6 @@
 const { who, blame} = require('../plugins/factory.js'),
       { nonthread, direct } = require('../plugins/listen.js'),
-      { collection } = require('../plugins/storage.js');
+      { collection } = require('../plugins/state.js');
 
 module.exports = (app) => {
 

@@ -51,7 +51,7 @@ module.exports = (app) => {
                 let roll = rolls[0];
                 let phrase = ANSWERS[roll].phrase;
                 say ({
-                    text: `The answer for ${who('you', message)} is ${phrase}`,
+                    text: `The answer for ${who(message, 'you')} is ${phrase}`,
                     attachments: attach
                 });
             }
@@ -74,7 +74,7 @@ module.exports = (app) => {
 
                 // TODO respond within thread
                 say({
-                    text: `The *${quality}* answer for ${who('you', message)} with ${extra} ${type} ${cube} is ${phrase}`,
+                    text: `The *${quality}* answer for ${who(message, 'you')} with ${extra} ${type} ${cube} is ${phrase}`,
                     attachments: attach
                 });
             }
