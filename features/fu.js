@@ -1,19 +1,19 @@
 const randomInt = require('php-random-int');
 
-const { who, blame} = require('../plugins/factory.js');
-const { anywhere } = require('../plugins/listen.js');
+const { who, blame} = require('../plugins/factory.js'),
+      { anywhere } = require('../plugins/listen.js');
 
 module.exports = (app) => {
 
     const MAX_DICE = 10;
 
     const ANSWERS = {
-        1: {'phrase': '*no*, *and*...',  'color': '#E8E8E8'},
-        2: {'phrase': '*no*.',           'color': '#C2D9E6'},
-        3: {'phrase': '*no*, *but*...',  'color': '#9DCAE4'},
-        4: {'phrase': '*yes*, *but*...', 'color': '#77BBE3'},
-        5: {'phrase': '*yes*.',          'color': '#52ACE1'},
-        6: {'phrase': '*yes*, *and*...', 'color': '#2C9EE0'},
+        1: { phrase: '*no*, *and*...',  'color': '#E8E8E8' },
+        2: { phrase: '*no*.',           'color': '#C2D9E6' },
+        3: { phrase: '*no*, *but*...',  'color': '#9DCAE4' },
+        4: { phrase: '*yes*, *but*...', 'color': '#77BBE3' },
+        5: { phrase: '*yes*.',          'color': '#52ACE1' },
+        6: { phrase: '*yes*, *and*...', 'color': '#2C9EE0' },
     };
 
     const re_fu = /^!?fu\b(.*)/i;
@@ -40,9 +40,9 @@ module.exports = (app) => {
 
                 // TODO: refactor legacy attachments into blocks
                 attach.push({
-                    'text': `${roll} → ${phrase}`,
-                    'mrkdwn_in': ['text'],
-                    'color': color
+                    text: `${roll} → ${phrase}`,
+                    mrkdwn_in: ['text'],
+                    color: color
                 });
             }
             rolls.sort();
@@ -51,8 +51,8 @@ module.exports = (app) => {
                 let roll = rolls[0];
                 let phrase = ANSWERS[roll].phrase;
                 say ({
-                    'text': `The answer for ${who('you', message)} is ${phrase}`,
-                    'attachments': attach
+                    text: `The answer for ${who('you', message)} is ${phrase}`,
+                    attachments: attach
                 });
             }
             else {
@@ -72,9 +72,10 @@ module.exports = (app) => {
                 let extra = dice - 1;
                 let cube = extra > 1 ? 'dice' : 'die';
 
+                // TODO respond within thread
                 say({
-                    'text': `The *${quality}* answer for ${who('you', message)} with ${extra} ${type} ${cube} is ${phrase}`,
-                    'attachments': attach
+                    text: `The *${quality}* answer for ${who('you', message)} with ${extra} ${type} ${cube} is ${phrase}`,
+                    attachments: attach
                 });
             }
         }

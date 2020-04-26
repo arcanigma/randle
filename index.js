@@ -1,5 +1,3 @@
-const CONFIG = require('./config');
-
 const { App, ExpressReceiver } = require('@slack/bolt');
 
 const receiver = new ExpressReceiver({
@@ -25,9 +23,10 @@ receiver.app.get(['/', '/logo', '/face'], async (_, res) => {
 });
 
 require('./features/echo.js')(app);
-require('./features/deck.js')(app);
+require('./features/macros.js')(app);
 require('./features/roll.js')(app);
-require('./features/fu.js')(app);
+require('./features/deck.js')(app);
+// require('./features/fu.js')(app);
 
 (async () => {
     const port = process.env.PORT || 3000;

@@ -1,7 +1,7 @@
 const randomInt = require('php-random-int');
 
-const { who, blame} = require('../plugins/factory.js');
-const { anywhere, community } = require('../plugins/listen.js');
+const { who, blame} = require('../plugins/factory.js'),
+      { nonthread, anywhere, community } = require('../plugins/listen.js');
 
 module.exports = (app) => {
 
@@ -15,7 +15,7 @@ module.exports = (app) => {
             shuffle(items);
 
             await say({
-                'text': `${who('You', message)} shuffled *${items.join('*, *')}*.`
+                text: `${who('You', message)} shuffled *${items.join('*, *')}*.`
             });
         }
         catch (err) {
@@ -33,7 +33,7 @@ module.exports = (app) => {
             shuffle(items);
 
             await say({
-                'text': `${who('You', message)} drew *${items.shift()}*.`
+                text: `${who('You', message)} drew *${items.shift()}*.`
             });
         }
         catch (err) {
@@ -43,7 +43,7 @@ module.exports = (app) => {
 
     // TODO allow dealing "to" subset of channels or users
     const re_deal = /^!?deal\s+(.+?)(?:\s*&amp;\s*show\s+(.+?))?\s*$/is;
-    app.message(community, re_deal, async ({ message, context, say }) => {
+    app.message(nonthread, community, re_deal, async ({ message, context, say }) => {
         try {
             const re_boundaries = /([(,):*])/;
             let tokens = lex(context.matches[1], re_boundaries);
@@ -112,32 +112,32 @@ module.exports = (app) => {
                 if (shows[item]) for ([target, alias] of shows[item]) {
                     if (held[target]) for (tuid of held[target]) {
                         if (tuid != uid) seen.push({
-                            'type': 'mrkdwn',
-                            'text': `:eye-in-speech-bubble: You see <@${tuid}> was dealt *${alias ? alias : target}*.`
+                            type: 'mrkdwn',
+                            text: `:eye-in-speech-bubble: You see <@${tuid}> was dealt *${alias ? alias : target}*.`
                         });
                     }
                 }
 
                 let blocks = [{
-                    'type': 'section',
-                    'text': {
-                        'type': 'mrkdwn',
-                        'text': per_summary
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: per_summary
                     }
                 }];
                 if (seen.length > 0) {
                     shuffle(seen);
                     blocks.push({
-                        'type': 'context',
-                        'elements': seen
+                        type: 'context',
+                        elements: seen
                     });
                 }
 
                 await app.client.chat.postMessage({
                     token: context.botToken,
                     channel: uid,
-                    'text': per_summary,
-                    'blocks': blocks
+                    text: per_summary,
+                    blocks: blocks
                 });
             }
 
@@ -146,24 +146,24 @@ module.exports = (app) => {
             let all_summary = `${who('You', message)} dealt *${dealt.length}* item${dealt.length != 1 ? 's' : ''} to <@${dealt.join('>, <@')}> by direct message.`;
 
             let blocks = [{
-                'type': 'section',
-                'text': {
-                    'type': 'mrkdwn',
-                    'text': all_summary
+                type: 'section',
+                text: {
+                    type: 'mrkdwn',
+                    text: all_summary
                 }
             }];
             if (deck.length > 0)
                 blocks.push({
-                    'type': 'context',
-                    'elements': [{
-                        'type': 'mrkdwn',
-                        'text': `:warning: There ${deck.length != 1 ? 'were' : 'was'} *${deck.length}* item${deck.length != 1 ? 's' : ''} leftover.`
+                    type: 'context',
+                    elements: [{
+                        type: 'mrkdwn',
+                        text: `:warning: There ${deck.length != 1 ? 'were' : 'was'} *${deck.length}* item${deck.length != 1 ? 's' : ''} leftover.`
                     }]
                 })
 
             await say({
-                'text': all_summary,
-                'blocks': blocks
+                text: all_summary,
+                blocks: blocks
             });
         }
         catch (err) {

@@ -1,86 +1,56 @@
-const CONFIG = require('../config'),
-      randomInt = require('php-random-int'),
+const randomInt = require('php-random-int'),
       naturalCompare = require('string-natural-compare'),
       toOrdinal = require('ordinal');
 
-const { who, blame} = require('../plugins/factory.js');
-const { no_thread, anywhere, direct, limit } = require('../plugins/listen.js');
+const { who, blame, macroize} = require('../plugins/factory.js'),
+      { anywhere } = require('../plugins/listen.js');
 
 module.exports = (app) => {
 
-    const re_roll = /^!?roll\b(.+)$/i;
-    app.message(anywhere, re_roll, limit, async ({ message, context, say }) => {
-        // await controller.plugins.macros.prepare(message, command);
-
+    const listen_roll = async ({ message, context, next }) => {
+        let matches;
+        if (matches = message.text.match(/^!?roll\s+(.+)$/i)) {
+            context.matches = [matches[1]]
+            await next();
+        }
+        else if (matches = message.text.match(/\([^'()][^()]*\)/g)) {
+            context.matches = matches.map(m => m.slice(1,-1));
+            await next();
+        }
+    };
+    app.message(anywhere, listen_roll, async ({ message, context, say }) => {
         try {
-            let clauses = [context.matches[1]];
+            await macroize(context.matches, message.user);
 
-            let [summary, blocks] = processDiceCodes(clauses, message);
+            let clauses = context.matches.length;
+            for (let i = 0; i < clauses; i++)
+                context.matches.push(...expandRepeats(context.matches.shift()));
 
-            await sendDiceResults(app, message, context, summary, blocks);
+            let { summary, blocks } = rollDice(context.matches, message);
+            if (!summary) return;
+
+            let reply = {
+                text: `${who('You', message)} rolled ${summary}.`,
+                blocks: blocks
+            };
+
+            const MAX_REPLY_SIZE = 4000;
+            if (JSON.stringify(reply).length > MAX_REPLY_SIZE)
+                reply = blame('The response was too long to send.');
+
+            reply.token = context.botToken;
+            reply.channel = message.channel;
+            if (message.thread_ts)
+                reply.thread_ts = message.thread_ts;
+
+            await app.client.chat.postMessage(reply);
         }
         catch (err) {
             await say(blame(err, message));
         }
     });
 
-    const re_parens = /\(([^'()][^()]*)\)/g;
-    app.message(no_thread, anywhere, re_parens, limit, async ({ message, context, say }) => {
-        // await controller.plugins.macros.prepare(message, parens);
-
-        try {
-            let clauses = [];
-            for (let i = 0; i < context.matches.length; i++)
-                clauses.push(...cloneEllipses(context.matches[i].slice(1, -1)));
-
-            let [summary, blocks] = processDiceCodes(clauses, message);
-
-            await sendDiceResults(app, message, context, summary, blocks);
-        }
-        catch (err) {
-            await say(blame(err, message));
-        }
-    });
-
-    const re_any = /^(.+)$/;
-    app.message(direct, re_any, limit, async ({ message, context, say }) => {
-        // await controller.plugins.macros.prepare(message, any);
-
-        try {
-            let clauses = [message.text];
-
-            let [summary, blocks] = processDiceCodes(clauses, message);
-
-            // TODO make sure length check works with macros
-            if (blocks.length > 0)
-                await sendDiceResults(app, message, context, summary, blocks);
-        }
-        catch (err) {
-            await say(blame(err, message));
-        }
-    });
-
-    async function sendDiceResults(app, message, context, summary, blocks) {
-        if (!summary)
-            summary = message.text;
-
-        let reply = {
-            'text': `${who('You', message)} rolled ${summary}.`,
-            'blocks': blocks
-        };
-
-        if (JSON.stringify(reply).length > CONFIG.MAX_REPLY_SIZE)
-            reply = blame('The result was too long to send.');
-
-        reply.token = context.botToken;
-        reply.channel = message.channel;
-        if (message.thread_ts)
-            reply.thread_ts = message.thread_ts;
-
-        await app.client.chat.postMessage(reply);
-    }
-
-    function cloneEllipses(clause) {
+    function expandRepeats(clause) {
         const re_ellipsis = /^\s*(.+)\s*\.\.\.\s*(\w+(?:\s*,\s*\w+)*)\s*$/;
         let match = clause.match(re_ellipsis);
         if (match) {
@@ -106,7 +76,7 @@ module.exports = (app) => {
         }
     }
 
-    function processDiceCodes(clauses, message) {
+    function rollDice(clauses, message) {
         let elements;
         let maxed;
 
@@ -214,15 +184,15 @@ module.exports = (app) => {
                 const MAX_ELEMENTS = 10;
                 if (elements.length < MAX_ELEMENTS) {
                     elements.push({
-                        'type': 'mrkdwn',
-                        'text': `${prefix} ${atoms.join(' ')}`
+                        type: 'mrkdwn',
+                        text: `${prefix} ${atoms.join(' ')}`
                     });
                 }
                 else {
                     maxed = true;
                     elements[MAX_ELEMENTS-1] = {
-                        'type': 'mrkdwn',
-                        'text': `:warning: Too many rolls to show.`
+                        type: 'mrkdwn',
+                        text: `:warning: Too many rolls to show.`
                     };
                 }
             }
@@ -235,38 +205,38 @@ module.exports = (app) => {
         for (let i = 0; i < clauses.length; i++) {
             elements = [];
             maxed = false;
-            let outcome = postProcessChain(preProcessChain(clauses[i], message).replace(re_code, fun), message);
+            let outcome = postProcessChain(preProcessChain(clauses[i]).replace(re_code, fun));
 
             if (outcome != clauses[i]) {
-                outcome = prettyMarkup(outcome);
+                outcome = prettifyMarkdown(outcome);
                 phrases.push(outcome);
 
                 if (blocks.length == 0) {
                     blocks.push({
-                        'type': 'section',
-                        'text': {
-                            'type': 'mrkdwn',
-                            'text': `${who('You', message)} rolled ${outcome}.`
+                        type: 'section',
+                        text: {
+                            type: 'mrkdwn',
+                            text: `${who('You', message, message.user)} rolled ${outcome}.`
                           }
                     });
                 }
                 else {
                     // blocks.push({
-                    //     'type': 'divider'
+                    //     type: 'divider'
                     // });
                     blocks.push({
-                        'type': 'section',
-                        'text': {
-                            'type': 'mrkdwn',
-                            'text': `Then ${outcome}.`
+                        type: 'section',
+                        text: {
+                            type: 'mrkdwn',
+                            text: `Then ${outcome}.`
                           }
                     });
                 }
 
                 if (elements.length > 0) {
                     blocks.push({
-                        'type': 'context',
-                        'elements': elements
+                        type: 'context',
+                        elements: elements
                     });
                 }
             }
@@ -274,22 +244,23 @@ module.exports = (app) => {
 
         let summary = phrases.join('; ');
 
-        return [summary, blocks];
+        return {
+            summary: summary,
+            blocks: blocks
+        };
     }
 
     // TODO: refactor into parser (see !deal)
 
-    function preProcessChain(content, message) {
-        return evaluateArithmeticOps(content);
+    function preProcessChain(content) {
+        return evaluateArithmetic(content);
     }
 
-    function postProcessChain(content, message) {
-        return evaluateComparisonOps(
-            evaluateArithmeticOps(content)
-        );
+    function postProcessChain(content) {
+        return evaluateComparisons(evaluateArithmetic(content));
     }
 
-    function prettyMarkup(content) {
+    function prettifyMarkdown(content) {
         const re_number = /\b(?<![#_*])[0-9]+(?:\.[0-9]+)?(?![:_*])\b/g,
             re_tag = /<[@#][\w|]+?>/g,
             re_trail= /^[\s.;,]+|[\s.;,]+$/g,
@@ -300,7 +271,7 @@ module.exports = (app) => {
             .replace(re_wss, ' ');
     }
 
-    function evaluateArithmeticOps(content) {
+    function evaluateArithmetic(content) {
         const re_math = /([+-]|\b)([0-9]+(?:\.[0-9]+)?)\s*([+-])\s*([0-9]+(?:\.[0-9]+)?)\b/;
         const fun = function (_, sign, x, op, y) {
             x = parseFloat(sign+x);
@@ -315,7 +286,7 @@ module.exports = (app) => {
         return regexClosure(content, re_math, fun);
     }
 
-    function evaluateComparisonOps(content) {
+    function evaluateComparisons(content) {
         const re_op = /([0-9]+(?:\.[0-9]+)?)\s*(=|==|&gt;|&lt;|&gt;=|=&gt;|&lt;=|=&lt;|!=|&lt;&gt;|&gt;&lt;)\s*([0-9]+(?:\.[0-9]+)?)/g;
         const fun = function(_, x, relop, y) {
             x = parseFloat(x);
@@ -351,4 +322,5 @@ module.exports = (app) => {
         } while (text != old);
         return text;
     };
+
 };
