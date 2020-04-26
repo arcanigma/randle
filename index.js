@@ -14,13 +14,8 @@ app.use(async ({ message, next }) => {
       await next();
 });
 
-receiver.app.get('/status', async (_, res) => {
-    res.sendStatus(200);
-});
-
-receiver.app.get(['/', '/logo', '/face'], async (_, res) => {
-    res.sendFile(__dirname + '/static/img/logo.png');
-});
+require('./routes/web.js')(receiver);
+require('./routes/distribute.js')(app, receiver);
 
 require('./features/echo.js')(app);
 require('./features/macros.js')(app);
