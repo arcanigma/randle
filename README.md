@@ -1,3 +1,3 @@
 # Randle
 
-Dice rolling and randomization bot for Slack.
+Dice rolling and game randomization bot for Slack.

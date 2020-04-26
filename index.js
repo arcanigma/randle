@@ -9,19 +9,17 @@ const app = new App({
     receiver: receiver
 });
 
-app.use(async ({ message, next }) => {
-  if (!message.bot_id && !message.bot_profile)
-      await next();
-});
+const { botless } = require('./plugins/listen.js');
+app.use(botless);
 
 require('./routes/web.js')(receiver);
 require('./routes/distribute.js')(app, receiver);
 
-require('./features/echo.js')(app);
-require('./features/macros.js')(app);
-require('./features/roll.js')(app);
-require('./features/deck.js')(app);
-// require('./features/fu.js')(app);
+require('./commands/echo.js')(app);
+require('./commands/macros.js')(app);
+require('./commands/roll.js')(app);
+require('./commands/deck.js')(app);
+// require('./commands/fu.js')(app);
 
 (async () => {
     const port = process.env.PORT || 3000;

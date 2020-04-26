@@ -34,10 +34,16 @@ const anywhere = async ({ message, next }) => {
         await next();
 };
 
+const botless = async ({ message, next }) => {
+  if (message.subtype != 'bot_message' && !message.bot_id && !message.bot_profile)
+      await next();
+}
+
 module.exports = {
     debug,
     nonthread,
     direct,
     community,
-    anywhere
+    anywhere,
+    botless
 };
