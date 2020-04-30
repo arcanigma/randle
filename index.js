@@ -1,4 +1,5 @@
-const { App, ExpressReceiver } = require('@slack/bolt');
+const { App, ExpressReceiver } = require('@slack/bolt'),
+      { MongoClient } = require('mongodb');
 
 const receiver = new ExpressReceiver({
     signingSecret: process.env.SLACK_SIGNING_SECRET
@@ -9,15 +10,20 @@ const app = new App({
     receiver: receiver
 });
 
-const { botless } = require('./plugins/listen.js');
-app.use(botless);
+const store = MongoClient.connect(
+    process.env.MONGODB_URI, {
+        useUnifiedTopology: true,
+        useNewUrlParser: true
+    }
+);
 
 require('./routes/web.js')(receiver);
 require('./routes/distribute.js')(app, receiver);
+require('./events/home.js')(app, store);
+require('./events/macros.js')(app, store);
 
 require('./commands/echo.js')(app);
-require('./commands/macros.js')(app);
-require('./commands/roll.js')(app);
+require('./commands/roll.js')(app, store);
 require('./commands/deck.js')(app);
 // require('./commands/fu.js')(app);
 

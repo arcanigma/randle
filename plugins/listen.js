@@ -34,10 +34,16 @@ const anywhere = async ({ message, next }) => {
         await next();
 };
 
-const botless = async ({ message, next }) => {
-  if (message.subtype != 'bot_message' && !message.bot_id && !message.bot_profile)
-      await next();
-}
+/*
+    USAGE:
+
+    const { botless } = require('./plugins/listen.js');
+    app.use(botless);
+*/
+// const botless = async ({ message, next }) => {
+//   if (message.subtype != 'bot_message' && !message.bot_id && !message.bot_profile)
+//       await next();
+// }
 
 module.exports = {
     debug,
@@ -45,5 +51,5 @@ module.exports = {
     direct,
     community,
     anywhere,
-    botless
+    // botless
 };

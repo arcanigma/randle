@@ -2,25 +2,27 @@ const randomInt = require('php-random-int'),
       naturalCompare = require('string-natural-compare'),
       toOrdinal = require('ordinal');
 
-const { who, blame, macroize} = require('../plugins/factory.js'),
+const { who, blame } = require('../plugins/factory.js'),
       { anywhere } = require('../plugins/listen.js');
 
-module.exports = (app) => {
+module.exports = (app, store) => {
 
     const listen_roll = async ({ message, context, next }) => {
-        let matches;
-        if (matches = message.text.match(/^!?roll\s+(.+)$/i)) {
-            context.matches = [matches[1]]
-            await next();
-        }
-        else if (matches = message.text.match(/\([^'()][^()]*\)/g)) {
-            context.matches = matches.map(m => m.slice(1,-1));
-            await next();
+        if (message.text) {
+            let matches;
+            if (matches = message.text.match(/^!?roll\s+(.+)$/i)) {
+                context.matches = [matches[1]]
+                await next();
+            }
+            else if (matches = message.text.match(/\([^'()][^()]*\)/g)) {
+                context.matches = matches.map(m => m.slice(1,-1));
+                await next();
+            }
         }
     };
     app.message(anywhere, listen_roll, async ({ message, context, say }) => {
         try {
-            await macroize(context.matches, message.user);
+            await macroize(store, context.matches, message.user);
 
             let clauses = context.matches.length;
             for (let i = 0; i < clauses; i++)
@@ -49,6 +51,28 @@ module.exports = (app) => {
             await say(blame(err, message));
         }
     });
+
+    async function macroize(store, clauses, uid) {
+        let coll = (await store).db().collection('macros');
+        let macros = (await coll.findOne(
+            { _id: uid },
+            { projection: { _id: 0} }
+        ));
+
+        // TODO super user creates, bot owns
+        const DICTIONARY = {
+            adv: '2d20H',
+            dis: '2d20L'
+        }
+        macros = macros ? Object.assign(DICTIONARY, macros) : DICTIONARY;
+
+        for (let i = 0; i < clauses.length; i++) {
+            clauses[i] = clauses[i].replace(
+                new RegExp(`\\b(${Object.keys(macros).join('|')})\\b`, 'gi'),
+                (match) => macros[match.toLowerCase()]
+            );
+        }
+    };
 
     function expandRepeats(clause) {
         const re_ellipsis = /^\s*(.+)\s*\.\.\.\s*(\w+(?:\s*,\s*\w+)*)\s*$/;

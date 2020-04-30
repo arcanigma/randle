@@ -9,7 +9,7 @@ module.exports = (app) => {
             await say(context.matches[1].trim());
         }
         catch (err) {
-            await say(blame(err));
+            await say(blame(err, message));
         }
     });
 
@@ -19,7 +19,7 @@ module.exports = (app) => {
             if (context.matches[1] == 'system')
                 throw new Error(context.matches[2] || 'undefined');
             else if (context.matches[1] == 'user')
-                await say(blame(context.matches[2] || 'undefined'));
+                await say(blame(context.matches[2] || 'undefined'), message);
         }
         catch (err) {
             await say(blame(err, message));

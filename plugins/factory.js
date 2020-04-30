@@ -1,5 +1,3 @@
-const { collection } = require('../plugins/state.js');
-
 const who = (message, pronoun) => {
     return message.channel_type != 'im' ? `<@${message.user}>` : pronoun;
 };
@@ -74,30 +72,8 @@ const blame = (error, message) => {
     }
 };
 
-const macroize = async (clauses, uid) => {
-    let coll = await collection('macros');
-    let macros = (await coll.findOne(
-        { _id: uid },
-        { projection: { _id: 0} }
-    )) || {} ;
-
-    const DICTIONARY = { // TODO super use creates, bot owns
-        adv: '2d20H',
-        dis: '2d20L'
-    }
-    macros = macros ? Object.assign(macros, DICTIONARY): DICTIONARY;
-
-    for (let i = 0; i < clauses.length; i++) {
-        clauses[i] = clauses[i].replace(
-            new RegExp(`\\b(${Object.keys(macros).join('|')})\\b`, 'gi'),
-            (match) => macros[match.toLowerCase()]
-        );
-    }
-};
-
 module.exports = {
     who,
     commas,
-    blame,
-    macroize
+    blame
 };
