@@ -31,7 +31,7 @@ const list_macros = async (store, user) => {
                 type: 'section',
                 text: {
                     type: 'mrkdwn',
-                    text: `*\`${name}\`* → ${macros[name]}`
+                    text: `*\`${name}\`* • ${macros[name]}`
                 },
                 accessory: {
                     type: 'button',
@@ -108,7 +108,7 @@ const edit_macro_modal = async (name, replacement) => {
             block_id: 'options',
             label: {
                 type: 'plain_text',
-                text: 'Options' // TODO fix Options (optional) annoyance
+                text: 'Settings'
             },
       			element: {
                 type: 'checkboxes',
