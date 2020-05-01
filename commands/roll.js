@@ -10,42 +10,53 @@ module.exports = (app, store) => {
     const listen_roll = async ({ message, context, next }) => {
         if (message.text) {
             let matches;
-            if (matches = message.text.match(/^!?roll\s+(.+)$/i)) {
-                context.matches = [matches[1]]
+            const re_roll = /^!?roll\s+(.+)$/i,
+                  re_parens = /(?:\([^'()][^()]*\)|\[[^'\[\]][^\[\]]*\])/g;
+            if (matches = message.text.match(re_roll)) {
+                context.clauses = [{
+                    text: matches[1],
+                    where: 'inline'
+                }];
                 await next();
             }
-            else if (matches = message.text.match(/\([^'()][^()]*\)/g)) {
-                context.matches = matches.map(m => m.slice(1,-1));
+            else if (matches = message.text.match(re_parens)) {
+                context.clauses = matches.map(m => ({
+                    text: m.slice(1,-1),
+                    where: m.slice(0, 1) == '[' && !message.thread_ts ? 'thread' : 'inline'
+                }));
                 await next();
             }
         }
     };
     app.message(anywhere, listen_roll, async ({ message, context, say }) => {
         try {
-            await macroize(store, context.matches, message.user);
+            context.clauses = await macroize(store, context.clauses, message.user);
 
-            let clauses = context.matches.length;
+            let clauses = context.clauses.length;
             for (let i = 0; i < clauses; i++)
-                context.matches.push(...expandRepeats(context.matches.shift()));
+                context.clauses.push(...expandRepeats(context.clauses.shift()));
 
-            let { summary, blocks } = rollDice(context.matches, message);
-            if (!summary) return;
+            let results = rollDice(context.clauses, message);
 
-            let reply = {
-                text: `${who(message, 'You')} rolled ${summary}.`,
-                blocks: blocks
-            };
+            for (let where in results) {
+                let reply = {
+                    text: `${who(message, 'You')} rolled ${results[where].text}.`,
+                    blocks: results[where].blocks
+                };
 
-            const MAX_REPLY_SIZE = 4000;
-            if (JSON.stringify(reply).length > MAX_REPLY_SIZE)
-                reply = blame('The response was too long to send.');
+                const MAX_REPLY_SIZE = 4000;
+                if (JSON.stringify(reply).length > MAX_REPLY_SIZE)
+                    reply = blame('The response was too long to send.');
 
-            reply.token = context.botToken;
-            reply.channel = message.channel;
-            if (message.thread_ts)
-                reply.thread_ts = message.thread_ts;
+                reply.token = context.botToken;
+                reply.channel = message.channel;
+                if (message.thread_ts)
+                    reply.thread_ts = message.thread_ts;
+                else if (where == 'thread')
+                    reply.thread_ts = message.ts;
 
-            await app.client.chat.postMessage(reply);
+                await app.client.chat.postMessage(reply);
+            }
         }
         catch (err) {
             await say(blame(err, message));
@@ -65,18 +76,17 @@ module.exports = (app, store) => {
             dis: '2d20L'
         }
         macros = macros ? Object.assign(DICTIONARY, macros) : DICTIONARY;
+        let re_macros = new RegExp(`\\b(${Object.keys(macros).join('|')})\\b`, 'gi');
 
-        for (let i = 0; i < clauses.length; i++) {
-            clauses[i] = clauses[i].replace(
-                new RegExp(`\\b(${Object.keys(macros).join('|')})\\b`, 'gi'),
-                (match) => macros[match.toLowerCase()]
-            );
-        }
+        return clauses.map(clause => ({
+            text: clause.text.replace(re_macros, m => macros[m.toLowerCase()]),
+            where: clause.where
+        }));
     };
 
     function expandRepeats(clause) {
         const re_ellipsis = /^\s*(.+)\s*\.\.\.\s*(\w+(?:\s*,\s*\w+)*)\s*$/;
-        let match = clause.match(re_ellipsis);
+        let match = clause.text.match(re_ellipsis);
         if (match) {
             const re_trail = /^[\s.;,]+|[\s.;,]+$/g,
                   re_sep = /\s*,\s*/;
@@ -84,15 +94,18 @@ module.exports = (app, store) => {
                 over = match[2].split(re_sep),
                 reps = parseInt(over[0]);
             let clones = [];
-            if (over.length == 1 && reps >= 1) {
+            if (over.length == 1 && reps >= 1)
                 for (let i = 1; i <= reps; i++)
-                    clones.push(`${phrase} on the ${toOrdinal(i)} roll`);
-            }
-            else {
+                    clones.push({
+                        text: `${phrase} on the ${toOrdinal(i)} roll`,
+                        where: clause.where
+                    });
+            else
                 for (let i = 0; i < over.length; i++)
-                    clones.push(`${phrase} for ${over[i]}`);
-            }
-
+                    clones.push({
+                        text: `${phrase} for ${over[i]}`,
+                        where: clause.where
+                    });
             return clones;
         }
         else {
@@ -101,11 +114,18 @@ module.exports = (app, store) => {
     }
 
     function rollDice(clauses, message) {
-        let elements;
-        let maxed;
+        let phrases = {
+                inline: [],
+                thread: []
+            },
+            blocks = {
+                inline: [],
+                thread: []
+            };
 
-        const re_code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
-        const fun = function(expr, avg, count, size, hilo, keep, mod, muldev, fact) {
+        let elements, maxed;
+        const re_dice_code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
+        const re_dice_fun = function(expr, avg, count, size, hilo, keep, mod, muldev, fact) {
             count = parseInt(count) || 1;
             size = (size != '%' ? parseInt(size) || 1 : 100);
             let rolls = [];
@@ -216,7 +236,7 @@ module.exports = (app, store) => {
                     maxed = true;
                     elements[MAX_ELEMENTS-1] = {
                         type: 'mrkdwn',
-                        text: `:warning: Too many rolls to show.`
+                        text: `:warning: Too many to show.`
                     };
                 }
             }
@@ -224,78 +244,70 @@ module.exports = (app, store) => {
             return total;
         };
 
-        let phrases = [];
-        let blocks = [];
         for (let i = 0; i < clauses.length; i++) {
-            elements = [];
-            maxed = false;
-            let outcome = postProcessChain(preProcessChain(clauses[i]).replace(re_code, fun));
+            clauses[i] = evaluateArithmetic(clauses[i]);
 
-            if (outcome != clauses[i]) {
-                outcome = prettifyMarkdown(outcome);
-                phrases.push(outcome);
+            elements = [], maxed = false;
+            let outcome = clauses[i].text.replace(re_dice_code, re_dice_fun);
 
-                if (blocks.length == 0) {
-                    blocks.push({
+            if (outcome != clauses[i].text) {
+                clauses[i].text = outcome;
+                clauses[i] = evaluateArithmetic(clauses[i]);
+                clauses[i] = evaluateComparisons(clauses[i]);
+                clauses[i] = prettifyMarkdown(clauses[i]);
+                phrases[clauses[i].where].push(clauses[i].text);
+
+                if (blocks[clauses[i].where].length == 0)
+                    blocks[clauses[i].where].push({
                         type: 'section',
                         text: {
                             type: 'mrkdwn',
-                            text: `${who(message, 'You')} rolled ${outcome}.`
+                            text: `${clauses[i].where == 'inline' ? who(message, 'You') : 'You'} rolled ${clauses[i].text}.`
                           }
                     });
-                }
-                else {
-                    // blocks.push({
-                    //     type: 'divider'
-                    // });
-                    blocks.push({
+                else
+                    blocks[clauses[i].where].push({
                         type: 'section',
                         text: {
                             type: 'mrkdwn',
-                            text: `Then ${outcome}.`
+                            text: `Then ${clauses[i].text}.`
                           }
                     });
-                }
 
-                if (elements.length > 0) {
-                    blocks.push({
+                if (elements.length > 0)
+                    blocks[clauses[i].where].push({
                         type: 'context',
                         elements: elements
                     });
-                }
             }
         }
 
-        let summary = phrases.join('; ');
-
-        return {
-            summary: summary,
-            blocks: blocks
-        };
+        let results = {};
+        for (let where in phrases) {
+            if (phrases[where].length > 0)
+                results[where] = {
+                      text: phrases[where].join('; '),
+                      blocks: blocks[where]
+                }
+        }
+        return results;
     }
 
-    // TODO: refactor into parser (see !deal)
+    // TODO refactor into parser (see !deal)
 
-    function preProcessChain(content) {
-        return evaluateArithmetic(content);
-    }
-
-    function postProcessChain(content) {
-        return evaluateComparisons(evaluateArithmetic(content));
-    }
-
-    function prettifyMarkdown(content) {
+    function prettifyMarkdown(clause) {
         const re_number = /\b(?<![#_*])[0-9]+(?:\.[0-9]+)?(?![:_*])\b/g,
             re_tag = /<[@#][\w|]+?>/g,
             re_trail= /^[\s.;,]+|[\s.;,]+$/g,
             re_wss = /\s+/g;
-        return content.replace(re_number, '*$&*')
+        clause.text = clause.text.replace(re_number, '*$&*')
             .replace(re_tag, '')
             .replace(re_trail, '')
             .replace(re_wss, ' ');
+        return clause;
     }
 
-    function evaluateArithmetic(content) {
+    function evaluateArithmetic(clause) {
         const re_math = /([+-]|\b)([0-9]+(?:\.[0-9]+)?)\s*([+-])\s*([0-9]+(?:\.[0-9]+)?)\b/;
         const fun = function (_, sign, x, op, y) {
             x = parseFloat(sign+x);
@@ -307,10 +319,10 @@ module.exports = (app, store) => {
                 return sum.toString();
         };
 
-        return regexClosure(content, re_math, fun);
+        return regexClosure(clause, re_math, fun);
     }
 
-    function evaluateComparisons(content) {
+    function evaluateComparisons(clause) {
         const re_op = /([0-9]+(?:\.[0-9]+)?)\s*(=|==|&gt;|&lt;|&gt;=|=&gt;|&lt;=|=&lt;|!=|&lt;&gt;|&gt;&lt;)\s*([0-9]+(?:\.[0-9]+)?)/g;
         const fun = function(_, x, relop, y) {
             x = parseFloat(x);
@@ -335,16 +347,17 @@ module.exports = (app, store) => {
             return answer;
         };
 
-        return content.replace(re_op, fun);
+        clause.text = clause.text.replace(re_op, fun);
+        return clause;
     }
 
-    function regexClosure(text, re, fun) {
+    function regexClosure(clause, re, fun) {
         let old;
         do {
-            old = text;
-            text = text.replace(re, fun);
-        } while (text != old);
-        return text;
+            old = clause.text;
+            clause.text = clause.text.replace(re, fun);
+        } while (clause.text != old);
+        return clause;
     };
 
 };
