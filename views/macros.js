@@ -11,7 +11,7 @@ const list_macros = async (store, user) => {
                 action_id: 'edit_macro_button',
                 text: {
                     type: 'plain_text',
-                    text: 'Create New Macro'
+                    text: 'Create'
                 }
             }
         }
@@ -31,14 +31,14 @@ const list_macros = async (store, user) => {
                 type: 'section',
                 text: {
                     type: 'mrkdwn',
-                    text: `*\`${name}\`* → \`${macros[name]}\``
+                    text: `*\`${name}\`* → ${macros[name]}`
                 },
                 accessory: {
                     type: 'button',
                     action_id: 'edit_macro_button',
                     text: {
                         type: 'plain_text',
-                        text: `Edit ${name} Macro`
+                        text: `Edit`
                     },
                     value: name
                 }
