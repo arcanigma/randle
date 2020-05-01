@@ -1,5 +1,4 @@
 const randomInt = require('php-random-int'),
-      naturalCompare = require('string-natural-compare'),
       toOrdinal = require('ordinal');
 
 const { who, blame } = require('../plugins/factory.js'),

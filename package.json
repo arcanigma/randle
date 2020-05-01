@@ -14,8 +14,7 @@
     "@slack/bolt": "2.x",
     "mongodb": "3.x",
     "ordinal": "*",
-    "php-random-int": "*",
-    "string-natural-compare": "*"
+    "php-random-int": "*"
   },
   "devDependencies": {
     "dotenv": "8.x",
