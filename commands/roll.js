@@ -9,7 +9,7 @@ module.exports = (app, store) => {
     const listen_roll = async ({ message, context, next }) => {
         if (message.text) {
             let matches;
-            const re_roll = /^!?roll\s+(.+)$/i,
+            const re_roll = /^!?roll\s+(.+)/i,
                   re_parens = /(?:\([^'()][^()]*\)|\[[^'\[\]][^\[\]]*\])/g;
             if (matches = message.text.match(re_roll)) {
                 context.clauses = [{

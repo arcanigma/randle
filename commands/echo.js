@@ -3,7 +3,7 @@ const { blame } = require('../plugins/factory.js'),
 
 module.exports = (app) => {
 
-    const re_echo = /^!?echo\b(.*)/i;
+    const re_echo = /^!?echo\s+(.*)/i;
     app.message(nonthread, direct, re_echo, debug, async ({ message, context, say }) => {
         try {
             await say(context.matches[1].trim());
@@ -13,7 +13,7 @@ module.exports = (app) => {
         }
     });
 
-    const re_throw = /^!?throw\s+(system|user)\s+error\b(.*)/i;
+    const re_throw = /^!?throw\s+(system|user)\s+error\s+(.*)/i;
     app.message(nonthread, direct, re_throw, debug, async ({ message, context, say }) => {
         try {
             if (context.matches[1] == 'system')

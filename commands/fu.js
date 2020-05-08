@@ -16,7 +16,7 @@ module.exports = (app) => {
         6: { phrase: '*yes*, *and*...', 'color': '#2C9EE0' },
     };
 
-    const re_fu = /^!?fu\b(.*)/i;
+    const re_fu = /^!?fu\s+(.+)/i;
     app.message(anywhere, re_fu, async ({ message, context, say }) => {
         try {
             var modifier = 0;

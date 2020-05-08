@@ -5,17 +5,13 @@ const { who, commas, blame} = require('../plugins/factory.js'),
 
 module.exports = (app) => {
 
-    // TODO refactor using the !deal functionality
-    const re_shuffle = /^!?shuffle\s+(.*)$/i;
+    const re_shuffle = /^!?shuffle\s+(.+)/i;
     app.message(anywhere, re_shuffle, async ({ message, context, say }) => {
         try {
-            let items = lex(context.matches[1]);
-            if (items.length < 2)
-                return await say(blame('You must list at least two items separated by commas.'));
-            shuffle(items);
+            let deck = parse_deck(context.matches[1]);
 
             await say({
-                text: `${who(message, 'You')} shuffled *${items.join('*, *')}*.`
+                text: `${who(message, 'You')} shuffled *${deck.join('*, *')}*.`
             });
         }
         catch (err) {
@@ -23,17 +19,13 @@ module.exports = (app) => {
         }
     });
 
-    // TODO refactor using the !deal functionality
-    const re_draw = /^!?draw\s+(.*)$/i;
+    const re_draw = /^!?draw\s+(.+)/i;
     app.message(anywhere, re_draw, async ({ message, context, say }) => {
         try {
-            let items = lex(context.matches[1]);
-            if (items.length < 2)
-                return await say(blame('You must list at least two items separated by commas.'));
-            shuffle(items);
+            let deck = parse_deck(context.matches[1]);
 
             await say({
-                text: `${who(message, 'You')} drew *${items.shift()}*.`
+                text: `${who(message, 'You')} drew *${deck.shift()}*.`
             });
         }
         catch (err) {
@@ -42,20 +34,11 @@ module.exports = (app) => {
     });
 
     // TODO allow dealing "to" subset of channels or users
+    // TODO parser for show portion
     const re_deal = /^!?deal\s+(.+?)(?:\s*&amp;\s*show\s+(.+?))?\s*$/is;
     app.message(nonthread, community, re_deal, async ({ message, context, say }) => {
         try {
-            const re_boundaries = /([(,):*])/;
-            let tokens = lex(context.matches[1], re_boundaries);
-
-            let deck
-            try {
-                deck = parse_list(tokens);
-                expect(tokens, null);
-            }
-            catch (err) {
-                return await say(blame(err.message, message));
-            }
+            let deck = parse_deck(context.matches[1]);
 
             let shows = {};
             if (context.matches[2]) {
@@ -209,6 +192,14 @@ module.exports = (app) => {
             return tokens[0];
         else
             return false;
+    }
+
+    const re_list = /([(,):*])/;
+    function parse_deck(text) {
+        let tokens = lex(text, re_list);
+        let deck = parse_list(tokens);
+        expect(tokens, null);
+        return deck;
     }
 
     function parse_list(tokens) {
