@@ -4,28 +4,29 @@
   "version": "2.1.3",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon -r dotenv/config index.js"
+      "start": "node index.js",
+      "dev": "nodemon -r dotenv/config index.js"
   },
   "engines": {
-    "node": "^12.x"
+      "node": "^12.x"
   },
   "dependencies": {
-    "@slack/bolt": "2.x",
-    "mongodb": "3.x",
-    "ordinal": "*",
-    "php-random-int": "*"
+      "@slack/bolt": "2.x",
+      "mongodb": "3.x",
+      "ordinal": "*",
+      "php-random-int": "*"
   },
   "devDependencies": {
-    "dotenv": "8.x",
-    "ngrok": "3.x",
-    "nodemon": "2.x"
+      "dotenv": "8.x",
+      "ngrok": "3.x",
+      "nodemon": "2.x",
+      "eslint": "*"
   },
   "license": "MIT",
   "author": {
-    "name": "Ron Reaser",
-    "email": "ron@reaser.org",
-    "url": "https://github.com/ron-reaser"
+      "name": "Ron Reaser",
+      "email": "ron@reaser.org",
+      "url": "https://github.com/ron-reaser"
   },
   "repository": "github:ron-reaser/randle",
   "private": true

@@ -35,17 +35,17 @@ module.exports = (app) => {
 
     // TODO allow dealing "to" subset of channels or users
     // TODO parser for show portion
-    const re_deal = /^!?deal\s+(.+?)(?:\s*&amp;\s*show\s+(.+?))?\s*$/is;
+    const re_deal = /^!?deal\s+(.+?)(?:\s*&amp;\s*show\s+(.+?))?\s*$/is,
+          re_show = /^([^:=]+)\s*:\s*([^:=]+?)(?:\s*=\s*([^:=]+))?$/;
     app.message(nonthread, community, re_deal, async ({ message, context, say }) => {
         try {
             let deck = parse_deck(context.matches[1]);
 
             let shows = {};
             if (context.matches[2]) {
-                let phrases = lex(context.matches[2]);
-                for (phrase of phrases) {
-                    const re_reveal = /^([^:=]+)\s*:\s*([^:=]+?)(?:\s*=\s*([^:=]+))?$/;
-                    let [, source, target, alias] = phrase.trim().match(re_reveal) || [];
+                let phrases = lex(context.matches[2], /\s*,\s*/);
+                for (let phrase of phrases) {
+                    let [, source, target, alias] = phrase.trim().match(re_show) || [];
 
                     if (deck.includes(source) && deck.includes(target)) {
                         if (!shows[source])
@@ -66,7 +66,7 @@ module.exports = (app) => {
 
             let dealt = {};
             let held = {};
-            for (uid of uids) {
+            for (let uid of uids) {
                 let user = (await app.client.users.info({
                     token: context.botToken,
                     user: uid
@@ -86,20 +86,21 @@ module.exports = (app) => {
                 }
             }
 
-            for (uid in dealt) {
+            for (let uid in dealt) {
                 let item = dealt[uid];
 
                 let per_summary = `${message.user != uid ? `<@${message.user}>` : 'You'} dealt ${message.user != uid ? 'you' : 'yourself'} *${item}* from <#${message.channel}>.`;
 
                 let seen = [];
-                if (shows[item]) for ([target, alias] of shows[item]) {
-                    if (held[target]) for (tuid of held[target]) {
-                        if (tuid != uid) seen.push({
-                            type: 'mrkdwn',
-                            text: `:eye-in-speech-bubble: You see <@${tuid}> was dealt *${alias ? alias : target}*.`
-                        });
+                if (shows[item])
+                    for (let [target, alias] of shows[item]) {
+                        if (held[target]) for (let tuid of held[target]) {
+                            if (tuid != uid) seen.push({
+                                type: 'mrkdwn',
+                                text: `:eye-in-speech-bubble: You see <@${tuid}> was dealt *${alias ? alias : target}*.`
+                            });
+                        }
                     }
-                }
 
                 let blocks = [{
                     type: 'section',
@@ -154,17 +155,8 @@ module.exports = (app) => {
         }
     });
 
-    const re_commas = /\s*,\s*/;
-    function lex(expression, on=re_commas) {
-        return expression.trim().split(on).filter(it => it.trim()).filter(Boolean);
-    }
-
-    /* FISHER YATES SHUFFLE */
-    function shuffle(list) {
-        for (let i = list.length-1; i >= 1; i--) {
-            let j = randomInt(0, i);
-            [list[i], list[j]] = [list[j], list[i]];
-        }
+    function lex(expression, delims) {
+        return expression.trim().split(delims).filter(it => it.trim()).filter(Boolean);
     }
 
     function expect(tokens, like) {
@@ -194,9 +186,9 @@ module.exports = (app) => {
             return false;
     }
 
-    const re_list = /([(,):*])/;
+    const re_lex_deck = /([(,):*])/;
     function parse_deck(text) {
-        let tokens = lex(text, re_list);
+        let tokens = lex(text, re_lex_deck);
         let deck = parse_list(tokens);
         expect(tokens, null);
         return deck;
@@ -211,6 +203,9 @@ module.exports = (app) => {
         return list;
     }
 
+    const re_item = /[^(,)]+/,
+          re_suffix = /[:*]/,
+          re_integer = /[1-9][0-9]*/;
     function parse_item(tokens) {
         let item;
         if (accept(tokens, '(')) {
@@ -218,35 +213,38 @@ module.exports = (app) => {
             expect(tokens, ')');
         }
         else {
-            const re_normal = /[^(,)]+/;
-            item = [expect(tokens, re_normal).trim()];
-        }
+            item = [expect(tokens, re_item).trim()];
+            while (peek(tokens, re_suffix)) {
+                if (accept(tokens, ':')) {
+                    let take = Math.min(parseInt(expect(tokens, re_integer)), item.length);
 
-        const re_suffix = /[:*]/,
-              re_integer = /[1-9][0-9]*/;
-        while (peek(tokens, re_suffix)) {
-            if (accept(tokens, ':')) {
-                let take = Math.min(parseInt(expect(tokens, re_integer)), item.length);
-
-                let build = [];
-                for (let i = 1; i <= take; i++) {
-                    let r = randomInt(0, item.length-1);
-                    [item[0], item[r]] = [item[r], item[0]];
-                    build.push(item.shift());
+                    let build = [];
+                    for (let i = 1; i <= take; i++) {
+                        let r = randomInt(0, item.length-1);
+                        [item[0], item[r]] = [item[r], item[0]];
+                        build.push(item.shift());
+                    }
+                    item = build;
                 }
-                item = build;
-            }
-            else if (accept(tokens, '*')) {
-                let take = parseInt(expect(tokens, re_integer));
+                else if (accept(tokens, '*')) {
+                    let take = parseInt(expect(tokens, re_integer));
 
-                let build = [];
-                for (let i = 1; i <= take; i++) {
-                    build.push(item[randomInt(0, item.length-1)]);
+                    let build = [];
+                    for (let i = 1; i <= take; i++) {
+                        build.push(item[randomInt(0, item.length-1)]);
+                    }
+                    item = build;
                 }
-                item = build;
             }
-        }
 
-        return item;
+            return item;
+        }
+    }
+
+    function shuffle(list) {
+        for (let i = list.length-1; i >= 1; i--) {
+            let j = randomInt(0, i);
+            [list[i], list[j]] = [list[j], list[i]];
+        }
     }
 };

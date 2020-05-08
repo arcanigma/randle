@@ -6,19 +6,22 @@ const { who, blame } = require('../plugins/factory.js'),
 
 module.exports = (app, store) => {
 
+    const MAX_REPLY_SIZE = 4000,
+          MAX_ELEMENTS = 10;
+
+    const re_roll = /^!?roll\s+(.+)/i,
+          re_parens = /(?:\([^'()][^()]*\)|\[[^'[\]][^[\]]*\])/g;
     const listen_roll = async ({ message, context, next }) => {
         if (message.text) {
             let matches;
-            const re_roll = /^!?roll\s+(.+)/i,
-                  re_parens = /(?:\([^'()][^()]*\)|\[[^'\[\]][^\[\]]*\])/g;
-            if (matches = message.text.match(re_roll)) {
+            if ((matches = message.text.match(re_roll))) {
                 context.clauses = [{
                     text: matches[1],
                     where: 'inline'
                 }];
                 await next();
             }
-            else if (matches = message.text.match(re_parens)) {
+            else if ((matches = message.text.match(re_parens))) {
                 context.clauses = matches.map(m => ({
                     text: m.slice(1,-1),
                     where: m.slice(0, 1) == '[' && !message.thread_ts ? 'thread' : 'inline'
@@ -43,7 +46,6 @@ module.exports = (app, store) => {
                     blocks: results[where].blocks
                 };
 
-                const MAX_REPLY_SIZE = 4000;
                 if (JSON.stringify(reply).length > MAX_REPLY_SIZE)
                     reply = blame('The response was too long to send.');
 
@@ -62,6 +64,12 @@ module.exports = (app, store) => {
         }
     });
 
+    // TODO super user creates, bot owns
+    const DICTIONARY = {
+        adv: '2d20H',
+        dis: '2d20L'
+    }
+
     async function macroize(store, clauses, uid) {
         let coll = (await store).db().collection('macros');
         let macros = (await coll.findOne(
@@ -69,11 +77,6 @@ module.exports = (app, store) => {
             { projection: { _id: 0} }
         ));
 
-        // TODO super user creates, bot owns
-        const DICTIONARY = {
-            adv: '2d20H',
-            dis: '2d20L'
-        }
         macros = macros ? Object.assign(DICTIONARY, macros) : DICTIONARY;
         let re_macros = new RegExp(`\\b(${Object.keys(macros).join('|')})\\b`, 'gi');
 
@@ -81,16 +84,15 @@ module.exports = (app, store) => {
             text: clause.text.replace(re_macros, m => macros[m.toLowerCase()]),
             where: clause.where
         }));
-    };
+    }
 
+    const re_ellipsis = /^\s*(.+)\s*\.\.\.\s*(\w+(?:\s*,\s*\w+)*)\s*$/,
+          re_commas = /\s*,\s*/;
     function expandRepeats(clause) {
-        const re_ellipsis = /^\s*(.+)\s*\.\.\.\s*(\w+(?:\s*,\s*\w+)*)\s*$/;
         let match = clause.text.match(re_ellipsis);
         if (match) {
-            const re_trail = /^[\s.;,]+|[\s.;,]+$/g,
-                  re_sep = /\s*,\s*/;
             let phrase = match[1].replace(re_trail, ''),
-                over = match[2].split(re_sep),
+                over = match[2].split(re_commas),
                 reps = parseInt(over[0]);
             let clones = [];
             if (over.length == 1 && reps >= 1)
@@ -192,7 +194,7 @@ module.exports = (app, store) => {
                 if (atoms.length > 1)
                     atoms = ['(', ...atoms, ')'];
 
-                if (muldev == '\*') {
+                if (muldev == '*') {
                     atoms = [...atoms, '×', fact];
                     total *= fact;
                 }
@@ -200,11 +202,11 @@ module.exports = (app, store) => {
                     atoms = [...atoms, '÷', fact];
                     let quotient = total / fact,
                         fractional = !Number.isInteger(quotient);
-                    if (muldev == '\/') {
+                    if (muldev == '/') {
                         if (fractional) atoms.push('rounded down');
                         total = Math.floor(quotient);
                     }
-                    else if (muldev == '\|') {
+                    else if (muldev == '|') {
                         if (fractional) atoms.push('rounded naturally');
                         total = Math.round(quotient);
                     }
@@ -224,7 +226,6 @@ module.exports = (app, store) => {
             atoms = [`*${expr}:*`, ...atoms];
 
             if (!maxed) {
-                const MAX_ELEMENTS = 10;
                 if (elements.length < MAX_ELEMENTS) {
                     elements.push({
                         type: 'mrkdwn',
@@ -294,20 +295,20 @@ module.exports = (app, store) => {
 
     // TODO refactor into parser (see !deal)
 
+    const re_number = /\b(?<![#_*])[0-9]+(?:\.[0-9]+)?(?![:_*])\b/g,
+        re_mention = /<[@#][\w|]+?>/g,
+        re_trail = /^[\s.;,]+|[\s.;,]+$/g,
+        re_wss = /\s+/g;
     function prettifyMarkdown(clause) {
-        const re_number = /\b(?<![#_*])[0-9]+(?:\.[0-9]+)?(?![:_*])\b/g,
-            re_tag = /<[@#][\w|]+?>/g,
-            re_trail= /^[\s.;,]+|[\s.;,]+$/g,
-            re_wss = /\s+/g;
         clause.text = clause.text.replace(re_number, '*$&*')
-            .replace(re_tag, '')
+            .replace(re_mention, '')
             .replace(re_trail, '')
             .replace(re_wss, ' ');
         return clause;
     }
 
+    const re_math = /([+-]|\b)([0-9]+(?:\.[0-9]+)?)\s*([+-])\s*([0-9]+(?:\.[0-9]+)?)\b/;
     function evaluateArithmetic(clause) {
-        const re_math = /([+-]|\b)([0-9]+(?:\.[0-9]+)?)\s*([+-])\s*([0-9]+(?:\.[0-9]+)?)\b/;
         const fun = function (_, sign, x, op, y) {
             x = parseFloat(sign+x);
             y = parseFloat(op+y);
@@ -321,8 +322,8 @@ module.exports = (app, store) => {
         return regexClosure(clause, re_math, fun);
     }
 
+    const re_comp = /([0-9]+(?:\.[0-9]+)?)\s*(=|==|&gt;|&lt;|&gt;=|=&gt;|&lt;=|=&lt;|!=|&lt;&gt;|&gt;&lt;)\s*([0-9]+(?:\.[0-9]+)?)/g;
     function evaluateComparisons(clause) {
-        const re_op = /([0-9]+(?:\.[0-9]+)?)\s*(=|==|&gt;|&lt;|&gt;=|=&gt;|&lt;=|=&lt;|!=|&lt;&gt;|&gt;&lt;)\s*([0-9]+(?:\.[0-9]+)?)/g;
         const fun = function(_, x, relop, y) {
             x = parseFloat(x);
             y = parseFloat(y);
@@ -346,7 +347,7 @@ module.exports = (app, store) => {
             return answer;
         };
 
-        clause.text = clause.text.replace(re_op, fun);
+        clause.text = clause.text.replace(re_comp, fun);
         return clause;
     }
 
@@ -357,6 +358,6 @@ module.exports = (app, store) => {
             clause.text = clause.text.replace(re, fun);
         } while (clause.text != old);
         return clause;
-    };
+    }
 
 };

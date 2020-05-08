@@ -24,18 +24,18 @@ module.exports = (app, store) => {
 
         let modal = await edit_macro_modal(name, replacement);
 
-        let result = await app.client.views.open({
+        await app.client.views.open({
             token: context.botToken,
             trigger_id: body.trigger_id,
             view: modal
         });
     });
 
+    const re_macro = /^[\w_][\w\d_]{2,14}$/;
     app.view('edit_macro_modal', async ({ ack, body, context, view }) => {
         let user = body.user.id;
 
         let name = view.private_metadata || view.state.values.name.input.value;
-        const re_macro = /^[\w_][\w\d_]{2,14}$/;
         if (!re_macro.test(name)) {
             return await ack({
                 response_action: 'errors',
@@ -69,7 +69,7 @@ module.exports = (app, store) => {
             }
         }
         else {
-            let macros = (await coll.findOneAndUpdate(
+            (await coll.findOneAndUpdate(
                 { _id: user },
                 { $set: { [name]: replacement } },
                 { projection: { _id: 0}, upsert: true }
@@ -78,7 +78,7 @@ module.exports = (app, store) => {
 
         let home = await home_view(store, user);
 
-        let result = await app.client.views.publish({
+        await app.client.views.publish({
             token: context.botToken,
             user_id: user,
             view: home

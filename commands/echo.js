@@ -6,7 +6,7 @@ module.exports = (app) => {
     const re_echo = /^!?echo\s+(.*)/i;
     app.message(nonthread, direct, re_echo, debug, async ({ message, context, say }) => {
         try {
-            await say(context.matches[1].trim());
+            await say(context.matches[1].trim())
         }
         catch (err) {
             await say(blame(err, message));

@@ -16,11 +16,11 @@ module.exports = (app) => {
         6: { phrase: '*yes*, *and*...', 'color': '#2C9EE0' },
     };
 
-    const re_fu = /^!?fu\s+(.+)/i;
+    const re_fu = /^!?fu\s+(.+)/i,
+          re_number = /[+-][0-9]*/ig;
     app.message(anywhere, re_fu, async ({ message, context, say }) => {
         try {
             var modifier = 0;
-            const re_number = /[+-][0-9]*/ig;
             var found = context.matches[1].match(re_number);
             if (found) found.forEach(function(element) {
                 modifier += (parseInt(element) || (element === 0 ? 0 : parseInt(element + "1")));

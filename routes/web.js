@@ -7,7 +7,6 @@ module.exports = (receiver) => {
     });
 
     receiver.app.get(['/', '/logo', '/face'], async (_, res) => {
-        // res.sendFile('/static/img/logo.png', { 'root': './' });
         res.sendFile(path.join(__dirname, '../static/img/logo.png'));
     });
 

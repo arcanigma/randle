@@ -103,14 +103,14 @@ const edit_macro_modal = async (name, replacement) => {
             }
         },
         ...(name ? [{
-      			type: 'input',
+            type: 'input',
             optional: true,
             block_id: 'options',
             label: {
                 type: 'plain_text',
                 text: 'Settings'
             },
-      			element: {
+                element: {
                 type: 'checkboxes',
                 action_id: 'inputs',
                 options: [
@@ -127,7 +127,7 @@ const edit_macro_modal = async (name, replacement) => {
                     }
                 ]
             }
-      	}] : [])
+        }] : [])
     ];
 
     let view = {
