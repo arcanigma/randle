@@ -1,11 +1,12 @@
 const randomInt = require('php-random-int');
 
 const { who, commas, blame} = require('../plugins/factory.js'),
+      { tokenize, expect, accept } = require('../plugins/parser.js'),
       { nonthread, anywhere, community } = require('../plugins/listen.js');
 
 module.exports = (app) => {
 
-    const re_shuffle = /^!?shuffle\s+(.+)/i;
+    const re_shuffle = /^!?shuffle\s+(.+)/is;
     app.message(anywhere, re_shuffle, async ({ message, context, say }) => {
         try {
             let deck = parse_deck(context.matches[1]);
@@ -19,7 +20,7 @@ module.exports = (app) => {
         }
     });
 
-    const re_draw = /^!?draw\s+(.+)/i;
+    const re_draw = /^!?draw\s+(.+)/is;
     app.message(anywhere, re_draw, async ({ message, context, say }) => {
         try {
             let deck = parse_deck(context.matches[1]);
@@ -33,121 +34,95 @@ module.exports = (app) => {
         }
     });
 
-    // TODO allow dealing "to" subset of channels or users
-    // TODO parser for show portion
-    const re_deal = /^!?deal\s+(.+?)(?:\s*&amp;\s*show\s+(.+?))?\s*$/is,
-          re_show = /^([^:=]+)\s*:\s*([^:=]+?)(?:\s*=\s*([^:=]+))?$/;
+    const re_deal = /^!?deal\s+(.+)/is;
     app.message(nonthread, community, re_deal, async ({ message, context, say }) => {
         try {
-            let deck = parse_deck(context.matches[1]);
+            let setup = JSON.parse(context.matches[1]);
 
-            let shows = {};
-            if (context.matches[2]) {
-                let phrases = lex(context.matches[2], /\s*,\s*/);
-                for (let phrase of phrases) {
-                    let [, source, target, alias] = phrase.trim().match(re_show) || [];
+            let audience;
+            if (!setup.audience || setup.audience.trim() == '<!channel>')
+                audience = shuffle((await app.client.conversations.members({
+                    token: context.botToken,
+                    channel: message.channel
+                })).members.filter(user => user != context.botUserId));
+            else // TODO support /<([@#!])(\w+?)(?:\|(\w+?))?>/ audiences
+                throw new Error(`Unsupported \`${setup.audience}\` audience.`);
 
-                    if (deck.includes(source) && deck.includes(target)) {
-                        if (!shows[source])
-                            shows[source] = [[target, alias]];
-                        else
-                            shows[source].push([target, alias]);
-                    }
-                    else if (!source || !target) {
-                        return await say(blame('To show, you must list at least one `Source: Target` or `Source: Target=Alias` separated by commas.'))
-                    }
-                }
-            }
-
-            let uids = (await app.client.conversations.members({
-                token: context.botToken,
-                channel: message.channel
-            })).members;
+            let items = build_deck(setup.items);
 
             let dealt = {};
-            let held = {};
-            for (let uid of uids) {
-                let user = (await app.client.users.info({
-                    token: context.botToken,
-                    user: uid
-                })).user;
-                if (!user.is_bot) {
-                    if (deck.length > 0) {
-                        let item = deck.shift();
+            do {
+                audience.forEach(user => {
+                    if (items.length > 0)
 
-                        dealt[uid] = item;
+                    if (dealt[user])
+                        dealt[user].push(items.shift());
+                    else
+                        dealt[user] = [items.shift()];
+                });
+            } while (items.length > 0)
 
-                        if (!held[item])
-                            held[item] = [uid];
-                        else
-                            held[item].push(uid);
-                    }
-                    else return await say(blame(`You must deal enough items for all users.`));
-                }
-            }
-
-            for (let uid in dealt) {
-                let item = dealt[uid];
-
-                let per_summary = `${message.user != uid ? `<@${message.user}>` : 'You'} dealt ${message.user != uid ? 'you' : 'yourself'} *${item}* from <#${message.channel}>.`;
-
-                let seen = [];
-                if (shows[item])
-                    for (let [target, alias] of shows[item]) {
-                        if (held[target]) for (let tuid of held[target]) {
-                            if (tuid != uid) seen.push({
-                                type: 'mrkdwn',
-                                text: `:eye-in-speech-bubble: You see <@${tuid}> was dealt *${alias ? alias : target}*.`
-                            });
+            Object.keys(dealt).forEach(async (us) => {
+                let per_list = commas(dealt[us].map(item => `*${item}*`)),
+                    per_venue = setup.event ? `for the *${setup.event}* event` : `from the <#${message.channel}> channel`,
+                    per_summary = `:twisted_rightwards_arrows: ${message.user != us ? `<@${message.user}>` : 'You'} dealt ${message.user != us ? 'you' : 'yourself'} ${per_list} ${per_venue}<!date^${Math.trunc(message.ts)}^ {date_short_pretty} at {time}| recently>.`,
+                    per_blocks = [{
+                        type: 'section',
+                        text: {
+                            type: 'mrkdwn',
+                            text: per_summary
                         }
-                    }
+                    }];
 
-                let blocks = [{
-                    type: 'section',
-                    text: {
-                        type: 'mrkdwn',
-                        text: per_summary
-                    }
-                }];
-                if (seen.length > 0) {
-                    shuffle(seen);
-                    blocks.push({
-                        type: 'context',
-                        elements: seen
-                    });
+                let shown = [];
+                (setup.rules || []).filter(rule => rule.show).forEach(rule => {
+                    Array.of(rule.to).flat().filter(to => dealt[us].includes(to)).forEach(to => {
+                        Array.of(rule.show).flat().forEach(show => {
+                            Object.keys(dealt).filter(them => them != us && dealt[them].includes(show)).forEach(them => {
+                                shown.push({
+                                    type: 'mrkdwn',
+                                    text: `:eye-in-speech-bubble: Because you were dealt *${to}* you see that <@${them}> was dealt *${rule.as ? rule.as : show}*.`
+                                });
+                            });
+                        });
+                    })
+                });
+                if (shown.length > 0) {
+                  per_blocks.push({
+                      type: 'context',
+                      elements: shuffle(shown)
+                  });
                 }
 
                 await app.client.chat.postMessage({
                     token: context.botToken,
-                    channel: uid,
+                    channel: us,
                     text: per_summary,
-                    blocks: blocks
+                    blocks: per_blocks
                 });
-            }
+            });
 
-            let items = Object.keys(dealt).length;
-            let targets = commas(Object.keys(dealt).map(u => u != message.user ? `<@${u}>` : 'themself'));
-            let all_summary = `${who(message, 'You')} dealt *${items}* item${items != 1 ? 's' : ''} to ${targets} by direct message.`;
-
-            let blocks = [{
-                type: 'section',
-                text: {
-                    type: 'mrkdwn',
-                    text: all_summary
-                }
-            }];
-            if (deck.length > 0)
-                blocks.push({
-                    type: 'context',
-                    elements: [{
+            let all_details = commas(audience.map(user => {
+                    let who = user != message.user ? `<@${user}>` : 'themself';
+                    if (dealt[user])
+                        return `*${dealt[user].length} item${dealt[user].length == 1 ? '' : 's'}* to ${who}`
+                    else
+                        return `*none* to ${who}`;
+                })),
+                all_summary = `${who(message, 'You')} dealt ${all_details} by direct message.`,
+                all_blocks = [{
+                    type: 'section',
+                    text: {
                         type: 'mrkdwn',
-                        text: `:warning: There ${deck.length != 1 ? 'were' : 'was'} *${deck.length}* item${deck.length != 1 ? 's' : ''} leftover.`
-                    }]
-                })
+                        text: all_summary
+                    }
+                }];
 
-            await say({
+            await app.client.chat.postMessage({
+                token: context.botToken,
+                channel: message.channel,
                 text: all_summary,
-                blocks: blocks
+                blocks: all_blocks
             });
         }
         catch (err) {
@@ -155,90 +130,80 @@ module.exports = (app) => {
         }
     });
 
-    function lex(expression, delims) {
-        return expression.trim().split(delims).filter(it => it.trim()).filter(Boolean);
+    const re_wss = /\s+/g;
+    function build_deck(list) {
+        return shuffle(Array.of(list).flat().map(element => {
+            if (typeof element == 'string') {
+                return element.trim().replace(re_wss, ' ');
+            }
+            else if (typeof element == 'object' && !Array.isArray(element)) {
+                let items = build_deck(element.from);
+
+                if (element.choose) {
+                    return items.slice(0, element.choose);
+                }
+                else if (element.repeat) {
+                    let build = [];
+                    for (let i = 1; i <= element.repeat; i++)
+                        build.push(items[randomInt(0, items.length-1)]);
+                    return build;
+                }
+            }
+            throw new Error(`Unsupported \`${element}\` item.`);
+        }).flat());
     }
 
-    function expect(tokens, like) {
-        if (tokens.length == 0 && like != null)
-            throw new Error(`Unexpected end of input.`);
-        else if (like instanceof RegExp ? tokens[0].match(like) : tokens[0] == like)
-            return tokens.shift();
-        else
-            throw new Error(`Unexpected \`${tokens.join('')}\` in input.`);
-    }
-
-    function accept(tokens, like) {
-        if (tokens.length == 0)
-            return;
-        else if (like instanceof RegExp ? tokens[0].match(like) : tokens[0] == like)
-            return tokens.shift();
-        else
-            return false;
-    }
-
-    function peek(tokens, like) {
-        if (tokens.length == 0)
-            return;
-        else if (like instanceof RegExp ? tokens[0].match(like) : tokens[0] == like)
-            return tokens[0];
-        else
-            return false;
-    }
-
-    const re_lex_deck = /([(,):*])/;
+    const re_terminals = /([(,):*])/;
     function parse_deck(text) {
-        let tokens = lex(text, re_lex_deck);
+        let tokens = tokenize(text, re_terminals);
         let deck = parse_list(tokens);
         expect(tokens, null);
         return deck;
     }
 
     function parse_list(tokens) {
-        let list = [...parse_item(tokens)];
-        while (accept(tokens, ',')) {
-            list.push(...parse_item(tokens));
-        }
-        shuffle(list);
-        return list;
+        let items = [];
+        do {
+            items.push(...parse_element(tokens));
+        } while(accept(tokens, ','))
+        return shuffle(items);
     }
 
-    const re_item = /[^(,)]+/,
-          re_suffix = /[:*]/,
-          re_integer = /[1-9][0-9]*/;
-    function parse_item(tokens) {
-        let item;
+    const re_nonterminals = /[^(,):*]+/;
+    function parse_element(tokens) {
+        let items;
         if (accept(tokens, '(')) {
-            item = parse_list(tokens);
+            items = parse_list(tokens);
             expect(tokens, ')');
         }
         else {
-            item = [expect(tokens, re_item).trim()];
-            while (peek(tokens, re_suffix)) {
-                if (accept(tokens, ':')) {
-                    let take = Math.min(parseInt(expect(tokens, re_integer)), item.length);
-
-                    let build = [];
-                    for (let i = 1; i <= take; i++) {
-                        let r = randomInt(0, item.length-1);
-                        [item[0], item[r]] = [item[r], item[0]];
-                        build.push(item.shift());
-                    }
-                    item = build;
-                }
-                else if (accept(tokens, '*')) {
-                    let take = parseInt(expect(tokens, re_integer));
-
-                    let build = [];
-                    for (let i = 1; i <= take; i++) {
-                        build.push(item[randomInt(0, item.length-1)]);
-                    }
-                    item = build;
-                }
-            }
-
-            return item;
+            items = [expect(tokens, re_nonterminals).trim()];
         }
+        return parse_quantifier(tokens, items);
+    }
+
+    const re_integer = /[1-9][0-9]*/;
+    function parse_quantifier(tokens, items) {
+        if (accept(tokens, ':')) {
+            let quantity = expect(tokens, re_integer),
+                keep = Math.min(parseInt(quantity), items.length);
+
+            items = shuffle(items).slice(0, keep);
+
+            return parse_quantifier(tokens, items);
+        }
+        else if (accept(tokens, '*')) {
+            let quantity = expect(tokens, re_integer),
+                keep = parseInt(quantity);
+
+            let build = [];
+            for (let i = 1; i <= keep; i++)
+                build.push(items[randomInt(0, items.length-1)]);
+            items = build;
+
+            return parse_quantifier(tokens, items);
+        }
+        return items;
     }
 
     function shuffle(list) {
@@ -246,5 +211,6 @@ module.exports = (app) => {
             let j = randomInt(0, i);
             [list[i], list[j]] = [list[j], list[i]];
         }
+        return list;
     }
 };
