@@ -47,7 +47,7 @@ module.exports = (app, store) => {
                 };
 
                 if (JSON.stringify(reply).length > MAX_REPLY_SIZE)
-                    reply = blame('The response was too long to send.');
+                    throw 'The response was too long to send.';
 
                 reply.token = context.botToken;
                 reply.channel = message.channel;
@@ -293,7 +293,7 @@ module.exports = (app, store) => {
         return results;
     }
 
-    // TODO refactor into parser (see !deal)
+    // TODO refactor into true parser
 
     const re_number = /\b(?<![#_*])[0-9]+(?:\.[0-9]+)?(?![:_*])\b/g,
         re_mention = /<[@#][\w|]+?>/g,

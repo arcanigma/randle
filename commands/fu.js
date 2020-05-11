@@ -27,7 +27,7 @@ module.exports = (app) => {
             });
             var dice = 1 + Math.abs(modifier);
             if (dice > MAX_DICE)
-                return await say(blame(`You can roll at most ${MAX_DICE} dice.`));
+                throw `You can roll at most ${MAX_DICE} dice.`;
 
             var attach = [];
             var rolls = [];

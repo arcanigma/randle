@@ -55,7 +55,7 @@ const blame = (error, message) => {
                     type: 'section',
                     text: {
                         type: 'plain_text',
-                        text: 'Your command has a problem. Please fix the problem and try again.'
+                        text: 'Your command has a problem. Please correct the problem before trying again.'
                     }
                 },
                 {

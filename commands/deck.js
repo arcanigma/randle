@@ -7,7 +7,7 @@ const { who, commas, blame} = require('../plugins/factory.js'),
 module.exports = (app) => {
 
     const re_shuffle = /^!?shuffle\s+(.+)/is;
-    app.message(anywhere, re_shuffle, async ({ message, context, say }) => {
+    app.message(nonthread, anywhere, re_shuffle, async ({ message, context, say }) => {
         try {
             let deck = parse_deck(context.matches[1]);
 
@@ -20,8 +20,8 @@ module.exports = (app) => {
         }
     });
 
-    const re_draw = /^!?draw\s+(.+)/is;
-    app.message(anywhere, re_draw, async ({ message, context, say }) => {
+    const re_draw = /^!?draw\s+(.+)/is; // TODO specify quantity
+    app.message(nonthread, anywhere, re_draw, async ({ message, context, say }) => {
         try {
             let deck = parse_deck(context.matches[1]);
 
@@ -34,10 +34,27 @@ module.exports = (app) => {
         }
     });
 
-    const re_deal = /^!?deal\s+(.+)/is;
+    const re_deal = /^!?deal\s+(.+)/is,
+          re_braces = /\{.+\}/s;
     app.message(nonthread, community, re_deal, async ({ message, context, say }) => {
         try {
-            let setup = JSON.parse(context.matches[1]);
+            let setup, items;
+            if (re_braces.test(context.matches[1])) {
+                try {
+                    setup = JSON.parse(context.matches[1]);
+                }
+                catch (error) {
+                    throw error.message;
+                }
+                items = build_deck(setup.items);
+            }
+            else {
+                setup = {
+                    audience: '<!channel>',
+                    items: context.matches[1]
+                }
+                items = parse_deck(setup.items);
+            }
 
             let audience;
             if (!setup.audience || setup.audience.trim() == '<!channel>')
@@ -46,9 +63,7 @@ module.exports = (app) => {
                     channel: message.channel
                 })).members.filter(user => user != context.botUserId));
             else // TODO support /<([@#!])(\w+?)(?:\|(\w+?))?>/ audiences
-                throw new Error(`Unsupported \`${setup.audience}\` audience.`);
-
-            let items = build_deck(setup.items);
+                throw `Unsupported \`${setup.audience}\` audience.`;
 
             let dealt = {};
             do {
@@ -76,8 +91,8 @@ module.exports = (app) => {
 
                 let shown = [];
                 (setup.rules || []).filter(rule => rule.show).forEach(rule => {
-                    Array.of(rule.to).flat().filter(to => dealt[us].includes(to)).forEach(to => {
-                        Array.of(rule.show).flat().forEach(show => {
+                    listize(rule.to).filter(to => dealt[us].includes(to)).forEach(to => {
+                        listize(rule.show).forEach(show => {
                             Object.keys(dealt).filter(them => them != us && dealt[them].includes(show)).forEach(them => {
                                 shown.push({
                                     type: 'mrkdwn',
@@ -130,35 +145,33 @@ module.exports = (app) => {
         }
     });
 
-    const re_wss = /\s+/g;
     function build_deck(list) {
-        return shuffle(Array.of(list).flat().map(element => {
+        return shuffle(unnest_deck(list).flat());
+    }
+
+    const re_wss = /\s+/g;
+    function unnest_deck(list) {
+        return listize(list).map(element => {
             if (typeof element == 'string') {
                 return element.trim().replace(re_wss, ' ');
             }
             else if (typeof element == 'object' && !Array.isArray(element)) {
-                let items = build_deck(element.from);
-
-                if (element.choose) {
-                    return items.slice(0, element.choose);
-                }
-                else if (element.repeat) {
-                    let build = [];
-                    for (let i = 1; i <= element.repeat; i++)
-                        build.push(items[randomInt(0, items.length-1)]);
-                    return build;
-                }
+                let items = unnest_deck(element.from);
+                if (element.choose)
+                    return choose(items, element.choose);
+                else if (element.repeat)
+                    return repeat(items, element.repeat);
             }
-            throw new Error(`Unsupported \`${element}\` item.`);
-        }).flat());
+            throw `Unsupported \`${element}\` item.`;
+        });
     }
 
     const re_terminals = /([(,):*])/;
     function parse_deck(text) {
-        let tokens = tokenize(text, re_terminals);
-        let deck = parse_list(tokens);
+        let tokens = tokenize(text, re_terminals),
+            deck = parse_list(tokens);
         expect(tokens, null);
-        return deck;
+        return shuffle(deck);
     }
 
     function parse_list(tokens) {
@@ -166,7 +179,7 @@ module.exports = (app) => {
         do {
             items.push(...parse_element(tokens));
         } while(accept(tokens, ','))
-        return shuffle(items);
+        return items;
     }
 
     const re_nonterminals = /[^(,):*]+/;
@@ -177,7 +190,8 @@ module.exports = (app) => {
             expect(tokens, ')');
         }
         else {
-            items = [expect(tokens, re_nonterminals).trim()];
+            let element = expect(tokens, re_nonterminals);
+            items = [element.trim().replace(re_wss, ' ')];
         }
         return parse_quantifier(tokens, items);
     }
@@ -185,32 +199,40 @@ module.exports = (app) => {
     const re_integer = /[1-9][0-9]*/;
     function parse_quantifier(tokens, items) {
         if (accept(tokens, ':')) {
-            let quantity = expect(tokens, re_integer),
-                keep = Math.min(parseInt(quantity), items.length);
-
-            items = shuffle(items).slice(0, keep);
-
+            let quantity = parseInt(expect(tokens, re_integer));
+            items = choose(items, quantity);
             return parse_quantifier(tokens, items);
         }
         else if (accept(tokens, '*')) {
-            let quantity = expect(tokens, re_integer),
-                keep = parseInt(quantity);
-
-            let build = [];
-            for (let i = 1; i <= keep; i++)
-                build.push(items[randomInt(0, items.length-1)]);
-            items = build;
-
+            let quantity = parseInt(expect(tokens, re_integer));
+            items = repeat(items, quantity);
             return parse_quantifier(tokens, items);
         }
         return items;
     }
 
-    function shuffle(list) {
-        for (let i = list.length-1; i >= 1; i--) {
+    function listize(element) {
+        return Array.of(element).flat();
+    }
+
+    function shuffle(items) {
+        let copy = listize(items);
+        for (let i = copy.length-1; i >= 1; i--) {
             let j = randomInt(0, i);
-            [list[i], list[j]] = [list[j], list[i]];
+            [copy[i], copy[j]] = [copy[j], copy[i]];
         }
-        return list;
+        return copy;
+    }
+
+    function choose(items, quantity) {
+        let copy = shuffle(items);
+        return copy.slice(items.length - quantity);
+    }
+
+    function repeat(items, quantity) {
+        let build = [];
+        for (let i = 1; i <= quantity; i++)
+            build.push(items[randomInt(0, items.length-1)]);
+        return build;
     }
 };

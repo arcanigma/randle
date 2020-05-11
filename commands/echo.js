@@ -19,7 +19,7 @@ module.exports = (app) => {
             if (context.matches[1] == 'system')
                 throw new Error(context.matches[2] || 'undefined');
             else if (context.matches[1] == 'user')
-                await say(blame(context.matches[2] || 'undefined'), message);
+                throw context.matches[2] || 'undefined';
         }
         catch (err) {
             await say(blame(err, message));

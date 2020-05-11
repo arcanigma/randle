@@ -3,8 +3,7 @@ const tokenize = (sentence, terminals) => {
         .trim()
         .split(terminals)
         .filter(it => it.trim())
-        .filter(Boolean)
-        .map(String);
+        .filter(Boolean);
 };
 
 const expect = (tokens, terminal) => {
@@ -13,9 +12,9 @@ const expect = (tokens, terminal) => {
     else if (tokens == [] && terminal == null)
         return true;
     else if (tokens == [] && terminal != null)
-        throw new Error('Unexpected end of input.');
+        throw 'Unexpected end of input.';
     else
-        throw new Error(`Unexpected \`${tokens.join('')}\` in input.`);
+        throw `Unexpected \`${truncate(tokens.join(''), 15)}\` in input.`;
 };
 
 const accept = (tokens, terminal) => {
@@ -37,6 +36,13 @@ const alike = (token, terminal) => {
         return terminal.test(token);
     else
         return token == terminal;
+}
+
+const truncate = (string, width) => {
+    if (string.length <= width)
+        return string;
+    else
+        return string.slice(0, width) + '...';
 }
 
 module.exports = {
