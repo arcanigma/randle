@@ -11,6 +11,14 @@ const commas = (list) => {
         return `${list.slice(0, -1).join(', ')}, and ${list.slice(-1)}`;
 };
 
+const names = (list, user) => {
+    return commas(
+        list.sort(u => u == user ? -1 : 0)
+            .map(u => u != user ? `<@${u}>` : 'you')
+    ) || 'nobody';
+};
+
+// TODO refactor into informative modal?
 const blame = (error, message) => {
     if (error instanceof Error) {
         return {
@@ -75,5 +83,6 @@ const blame = (error, message) => {
 module.exports = {
     who,
     commas,
+    names,
     blame
 };

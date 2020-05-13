@@ -9,7 +9,6 @@ module.exports = (app, receiver) => {
         });
 
         if (result) {
-            // TODO do something with state
             res.sendStatus(200);
         }
         else {

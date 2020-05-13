@@ -3,28 +3,29 @@ const { edit_macro_modal } = require('../views/macros.js'),
 
 module.exports = (app, store) => {
 
-    app.action('edit_macro_button', async ({ body, context, ack }) => {
+    app.action('edit_macro_button', async ({ ack, body, action, context, client }) => {
         await ack();
 
-        let action = body.actions.shift();
+        let user = body.user.id,
+            name = action.value;
 
-        let name = action.value;
         let replacement;
         if (name) {
             name = name.toLowerCase();
 
             let coll = (await store).db().collection('macros');
             let macros = (await coll.findOne(
-                { _id: body.user.id },
+                { _id: user },
                 { projection: { _id: 0} }
             ));
 
-            if (macros[name]) replacement = macros[name];
+            if (macros[name])
+                replacement = macros[name];
         }
 
-        let modal = await edit_macro_modal(name, replacement);
+        let modal = await edit_macro_modal({ name, replacement });
 
-        await app.client.views.open({
+        await client.views.open({
             token: context.botToken,
             trigger_id: body.trigger_id,
             view: modal
@@ -32,10 +33,10 @@ module.exports = (app, store) => {
     });
 
     const re_macro = /^[\w_][\w\d_]{2,14}$/;
-    app.view('edit_macro_modal', async ({ ack, body, context, view }) => {
-        let user = body.user.id;
+    app.view('edit_macro_modal', async ({ ack, body, context, view, client }) => {
+        let user = body.user.id,
+            name = view.private_metadata || view.state.values.name.input.value;
 
-        let name = view.private_metadata || view.state.values.name.input.value;
         if (!re_macro.test(name)) {
             return await ack({
                 response_action: 'errors',
@@ -76,9 +77,9 @@ module.exports = (app, store) => {
             )).value;
         }
 
-        let home = await home_view(store, user);
+        let home = await home_view({ user, store });
 
-        await app.client.views.publish({
+        await client.views.publish({
             token: context.botToken,
             user_id: user,
             view: home

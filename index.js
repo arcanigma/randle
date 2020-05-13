@@ -19,13 +19,16 @@ const store = MongoClient.connect(
 
 require('./routes/web.js')(receiver);
 require('./routes/distribute.js')(app, receiver);
+
+// TODO refactor each with one function per file
+// TODO retrofit all fallback text for notifications
 require('./events/home.js')(app, store);
 require('./events/macros.js')(app, store);
+require('./events/polls.js')(app, store);
 
 require('./commands/echo.js')(app);
 require('./commands/roll.js')(app, store);
 require('./commands/deck.js')(app);
-// require('./commands/fu.js')(app);
 
 (async () => {
     const port = process.env.PORT || 3000;

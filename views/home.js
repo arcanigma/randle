@@ -1,12 +1,15 @@
-const { list_macros } = require('../views/macros.js');
+const { list_macros } = require('../views/macros.js'),
+      { list_polls } = require('../views/polls.js');
 
 const divider = {
     type: 'divider'
 };
 
-const home_view = async (store, user) => {
+const home_view = async ({ user, store, options={} }) => {
     let blocks = [
-        ...await list_macros(store, user),
+        ...await list_polls({ user, store, options: options.polls }),
+        divider,
+        ...await list_macros({ user, store }),
         divider
     ];
 

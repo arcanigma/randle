@@ -30,7 +30,7 @@ module.exports = (app, store) => {
             }
         }
     };
-    app.message(anywhere, listen_roll, async ({ message, context, say }) => {
+    app.message(anywhere, listen_roll, async ({ message, context, say, client }) => {
         try {
             context.clauses = await macroize(store, context.clauses, message.user);
 
@@ -56,7 +56,7 @@ module.exports = (app, store) => {
                 else if (where == 'thread')
                     reply.thread_ts = message.ts;
 
-                await app.client.chat.postMessage(reply);
+                await client.chat.postMessage(reply);
             }
         }
         catch (err) {
@@ -296,12 +296,12 @@ module.exports = (app, store) => {
     // TODO refactor into true parser
 
     const re_number = /\b(?<![#_*])[0-9]+(?:\.[0-9]+)?(?![:_*])\b/g,
-        re_mention = /<[@#][\w|]+?>/g,
+        re_ignore = /<(.*?)>/g,
         re_trail = /^[\s.;,]+|[\s.;,]+$/g,
         re_wss = /\s+/g;
     function prettifyMarkdown(clause) {
         clause.text = clause.text.replace(re_number, '*$&*')
-            .replace(re_mention, '')
+            .replace(re_ignore, '')
             .replace(re_trail, '')
             .replace(re_wss, ' ');
         return clause;

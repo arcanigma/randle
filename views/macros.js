@@ -1,10 +1,10 @@
-const list_macros = async (store, user) => {
+const list_macros = async ({ user, store }) => {
     let blocks = [
         {
             type: 'section',
             text: {
                 type: 'mrkdwn',
-                text: '*Roll Macros*'
+                text: '>>> *Roll Macros*'
             },
             accessory: {
                 type: 'button',
@@ -14,6 +14,9 @@ const list_macros = async (store, user) => {
                     text: 'Create'
                 }
             }
+        },
+        {
+            type: 'divider'
         }
     ];
 
@@ -31,7 +34,7 @@ const list_macros = async (store, user) => {
                 type: 'section',
                 text: {
                     type: 'mrkdwn',
-                    text: `*\`${name}\`* • ${macros[name]}`
+                    text: `*\`${name}\`* \u2022 ${macros[name]}`
                 },
                 accessory: {
                     type: 'button',
@@ -60,7 +63,7 @@ const list_macros = async (store, user) => {
     return blocks;
 };
 
-const edit_macro_modal = async (name, replacement) => {
+const edit_macro_modal = async ({ name, replacement }) => {
     let blocks = [
         ...(!name ? [{
             type: 'input',
@@ -110,7 +113,7 @@ const edit_macro_modal = async (name, replacement) => {
                 type: 'plain_text',
                 text: 'Settings'
             },
-                element: {
+            element: {
                 type: 'checkboxes',
                 action_id: 'inputs',
                 options: [
@@ -130,13 +133,14 @@ const edit_macro_modal = async (name, replacement) => {
         }] : [])
     ];
 
+    // TODO private_metadata vs value
     let view = {
         type: 'modal',
         callback_id: 'edit_macro_modal',
         ...(name ? {private_metadata: name} : {}),
         title: {
           type: 'plain_text',
-          text: name ? `Edit ${name} Macro` : 'Create New Macro'
+          text: name ? `Edit macro ${name}` : 'Create new macro'
         },
         submit: {
           type: 'plain_text',

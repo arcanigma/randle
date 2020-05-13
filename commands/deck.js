@@ -1,6 +1,6 @@
 const randomInt = require('php-random-int');
 
-const { who, commas, blame} = require('../plugins/factory.js'),
+const { who, commas, blame } = require('../plugins/factory.js'),
       { tokenize, expect, accept } = require('../plugins/parser.js'),
       { nonthread, anywhere, community } = require('../plugins/listen.js');
 
@@ -36,7 +36,7 @@ module.exports = (app) => {
 
     const re_deal = /^!?deal\s+(.+)/is,
           re_braces = /\{.+\}/s;
-    app.message(nonthread, community, re_deal, async ({ message, context, say }) => {
+    app.message(nonthread, community, re_deal, async ({ message, context, say, client }) => {
         try {
             let setup, items;
             if (re_braces.test(context.matches[1])) {
@@ -52,17 +52,17 @@ module.exports = (app) => {
                 setup = {
                     audience: '<!channel>',
                     items: context.matches[1]
-                }
+                };
                 items = parse_deck(setup.items);
             }
 
             let audience;
             if (!setup.audience || setup.audience.trim() == '<!channel>')
-                audience = shuffle((await app.client.conversations.members({
+                audience = shuffle((await client.conversations.members({
                     token: context.botToken,
                     channel: message.channel
                 })).members.filter(user => user != context.botUserId));
-            else // TODO support /<([@#!])(\w+?)(?:\|(\w+?))?>/ audiences
+            else // TODO support all valid conversations
                 throw `Unsupported \`${setup.audience}\` audience.`;
 
             let dealt = {};
@@ -75,7 +75,7 @@ module.exports = (app) => {
                     else
                         dealt[user] = [items.shift()];
                 });
-            } while (items.length > 0)
+            } while (items.length > 0);
 
             Object.keys(dealt).forEach(async (us) => {
                 let per_list = commas(dealt[us].map(item => `*${item}*`)),
@@ -100,7 +100,7 @@ module.exports = (app) => {
                                 });
                             });
                         });
-                    })
+                    });
                 });
                 if (shown.length > 0) {
                   per_blocks.push({
@@ -109,7 +109,7 @@ module.exports = (app) => {
                   });
                 }
 
-                await app.client.chat.postMessage({
+                await client.chat.postMessage({
                     token: context.botToken,
                     channel: us,
                     text: per_summary,
@@ -117,10 +117,11 @@ module.exports = (app) => {
                 });
             });
 
+            // TODO group same-count deals together
             let all_details = commas(audience.map(user => {
                     let who = user != message.user ? `<@${user}>` : 'themself';
                     if (dealt[user])
-                        return `*${dealt[user].length} item${dealt[user].length == 1 ? '' : 's'}* to ${who}`
+                        return `*${dealt[user].length} item${dealt[user].length == 1 ? '' : 's'}* to ${who}`;
                     else
                         return `*none* to ${who}`;
                 })),
@@ -133,7 +134,7 @@ module.exports = (app) => {
                     }
                 }];
 
-            await app.client.chat.postMessage({
+            await client.chat.postMessage({
                 token: context.botToken,
                 channel: message.channel,
                 text: all_summary,
@@ -178,7 +179,7 @@ module.exports = (app) => {
         let items = [];
         do {
             items.push(...parse_element(tokens));
-        } while(accept(tokens, ','))
+        } while(accept(tokens, ','));
         return items;
     }
 
