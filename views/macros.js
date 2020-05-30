@@ -118,7 +118,6 @@ const edit_macro_modal = async ({ name, replacement }) => {
                 action_id: 'inputs',
                 options: [
                     {
-                        value: 'delete',
                         text: {
                           type: 'plain_text',
                           text: 'Delete this macro.'
@@ -126,14 +125,14 @@ const edit_macro_modal = async ({ name, replacement }) => {
                         description: {
                             type: 'plain_text',
                             text: "This action can't be undone."
-                        }
+                        },
+                        value: 'delete'
                     }
                 ]
             }
         }] : [])
     ];
 
-    // TODO private_metadata vs value
     let view = {
         type: 'modal',
         callback_id: 'edit_macro_modal',
