@@ -50,8 +50,8 @@ module.exports = (app, store) => {
             data = view.state.values,
             audience = data.audience.input.selected_channel,
             members = data.members.input.selected_users,
-            prompt = data.prompt.input.value, // TODO flatten to 1 line, remove markdown
-            choices = data.choices.input.value,
+            prompt = data.prompt.input.value.replace(re_lines, ' '),
+            choices = data.choices.input.value.trim().split(re_lines).map(choice => choice.trim()).filter(Boolean),
             setup = (data.setup.inputs.selected_options || []).map(checkbox => checkbox.value);
 
         if (members.includes(context.botUserId)) // TODO filter all bots
@@ -59,7 +59,6 @@ module.exports = (app, store) => {
         else if (members.length < 2)
             errors.members = 'You must choose at least 2 members.';
 
-        choices = choices.trim().split(re_lines).map(choice => choice.trim()).filter(Boolean);
         if ([...new Set(choices)].length < choices.length)
             errors.choices = "You can't repeat any choices.";
         else if (choices.length < 2 || choices.length > 10)
@@ -126,7 +125,6 @@ module.exports = (app, store) => {
             { returnOriginal: false }
         )).value;
 
-        // TODO allow update-and-bump/reuse of one post
         if (poll.setup.includes('participation'))
             await postPollAnnouncement({ context, body, poll, client, mode: 'participate' });
 
@@ -277,7 +275,6 @@ module.exports = (app, store) => {
         return '\uD83D\uDD33'.repeat(squares) + '\u2B1C'.repeat(width - squares);
     };
 
-    // TODO abbreviate successive posts
     const postPollAnnouncement = async ({ context, body, poll, client, mode }) => {
         let user = body.user.id,
             tally = tallyOf(poll);
@@ -285,6 +282,7 @@ module.exports = (app, store) => {
         let header,
             sections = [];
 
+        // TODO cleanse formatting and emoji from prompt
         header = `:ballot_box_with_ballot: *${poll.prompt}* \u2022 <slack://app?team=${body.team.id}&id=${body.api_app_id}|go to polls>`;
 
         if (mode == 'open' || mode == 'reopen' || mode == 'reannounce') {
@@ -300,6 +298,7 @@ module.exports = (app, store) => {
                 `*Members:* ${names(poll.members)}`
             );
 
+            // TODO cleanse formatting from choices
             sections.push(
                 `*Choices:* ${poll.choices.join(' \u2022 ')}`
             );
@@ -337,10 +336,17 @@ module.exports = (app, store) => {
             poll.choices.forEach((choice, index) => {
                 let cohort = poll.members.filter(member => poll.votes[member] === index);
                 sections.push(
+                    // TODO cleanse formatting from choice
                     `${progressBar(cohort.length, poll.members.length, 12)} *${cohort.length}* \u2022 *${choice}*${!poll.setup.includes('anonymous') ? ` \u2022 ${names(cohort)}` : ''}`
                 );
             });
         }
+
+        let succinct = (await client.conversations.history({
+            token: context.botToken,
+            channel: poll.audience,
+            limit: 1
+        })).messages[0].user == context.botUserId;
 
         let post = {
             token: context.botToken,
@@ -350,7 +356,9 @@ module.exports = (app, store) => {
                 type: 'section',
                 text: {
                     type: 'mrkdwn',
-                    text: `${header}\n\n>>>${sections.join('\n\n')}`
+                    text: !succinct
+                        ? `${header}\n\n>>>${sections.join('\n\n')}`
+                        : `>>>${sections.join('\n\n')}`
                 }
             }]
         };

@@ -268,7 +268,8 @@ const create_poll_modal = async ({ channel, context, client }) => {
             block_id: 'audience',
 			label: {
 				type: 'plain_text',
-				text: 'Audience'
+                text: ':loudspeaker: Audience',
+                emoji: true
 			},
 			hint: {
 				type: 'plain_text',
@@ -279,8 +280,7 @@ const create_poll_modal = async ({ channel, context, client }) => {
                 action_id: 'input',
 				placeholder: {
 					type: 'plain_text',
-					text: 'Select a channel',
-					emoji: true
+					text: 'Select a channel'
                 },
                 ...(channel ?{
                     initial_channel: channel
@@ -292,12 +292,12 @@ const create_poll_modal = async ({ channel, context, client }) => {
             block_id: 'members',
 			label: {
 				type: 'plain_text',
-				text: 'Members',
-				emoji: true
+                text: ':busts_in_silhouette: Members',
+                emoji: true
 			},
 			hint: {
 				type: 'plain_text',
-				text: "The users who may participate in the poll. They aren't restricted to the audience."
+				text: "The users who may participate in the poll (not restricted to the audience)."
 			},
 			element: {
                 type: 'multi_users_select',
@@ -314,11 +314,12 @@ const create_poll_modal = async ({ channel, context, client }) => {
             block_id: 'prompt',
 			label: {
 				type: 'plain_text',
-				text: 'Prompt'
+                text: ':question: Prompt',
+                emoji: true
 			},
 			hint: {
 				type: 'plain_text',
-				text: 'The question or statement that the members vote on (emoji allowed).'
+				text: 'The question or statement that the members vote on (no formatting or emoji).'
 			},
 			element: {
                 type: 'plain_text_input',
@@ -342,11 +343,12 @@ const create_poll_modal = async ({ channel, context, client }) => {
             block_id: 'choices',
 			label: {
 				type: 'plain_text',
-				text: 'Choices'
+                text: ':exclamation: Choices',
+                emoji: true
 			},
 			hint: {
 				type: 'plain_text',
-				text: 'The choices that members vote for (one choice per line, emoji allowed).'
+				text: 'The choices that members vote for, one per line (no formatting, emoji okay).'
 			},
 			element: {
                 type: 'plain_text_input',
@@ -375,9 +377,10 @@ const create_poll_modal = async ({ channel, context, client }) => {
 					{
 						text: {
 							type: 'plain_text',
-							text: 'Participation Notices'
+                            text: ':bell: Participation Notices',
+                            emoji: true
 						},
-						description:{
+						description: {
 							type: 'plain_text',
 							text: 'Announce each time a member votes or unvotes.'
 						},
@@ -386,7 +389,8 @@ const create_poll_modal = async ({ channel, context, client }) => {
 					{
 						text: {
 							type: 'plain_text',
-							text: 'Anonymous Voting'
+                            text: ':bust_in_silhouette: Anonymous Voting',
+                            emoji: true
 						},
 						description: {
 							type: 'plain_text',
@@ -397,11 +401,12 @@ const create_poll_modal = async ({ channel, context, client }) => {
 					{
 						text: {
 							type: 'plain_text',
-							text: 'Automatic Closing'
+                            text: ':hourglass_flowing_sand: Automatic Closing',
+                            emoji: true
 						},
 						description: {
 							type: 'plain_text',
-							text: 'Poll closes automatically when all members have voted.'
+							text: 'Closes automatically when all members have voted.'
 						},
 						value: 'autoclose'
 					}
