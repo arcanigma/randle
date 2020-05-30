@@ -9,10 +9,10 @@ module.exports = (app) => {
     const re_shuffle = /^!?shuffle\s+(.+)/is;
     app.message(nonthread, anywhere, re_shuffle, async ({ message, context, say }) => {
         try {
-            let deck = parse_deck(context.matches[1]);
+            let items = parse_deck(context.matches[1]);
 
             await say({
-                text: `${who(message, 'You')} shuffled *${deck.join('*, *')}*.`
+                text: `${who(message, 'You')} shuffled ${commas(items.map(item => `*${item}*`))}.`
             });
         }
         catch (err) {
@@ -20,13 +20,13 @@ module.exports = (app) => {
         }
     });
 
-    const re_draw = /^!?draw\s+(.+)/is; // TODO specify quantity
+    const re_draw = /^!?draw\s+(?:([1-9][0-9]*)\s+from\s+)?(.+)/is;
     app.message(nonthread, anywhere, re_draw, async ({ message, context, say }) => {
         try {
-            let deck = parse_deck(context.matches[1]);
+            let items = parse_deck(`(${context.matches[2]}):${context.matches[1] || 1}`);
 
             await say({
-                text: `${who(message, 'You')} drew *${deck.shift()}*.`
+                text: `${who(message, 'You')} drew ${commas(items.map(item => `*${item}*`))}.`
             });
         }
         catch (err) {
