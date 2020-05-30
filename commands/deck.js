@@ -1,6 +1,6 @@
 const randomInt = require('php-random-int');
 
-const { who, commas, blame } = require('../plugins/factory.js'),
+const { who, commas, names, blame } = require('../plugins/factory.js'),
       { tokenize, expect, accept } = require('../plugins/parser.js'),
       { nonthread, anywhere, community } = require('../plugins/listen.js');
 
@@ -34,14 +34,16 @@ module.exports = (app) => {
         }
     });
 
+    // TODO add ?verification "dry run" version
     const re_deal = /^!?deal\s+(.+)/is,
-          re_braces = /\{.+\}/s;
+          re_braces = /\{.+\}/s,
+          re_wss = /\s+/g;
     app.message(nonthread, community, re_deal, async ({ message, context, say, client }) => {
         try {
             let setup, items;
             if (re_braces.test(context.matches[1])) {
                 try {
-                    setup = JSON.parse(context.matches[1]);
+                    setup = JSON.parse(context.matches[1].replace(re_wss, ' '));
                 }
                 catch (error) {
                     throw error.message;
@@ -68,14 +70,23 @@ module.exports = (app) => {
             let dealt = {};
             do {
                 audience.forEach(user => {
-                    if (items.length > 0)
-
-                    if (dealt[user])
-                        dealt[user].push(items.shift());
-                    else
-                        dealt[user] = [items.shift()];
+                    if (items.length > 0) {
+                        if (dealt[user])
+                            dealt[user].push(items.shift());
+                        else
+                            dealt[user] = [items.shift()];
+                    }
                 });
             } while (items.length > 0);
+
+            let counts = {};
+            audience.forEach(user => {
+                let count = dealt[user].length;
+                if (!counts[count])
+                    counts[count] = [user];
+                else
+                    counts[count].push(user);
+            });
 
             Object.keys(dealt).forEach(async (us) => {
                 let per_list = commas(dealt[us].map(item => `*${item}*`)),
@@ -117,15 +128,10 @@ module.exports = (app) => {
                 });
             });
 
-            // TODO group same-count deals together
-            let all_details = commas(audience.map(user => {
-                    let who = user != message.user ? `<@${user}>` : 'themself';
-                    if (dealt[user])
-                        return `*${dealt[user].length} item${dealt[user].length == 1 ? '' : 's'}* to ${who}`;
-                    else
-                        return `*none* to ${who}`;
-                })),
-                all_summary = `${who(message, 'You')} dealt ${all_details} by direct message.`,
+            let all_list = commas(Object.keys(counts).sort().reverse().map(count => {
+                    return `${count > 0 ? `*${count}* each` : '*none*'} to ${names(counts[count])}`;
+                }), '; '),
+                all_summary = `${who(message, 'You')} dealt ${all_list} by direct message.`,
                 all_blocks = [{
                     type: 'section',
                     text: {
@@ -150,7 +156,6 @@ module.exports = (app) => {
         return shuffle(unnest_deck(list).flat());
     }
 
-    const re_wss = /\s+/g;
     function unnest_deck(list) {
         return listize(list).map(element => {
             if (typeof element == 'string') {

@@ -2,19 +2,20 @@ const who = (message, pronoun) => {
     return message.channel_type != 'im' ? `<@${message.user}>` : pronoun;
 };
 
-const commas = (list) => {
+const commas = (list, delim=', ') => {
     if (list.length == 1)
         return list[0];
     else if (list.length == 2)
         return `${list[0]} and ${list[1]}`;
     else if (list.length >= 3)
-        return `${list.slice(0, -1).join(', ')}, and ${list.slice(-1)}`;
+        return `${list.slice(0, -1).join(delim)}, and ${list.slice(-1)}`;
 };
 
-const names = (list, user) => {
+const names = (list, user, delim=', ') => {
     return commas(
         list.sort(u => u == user ? -1 : 0)
-            .map(u => u != user ? `<@${u}>` : 'you')
+            .map(u => u != user ? `<@${u}>` : 'you'),
+        delim
     ) || 'nobody';
 };
 
