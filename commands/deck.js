@@ -52,24 +52,19 @@ module.exports = (app) => {
             }
             else {
                 setup = {
-                    audience: '<!channel>',
                     items: context.matches[1]
                 };
                 items = parse_deck(setup.items);
             }
 
-            let audience;
-            if (!setup.audience || setup.audience.trim() == '<!channel>')
-                audience = shuffle((await client.conversations.members({
-                    token: context.botToken,
-                    channel: message.channel
-                })).members.filter(user => user != context.botUserId));
-            else // TODO support all valid conversations
-                throw `Unsupported \`${setup.audience}\` audience.`;
+            let users = shuffle((await client.conversations.members({
+                token: context.botToken,
+                channel: message.channel
+            })).members.filter(user => user != context.botUserId));
 
             let dealt = {};
             do {
-                audience.forEach(user => {
+                users.forEach(user => {
                     if (items.length > 0) {
                         if (dealt[user])
                             dealt[user].push(items.shift());
@@ -80,7 +75,7 @@ module.exports = (app) => {
             } while (items.length > 0);
 
             let counts = {};
-            audience.forEach(user => {
+            users.forEach(user => {
                 let count = dealt[user].length;
                 if (!counts[count])
                     counts[count] = [user];
