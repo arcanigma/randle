@@ -34,16 +34,17 @@ module.exports = (app) => {
         }
     });
 
-    // TODO add ?verification "dry run" version
-    const re_deal = /^!?deal\s+(.+)/is,
+    const re_deal = /^([!?])?deal\s+(.+)/is,
           re_braces = /\{.+\}/s,
           re_wss = /\s+/g;
     app.message(nonthread, community, re_deal, async ({ message, context, say, client }) => {
         try {
+            let dry_run = context.matches[1] == '?';
+
             let setup, items;
-            if (re_braces.test(context.matches[1])) {
+            if (re_braces.test(context.matches[2])) {
                 try {
-                    setup = JSON.parse(context.matches[1].replace(re_wss, ' '));
+                    setup = JSON.parse(context.matches[2].replace(re_wss, ' '));
                 }
                 catch (error) {
                     throw error.message;
@@ -52,7 +53,7 @@ module.exports = (app) => {
             }
             else {
                 setup = {
-                    items: context.matches[1]
+                    items: context.matches[2]
                 };
                 items = parse_deck(setup.items);
             }
@@ -115,12 +116,13 @@ module.exports = (app) => {
                   });
                 }
 
-                await client.chat.postMessage({
-                    token: context.botToken,
-                    channel: us,
-                    text: per_summary,
-                    blocks: per_blocks
-                });
+                if (!dry_run)
+                    await client.chat.postMessage({
+                        token: context.botToken,
+                        channel: us,
+                        text: per_summary,
+                        blocks: per_blocks
+                    });
             });
 
             let all_list = commas(Object.keys(counts).sort().reverse().map(count => {
@@ -135,12 +137,20 @@ module.exports = (app) => {
                     }
                 }];
 
-            await client.chat.postMessage({
-                token: context.botToken,
-                channel: message.channel,
-                text: all_summary,
-                blocks: all_blocks
-            });
+            if (!dry_run)
+                await client.chat.postMessage({
+                    token: context.botToken,
+                    channel: message.channel,
+                    text: all_summary,
+                    blocks: all_blocks
+                });
+            else
+                await client.chat.postEphemeral({
+                    token: context.botToken,
+                    channel: message.channel,
+                    user: message.user,
+                    text: 'Your `deal` script is valid.'
+                });
         }
         catch (err) {
             await say(blame(err, message));
