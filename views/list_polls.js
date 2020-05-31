@@ -109,13 +109,7 @@ module.exports = async ({ user, store, options={ filter: 'open' } }) => {
                         ...(poll.choices.map((choice, index) =>
                             ({
                                 type: 'button',
-                                action_id: `vote_button_${index}_${
-                                    poll.members.includes(user) ? (
-                                        !poll.closed
-                                            ? 'open'
-                                            : 'closed'
-                                    ) : 'nonmember'
-                                }`,
+                                action_id: `vote_button_${index}`,
                                 text: {
                                     type: 'plain_text',
                                     emoji: true,
@@ -183,7 +177,7 @@ module.exports = async ({ user, store, options={ filter: 'open' } }) => {
                             confirm: {
                                 title: {
                                     type: 'plain_text',
-                                    text: 'Are you sure?'
+                                    text: 'Warning'
                                 },
                                 text: {
                                     type: 'plain_text',

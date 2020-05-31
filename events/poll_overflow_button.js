@@ -1,7 +1,6 @@
 const { ObjectID } = require('mongodb');
 
-const informative_modal = require('../views/informative_modal.js'),
-      app_home = require('../views/app_home.js');
+const app_home = require('../views/app_home.js');
 
 module.exports = ({ app, store, announce, timers }) => {
     app.action('poll_overflow_button', async ({ ack, body, action, context, client }) => {
@@ -43,45 +42,20 @@ module.exports = ({ app, store, announce, timers }) => {
         }
         else if (data.admin == 'reopen') {
             let coll = (await store).db().collection('polls');
-            let poll = (await coll.findOne({
+            let poll = (await coll.findOneAndUpdate(
+                {
                     _id: new ObjectID(data.poll),
                     host: user
-                })),
-                current = (await coll.countDocuments({
-                    audience: poll.audience,
-                    closed: { $exists: false }
-                }));
+                },
+                {
+                    $set: { opened: new Date() },
+                    $unset: { closed: undefined }
+                }
+            )).value;
 
-            if (current == 0) {
-                poll = (await coll.findOneAndUpdate(
-                    {
-                        _id: new ObjectID(data.poll),
-                        host: user
-                    },
-                    {
-                        $set: { opened: new Date() },
-                        $unset: { closed: undefined }
-                    }
-                )).value;
+            await announce({ context, body, poll, client, mode: 'reopen' });
 
-                await announce({ context, body, poll, client, mode: 'reopen' });
-
-                options = { polls: { filter: 'open' } };
-            }
-            else {
-                let modal = await informative_modal({ context, client,
-                    title: 'Notice',
-                    error: 'This audience already has an open poll.'
-                });
-
-                await client.views.open({
-                    token: context.botToken,
-                    trigger_id: body.trigger_id,
-                    view: modal
-                });
-
-                options = { polls: { filter: 'closed' } };
-            }
+            options = { polls: { filter: 'open' } };
         }
         else if (data.admin == 'delete') {
             let coll = (await store).db().collection('polls');

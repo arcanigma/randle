@@ -10,12 +10,12 @@ module.exports = async ({ title, error }) => {
     let view = {
         type: 'modal',
         title: {
-          type: 'plain_text',
-          text: title
+            type: 'plain_text',
+            text: title
         },
         close: {
-          type: 'plain_text',
-          text: 'Okay'
+            type: 'plain_text',
+            text: 'Okay'
         },
         blocks: blocks
     };

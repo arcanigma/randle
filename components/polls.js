@@ -1,4 +1,4 @@
-const { commas, names, size, progress } = require('../library/factory.js'),
+const { commas, names, boxbar, onbox, offbox } = require('../library/factory.js'),
       informative_modal = require('../views/informative_modal.js');
 
 module.exports = ({ app, store }) => {
@@ -6,82 +6,134 @@ module.exports = ({ app, store }) => {
 
     const announce = async ({ context, body, poll, client, mode }) => {
         let user = body.user.id,
-            tally = size(poll.votes);
+            voted = poll.members.filter(member => poll.votes[member] !== undefined),
+            unvoted = poll.members.filter(member => poll.votes[member] === undefined);
 
-        let header,
-            sections = [];
-
-        header = `:ballot_box_with_ballot: *${poll.prompt}* \u2022 <slack://app?team=${body.team.id}&id=${body.api_app_id}|go to polls>`;
+        let summary,
+            blocks = [];
 
         if (mode == 'open' || mode == 'reopen' || mode == 'reannounce') {
-            sections.push(
-                `<@${poll.host}> ${{
-                    open: 'opened',
-                    reopen: 'reopened',
-                    reannounce: 'reannounced'
-                }[mode]} a poll`
-            );
+            summary = `<@${poll.host}> ${{
+                open: 'opened',
+                reopen: 'reopened',
+                reannounce: 'reannounced'
+            }[mode]} a poll`;
 
-            sections.push(
-                `*Members:* ${names(poll.members)}`
-            );
+            blocks.push({
+                type: 'actions',
+                elements: poll.choices.map((choice, index) =>
+                    ({
+                        type: 'button',
+                        action_id: `vote_button_${index}`,
+                        text: {
+                            type: 'plain_text',
+                            emoji: true,
+                            text: choice
+                        },
+                        url: `slack://app?team=${body.team.id}&id=${body.api_app_id}`,
+                        value: JSON.stringify({
+                            poll: poll._id,
+                            choice: index
+                        })
+                    })
+                )
+            });
 
-            sections.push(
-                `*Choices:* ${poll.choices.join(' \u2022 ')}`
-            );
-
-            sections.push(
-                `*Setup:* ${commas(poll.setup.map(option => ({
-                    participation: 'participation notices',
-                    anonymous: 'anonymous voting',
-                    autoclose: 'automatic closing'
-                })[option]))}`
-            );
-        }
-        else if (mode == 'participate') {
-            sections.push(
-                `<@${user}> ${poll.votes[user] !== undefined ? 'voted' : 'unvoted'}`
-            );
-
-            sections.push(
-                `*Voted:* ${progress(tally, poll.members.length, 12)} *${tally}* / ${poll.members.length}`
-            );
-        }
-        else if (mode == 'close' || mode == 'autoclose') {
-            sections.push(
-                mode == 'close'
-                ? `<@${poll.host}> closed a poll`
-                : `<@${context.botUserId}> automatically closed a poll`
-            );
-
-            if (poll.setup.includes('anonymous')) {
-                let voted = poll.members.filter(member => poll.votes[member] !== undefined);
-
-                sections.push(
-                    `*Voted:* ${names(voted)}`
-                );
-            }
-
-            poll.choices.forEach((choice, index) => {
-                let cohort = poll.members.filter(member => poll.votes[member] === index);
-                sections.push(
-                    `${progress(cohort.length, poll.members.length, 12)} *${cohort.length}* \u2022 *${choice}*${!poll.setup.includes('anonymous') ? ` \u2022 ${names(cohort)}` : ''}`
-                );
+            blocks.push({
+                type: 'context',
+                elements: [
+                    {
+                        type: 'mrkdwn',
+                        text: `*Members:* ${names(poll.members)}`
+                    },
+                    {
+                        type: 'mrkdwn',
+                        text: `*Setup:* ${commas(poll.setup.map(option => ({
+                            participation: 'participation notices',
+                            anonymous: 'anonymous voting',
+                            autoclose: 'automatic closing'
+                        })[option]))}`
+                    }
+                ]
             });
         }
+        else if (mode == 'participate') {
+            summary = `<@${user}> ${poll.votes[user] !== undefined ? 'voted' : 'unvoted'}`;
 
-        let succinct;
+            let counts = [];
+            if (voted.length > 0)
+                counts.push({
+                    type: 'mrkdwn',
+                    text: `*Voted:* ${onbox(voted.length)} *${voted.length}* (${names(voted)})`
+                });
+            if (unvoted.length > 0)
+                counts.push({
+                    type: 'mrkdwn',
+                    text: `*Not Voted:* ${offbox(unvoted.length)} *${unvoted.length}* (${names(unvoted)})`
+                });
+            if (counts.length > 0)
+                blocks.push({
+                    type: 'context',
+                    elements: counts
+                });
+        }
+        else if (mode == 'close' || mode == 'autoclose') {
+            summary = mode == 'close'
+                ? `<@${poll.host}> closed a poll`
+                : `<@${context.botUserId}> closed a poll for <@${poll.host}>`;
+
+            blocks.push({
+                type: 'context',
+                elements: poll.choices.map((choice, index) => {
+                    let cohort = poll.members.filter(member => poll.votes[member] === index);
+                    return cohort.length > 0 ? {
+                        type: 'mrkdwn',
+                        text: `*${choice}:* ${onbox(cohort.length)} *${cohort.length}*${!poll.setup.includes('anonymous') ? ` (${names(cohort)})` : ''}`
+                    } : undefined;
+                }).filter(element => element !== undefined)
+            });
+
+            let counts = [];
+            if (poll.setup.includes('anonymous') && voted.length > 0)
+                counts.push({
+                    type: 'mrkdwn',
+                    text: `*Voted Anonymously:* *${voted.length}* (${names(voted)})`
+                });
+            if (unvoted.length > 0)
+                counts.push({
+                    type: 'mrkdwn',
+                    text: `*Not Voted:* ${offbox(unvoted.length)} *${unvoted.length}* (${names(unvoted)})`
+                });
+            if (counts.length > 0)
+                blocks.push({
+                    type: 'context',
+                    elements: counts
+                });
+        }
+
+        blocks.unshift({
+            type: 'section',
+            text: {
+                type: 'mrkdwn',
+                text: summary
+            }
+        });
+
+        let post;
         try {
-            succinct = (await client.conversations.history({
+            post = {
                 token: context.botToken,
                 channel: poll.audience,
-                limit: 1
-            })).messages[0].user == context.botUserId;
+                username: `${poll.prompt}`,
+                icon_emoji: ':ballot_box_with_ballot:',
+                text: summary,
+                blocks: blocks
+            };
+
+            await client.chat.postMessage(post);
         }
         catch (error) {
             if (error.data.error == 'not_in_channel') {
-                succinct = false;
-
                 await client.conversations.join({
                     token: context.botToken,
                     channel: poll.audience
@@ -97,31 +149,17 @@ module.exports = ({ app, store }) => {
                     trigger_id: body.trigger_id,
                     view: modal
                 });
+
+                await client.chat.postMessage(post);
             }
             else throw error;
         }
-
-        let post = {
-            token: context.botToken,
-            channel: poll.audience,
-            text: sections[0],
-            blocks: [ {
-                type: 'section',
-                text: {
-                    type: 'mrkdwn',
-                    text: !succinct
-                        ? `${header}\n\n>>>${sections.join('\n\n')}`
-                        : `>>>${sections.join('\n\n')}`
-                }
-            }]
-        };
-
-        await client.chat.postMessage(post);
     };
 
     require('../events/create_poll_modal.js')({ app, store, announce });
     require('../events/create_poll_shortcut.js')({ app });
     require('../events/filter_polls_select.js')({ app, store });
+    require('../events/go_to_polls_button.js')({ app });
     require('../events/poll_overflow_button.js')({ app, store, announce, timers });
     require('../events/vote_button.js')({ app, store, announce, timers });
 };

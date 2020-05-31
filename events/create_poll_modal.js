@@ -2,14 +2,15 @@ const { size } = require('../library/factory.js');
 
 module.exports = ({ app, store, announce }) => {
     const re_lines = /\r\n|\r|\n/,
-          re_mrkdwn = /([*_~`])/g;
+          re_mrkdwn = /([*_~`])/g,
+          re_mrkdwn_emoji = /([*_~`:])/g;
     app.view('create_poll_modal', async ({ ack, body, context, view, client }) => {
         let errors = {},
             host = body.user.id,
             data = view.state.values,
             audience = data.audience.input.selected_channel,
             members = data.members.input.selected_users,
-            prompt = data.prompt.input.value.replace(re_lines, ' ').replace(re_mrkdwn, ''),
+            prompt = data.prompt.input.value.replace(re_lines, ' ').replace(re_mrkdwn_emoji, ''),
             choices = data.choices.input.value.trim().split(re_lines).map(choice => choice.trim().replace(re_mrkdwn, '')).filter(Boolean),
             setup = (data.setup.inputs.selected_options || []).map(checkbox => checkbox.value);
 
@@ -22,12 +23,6 @@ module.exports = ({ app, store, announce }) => {
             errors.choices = "You can't repeat any choices.";
         else if (choices.length < 2 || choices.length > 10)
             errors.choices = 'You must list from 2 to 10 choices.';
-
-        let coll = (await store).db().collection('polls');
-        if (await coll.findOne({
-            audience,
-            closed: { $exists: false }
-        })) errors.audience = 'This audience already has an open poll.';
 
         if (size(errors) > 0)
             return await ack({
@@ -48,6 +43,7 @@ module.exports = ({ app, store, announce }) => {
             votes: {}
         };
 
+        let coll = (await store).db().collection('polls');
         poll._id = (await coll.insertOne(poll)).insertedId;
 
         await announce({ context, body, poll, client, mode: 'open' });

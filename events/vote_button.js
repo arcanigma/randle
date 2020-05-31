@@ -7,7 +7,7 @@ const { size } = require('../library/factory.js'),
 module.exports = ({ app, store, announce, timers }) => {
     const AUTOCLOSE_GRACE = 30;
 
-    app.action(/^vote_button_\d+_open$/, async ({ ack, body, action, context, client }) => {
+    app.action(/^vote_button_\d+$/, async ({ ack, body, action, context, client }) => {
         await ack();
 
         let user = body.user.id,
@@ -25,6 +25,19 @@ module.exports = ({ app, store, announce, timers }) => {
                 : { $unset: { [`votes.${user}`]: undefined } },
             { returnOriginal: false }
         )).value;
+
+        if (!poll) {
+            let modal = await informative_modal({ context, client,
+                title: 'Error',
+                error: "You can't vote in this poll."
+            });
+
+            return await client.views.open({
+                token: context.botToken,
+                trigger_id: body.trigger_id,
+                view: modal
+            });
+        }
 
         if (poll.setup.includes('participation'))
             await announce({ context, body, poll, client, mode: 'participate' });
@@ -55,7 +68,7 @@ module.exports = ({ app, store, announce, timers }) => {
 
                 let modal = await informative_modal({ context, client,
                     title: 'Warning',
-                    error: `You cast the last vote. The poll automatically closes within *${AUTOCLOSE_GRACE} seconds* if no votes are recast or uncast.`
+                    error: `You voted last. The poll automatically closes after *${AUTOCLOSE_GRACE} seconds* unless somebody votes or unvotes before then.`
                 });
 
                 await client.views.open({
@@ -72,23 +85,6 @@ module.exports = ({ app, store, announce, timers }) => {
             token: context.botToken,
             user_id: user,
             view: home
-        });
-    });
-
-    app.action(/^vote_button_\d+_(?:closed|nonmember)$/, async ({ ack, body, action, context, client }) => {
-        await ack();
-
-        let modal = await informative_modal({ context, client,
-            title: 'Error',
-            error: action.action_id.endsWith('closed')
-                ? "You can't vote in a closed poll."
-                : "You can't vote if you're not a member of the poll, even if you're the host."
-        });
-
-        await client.views.open({
-            token: context.botToken,
-            trigger_id: body.trigger_id,
-            view: modal
         });
     });
 };

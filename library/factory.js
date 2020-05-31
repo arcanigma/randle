@@ -35,10 +35,17 @@ const wss = (text) => {
     return text.replace(re_wss, ' ').trim();
 };
 
-const progress = (count, total, limit) => {
-    let width = Math.min(total, limit),
-        squares = Math.round(count / total * width);
-    return '\uD83D\uDD33'.repeat(squares) + '\u2B1C'.repeat(width - squares);
+const boxbar = (count, total) => {
+    let squares = Math.round(count / total * total);
+    return onbox(squares) + offbox(total - squares);
+};
+
+const onbox = (count) => {
+    return '\uD83D\uDD33'.repeat(count);
+};
+
+const offbox = (count) => {
+    return '\u2B1C'.repeat(count);
 };
 
 // TODO refactor into informative modal?
@@ -110,6 +117,8 @@ module.exports = {
     size,
     trunc,
     wss,
-    progress,
+    boxbar,
+    onbox,
+    offbox,
     blame
 };
