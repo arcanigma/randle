@@ -1,10 +1,13 @@
 const randomInt = require('php-random-int');
 
-const { who, commas, names, blame } = require('../plugins/factory.js'),
+const { who, commas, names, trunc, wss, blame } = require('../plugins/factory.js'),
       { tokenize, expect, accept } = require('../plugins/parser.js'),
       { nonthread, anywhere, community } = require('../plugins/listen.js');
 
 module.exports = (app) => {
+
+    const SLACK_MAX_TEXT = 300,
+          SLACK_MAX_CONTEXT_ELEMENTS = 10;
 
     const re_shuffle = /^!?shuffle\s+(.+)/is;
     app.message(nonthread, anywhere, re_shuffle, async ({ message, context, say }) => {
@@ -12,7 +15,14 @@ module.exports = (app) => {
             let items = parse_deck(context.matches[1]);
 
             await say({
-                text: `${who(message, 'You')} shuffled ${commas(items.map(item => `*${item}*`))}.`
+                text: `${who(message, 'You')} shuffled item${items.length != 1 ? 's' : ''}`,
+                blocks: [{
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: trunc(`${who(message, 'You')} shuffled ${commas(items.map(item => `*${item}*`))}.`, SLACK_MAX_TEXT)
+                    }
+                }]
             });
         }
         catch (err) {
@@ -23,10 +33,18 @@ module.exports = (app) => {
     const re_draw = /^!?draw\s+(?:([1-9][0-9]*)\s+from\s+)?(.+)/is;
     app.message(nonthread, anywhere, re_draw, async ({ message, context, say }) => {
         try {
-            let items = parse_deck(`(${context.matches[2]}):${context.matches[1] || 1}`);
+            let count = context.matches[1] || 1,
+                items = parse_deck(`(${context.matches[2]}):${count}`);
 
             await say({
-                text: `${who(message, 'You')} drew ${commas(items.map(item => `*${item}*`))}.`
+                text: `${who(message, 'You')} drew item${count != 1 ? 's' : ''}`,
+                blocks: [{
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: trunc(`${who(message, 'You')} drew ${commas(items.map(item => `*${item}*`))}.`, SLACK_MAX_TEXT)
+                    }
+                }]
             });
         }
         catch (err) {
@@ -35,8 +53,7 @@ module.exports = (app) => {
     });
 
     const re_deal = /^([!?])?deal\s+(.+)/is,
-          re_braces = /\{.+\}/s,
-          re_wss = /\s+/g;
+          re_braces = /\{.+\}/s;
     app.message(nonthread, community, re_deal, async ({ message, context, say, client }) => {
         try {
             let dry_run = context.matches[1] == '?';
@@ -44,7 +61,7 @@ module.exports = (app) => {
             let setup, items;
             if (re_braces.test(context.matches[2])) {
                 try {
-                    setup = JSON.parse(context.matches[2].replace(re_wss, ' '));
+                    setup = JSON.parse(wss(context.matches[2]));
                 }
                 catch (error) {
                     throw error.message;
@@ -87,12 +104,13 @@ module.exports = (app) => {
             Object.keys(dealt).forEach(async (us) => {
                 let per_list = commas(dealt[us].map(item => `*${item}*`)),
                     per_venue = setup.event ? `for the *${setup.event}* event` : `from the <#${message.channel}> channel`,
+                    per_notification = `${message.user != us ? `<@${message.user}>` : 'You'} dealt ${message.user != us ? 'you' : 'yourself'} items`,
                     per_summary = `:twisted_rightwards_arrows: ${message.user != us ? `<@${message.user}>` : 'You'} dealt ${message.user != us ? 'you' : 'yourself'} ${per_list} ${per_venue}<!date^${Math.trunc(message.ts)}^ {date_short_pretty} at {time}| recently>.`,
                     per_blocks = [{
                         type: 'section',
                         text: {
                             type: 'mrkdwn',
-                            text: per_summary
+                            text: trunc(per_summary, SLACK_MAX_TEXT)
                         }
                     }];
 
@@ -103,24 +121,35 @@ module.exports = (app) => {
                             Object.keys(dealt).filter(them => them != us && dealt[them].includes(show)).forEach(them => {
                                 shown.push({
                                     type: 'mrkdwn',
-                                    text: `:eye-in-speech-bubble: Because you were dealt *${to}* you see that <@${them}> was dealt *${rule.as ? rule.as : show}*.`
+                                    text: trunc(`:eye-in-speech-bubble: Because you were dealt *${to}* you see that <@${them}> was dealt *${rule.as ? rule.as : show}*.`, SLACK_MAX_TEXT)
                                 });
                             });
                         });
                     });
                 });
                 if (shown.length > 0) {
-                  per_blocks.push({
-                      type: 'context',
-                      elements: shuffle(shown)
-                  });
+                    shown = shuffle(shown);
+
+                    if (shown.length > SLACK_MAX_CONTEXT_ELEMENTS)
+                        shown = [
+                            ...shown.slice(0, SLACK_MAX_CONTEXT_ELEMENTS-1),
+                            {
+                                type: 'mrkdwn',
+                                text: trunc(`:warning: Too many context elements to show (limit of ${SLACK_MAX_CONTEXT_ELEMENTS}).`, SLACK_MAX_TEXT)
+                            }
+                        ];
+
+                    per_blocks.push({
+                        type: 'context',
+                        elements: shown
+                    });
                 }
 
                 if (!dry_run)
                     await client.chat.postMessage({
                         token: context.botToken,
                         channel: us,
-                        text: per_summary,
+                        text: per_notification,
                         blocks: per_blocks
                     });
             });
@@ -128,12 +157,13 @@ module.exports = (app) => {
             let all_list = commas(Object.keys(counts).sort().reverse().map(count => {
                     return `${count > 0 ? `*${count}* each` : '*none*'} to ${names(counts[count])}`;
                 }), '; '),
+                all_notification = `${who(message, 'You')} dealt items`,
                 all_summary = `${who(message, 'You')} dealt ${all_list} by direct message.`,
                 all_blocks = [{
                     type: 'section',
                     text: {
                         type: 'mrkdwn',
-                        text: all_summary
+                        text: trunc(all_summary, SLACK_MAX_TEXT)
                     }
                 }];
 
@@ -141,7 +171,7 @@ module.exports = (app) => {
                 await client.chat.postMessage({
                     token: context.botToken,
                     channel: message.channel,
-                    text: all_summary,
+                    text: all_notification,
                     blocks: all_blocks
                 });
             else
@@ -164,7 +194,7 @@ module.exports = (app) => {
     function unnest_deck(list) {
         return listize(list).map(element => {
             if (typeof element == 'string') {
-                return element.trim().replace(re_wss, ' ');
+                return wss(element);
             }
             else if (typeof element == 'object' && !Array.isArray(element)) {
                 let items = unnest_deck(element.from);
@@ -202,7 +232,7 @@ module.exports = (app) => {
         }
         else {
             let element = expect(tokens, re_nonterminals);
-            items = [element.trim().replace(re_wss, ' ')];
+            items = [wss(element)];
         }
         return parse_quantifier(tokens, items);
     }

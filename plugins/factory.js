@@ -19,6 +19,18 @@ const names = (list, user, delim=', ') => {
     ) || 'nobody';
 };
 
+const trunc = (text, limit) => {
+    if (text.length <= limit)
+        return text;
+    else
+        return text.substring(0, limit-2) + '...';
+};
+
+const re_wss = /\s+/g;
+const wss = (text) => {
+    return text.replace(re_wss, ' ').trim();
+};
+
 // TODO refactor into informative modal?
 const blame = (error, message) => {
     if (error instanceof Error) {
@@ -85,5 +97,7 @@ module.exports = {
     who,
     commas,
     names,
+    trunc,
+    wss,
     blame
 };

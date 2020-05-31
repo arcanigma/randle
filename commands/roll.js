@@ -1,27 +1,28 @@
 const randomInt = require('php-random-int'),
       toOrdinal = require('ordinal');
 
-const { who, blame } = require('../plugins/factory.js'),
+const { who, trunc, wss, blame } = require('../plugins/factory.js'),
       { anywhere } = require('../plugins/listen.js');
 
 module.exports = (app, store) => {
 
-    const MAX_REPLY_SIZE = 4000,
-          MAX_ELEMENTS = 10;
+    const SLACK_MAX_TEXT = 300,
+          SLACK_MAX_MESSAGE_BLOCKS = 50,
+          SLACK_MAX_CONTEXT_ELEMENTS = 10;
 
     const re_roll = /^!?roll\s+(.+)/i,
           re_parens = /(?:\([^'()][^()]*\)|\[[^'[\]][^[\]]*\])/g;
     const listen_roll = async ({ message, context, next }) => {
         if (message.text) {
             let matches;
-            if ((matches = message.text.match(re_roll))) {
+            if ((matches = wss(message.text).match(re_roll))) {
                 context.clauses = [{
                     text: matches[1],
                     where: 'inline'
                 }];
                 await next();
             }
-            else if ((matches = message.text.match(re_parens))) {
+            else if ((matches = wss(message.text).match(re_parens))) {
                 context.clauses = matches.map(m => ({
                     text: m.slice(1,-1),
                     where: m.slice(0, 1) == '[' && !message.thread_ts ? 'thread' : 'inline'
@@ -30,7 +31,7 @@ module.exports = (app, store) => {
             }
         }
     };
-    app.message(anywhere, listen_roll, async ({ message, context, say, client }) => {
+    app.message(anywhere, listen_roll, async ({ message, context, say }) => {
         try {
             context.clauses = await macroize(store, context.clauses, message.user);
 
@@ -41,22 +42,17 @@ module.exports = (app, store) => {
             let results = rollDice(context.clauses, message);
 
             for (let where in results) {
-                let reply = {
-                    text: `${who(message, 'You')} rolled ${results[where].text}.`,
-                    blocks: results[where].blocks
-                };
-
-                if (JSON.stringify(reply).length > MAX_REPLY_SIZE)
-                    throw 'The response was too long to send.';
-
-                reply.token = context.botToken;
-                reply.channel = message.channel;
-                if (message.thread_ts)
-                    reply.thread_ts = message.thread_ts;
-                else if (where == 'thread')
-                    reply.thread_ts = message.ts;
-
-                await client.chat.postMessage(reply);
+                await say({
+                    token: context.botToken,
+                    channel: message.channel,
+                    text: `${who(message, 'You')} rolled dice`,
+                    blocks: results[where].blocks,
+                    ...(message.thread_ts ? {
+                        thread_ts: message.thread_ts
+                    } : where == 'thread' ? {
+                        thread_ts: message.ts
+                    } : {})
+                });
             }
         }
         catch (err) {
@@ -68,7 +64,7 @@ module.exports = (app, store) => {
     const DICTIONARY = {
         adv: '2d20H',
         dis: '2d20L'
-    }
+    };
 
     async function macroize(store, clauses, uid) {
         let coll = (await store).db().collection('macros');
@@ -124,7 +120,7 @@ module.exports = (app, store) => {
                 thread: []
             };
 
-        let elements, maxed;
+        let elements;
         const re_dice_code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
         const re_dice_fun = function(expr, avg, count, size, hilo, keep, mod, muldev, fact) {
             count = parseInt(count) || 1;
@@ -225,21 +221,11 @@ module.exports = (app, store) => {
                 atoms[0] = `_undefined_`;
             atoms = [`*${expr}:*`, ...atoms];
 
-            if (!maxed) {
-                if (elements.length < MAX_ELEMENTS) {
-                    elements.push({
-                        type: 'mrkdwn',
-                        text: `${prefix} ${atoms.join(' ')}`
-                    });
-                }
-                else {
-                    maxed = true;
-                    elements[MAX_ELEMENTS-1] = {
-                        type: 'mrkdwn',
-                        text: `:warning: Too many to show.`
-                    };
-                }
-            }
+            if (elements.length < SLACK_MAX_CONTEXT_ELEMENTS)
+                elements.push({
+                    type: 'mrkdwn',
+                    text: trunc(`${prefix} ${atoms.join(' ')}`, SLACK_MAX_TEXT)
+                });
 
             return total;
         };
@@ -247,8 +233,13 @@ module.exports = (app, store) => {
         for (let i = 0; i < clauses.length; i++) {
             clauses[i] = evaluateArithmetic(clauses[i]);
 
-            elements = [], maxed = false;
+            elements = [];
             let outcome = clauses[i].text.replace(re_dice_code, re_dice_fun);
+            if (elements.length == SLACK_MAX_CONTEXT_ELEMENTS)
+                elements[SLACK_MAX_CONTEXT_ELEMENTS-1] = {
+                    type: 'mrkdwn',
+                    text: `:warning: Too many context elements to show (limit of ${SLACK_MAX_CONTEXT_ELEMENTS}).`
+                };
 
             if (outcome != clauses[i].text) {
                 clauses[i].text = outcome;
@@ -257,38 +248,49 @@ module.exports = (app, store) => {
                 clauses[i] = prettifyMarkdown(clauses[i]);
                 phrases[clauses[i].where].push(clauses[i].text);
 
-                if (blocks[clauses[i].where].length == 0)
-                    blocks[clauses[i].where].push({
-                        type: 'section',
-                        text: {
-                            type: 'mrkdwn',
-                            text: `${clauses[i].where == 'inline' ? who(message, 'You') : 'You'} rolled ${clauses[i].text}.`
-                          }
-                    });
-                else
-                    blocks[clauses[i].where].push({
-                        type: 'section',
-                        text: {
-                            type: 'mrkdwn',
-                            text: `Then ${clauses[i].text}.`
-                          }
-                    });
+                if (blocks[clauses[i].where].length < SLACK_MAX_MESSAGE_BLOCKS) {
+                    if (blocks[clauses[i].where].length == 0)
+                        blocks[clauses[i].where].push({
+                            type: 'section',
+                            text: {
+                                type: 'mrkdwn',
+                                text: trunc(`${clauses[i].where == 'inline' ? who(message, 'You') : 'You'} rolled ${clauses[i].text}.`, SLACK_MAX_TEXT)
+                            }
+                        });
+                    else
+                        blocks[clauses[i].where].push({
+                            type: 'section',
+                            text: {
+                                type: 'mrkdwn',
+                                text: trunc(`Then ${clauses[i].text}.`, SLACK_MAX_TEXT)
+                            }
+                        });
 
-                if (elements.length > 0)
-                    blocks[clauses[i].where].push({
-                        type: 'context',
-                        elements: elements
-                    });
+                    if (elements.length > 0)
+                        blocks[clauses[i].where].push({
+                            type: 'context',
+                            elements: elements
+                        });
+                }
             }
         }
 
         let results = {};
         for (let where in phrases) {
+            if (blocks[where].length == SLACK_MAX_MESSAGE_BLOCKS)
+                blocks[where][SLACK_MAX_MESSAGE_BLOCKS-1] = {
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: `:warning: Too many message blocks to show (limit of ${SLACK_MAX_MESSAGE_BLOCKS}).`
+                    }
+                };
+
             if (phrases[where].length > 0)
                 results[where] = {
-                      text: phrases[where].join('; '),
+                      text: trunc(phrases[where].join('; '), SLACK_MAX_TEXT),
                       blocks: blocks[where]
-                }
+                };
         }
         return results;
     }
@@ -297,13 +299,11 @@ module.exports = (app, store) => {
 
     const re_number = /\b(?<![#_*])[0-9]+(?:\.[0-9]+)?(?![:_*])\b/g,
         re_ignore = /<(.*?)>/g,
-        re_trail = /^[\s.;,]+|[\s.;,]+$/g,
-        re_wss = /\s+/g;
+        re_trail = /^[\s.;,]+|[\s.;,]+$/g;
     function prettifyMarkdown(clause) {
-        clause.text = clause.text.replace(re_number, '*$&*')
+        clause.text = wss(clause.text.replace(re_number, '*$&*')
             .replace(re_ignore, '')
-            .replace(re_trail, '')
-            .replace(re_wss, ' ');
+            .replace(re_trail, ''));
         return clause;
     }
 

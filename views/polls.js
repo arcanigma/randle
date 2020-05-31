@@ -254,8 +254,6 @@ const list_polls = async ({ user, store, options={ filter: 'open' } }) => {
     return blocks;
 };
 
-// const re_ignore = /<(.*?)>/g,
-//     re_wss = /\s+/g;
 const create_poll_modal = async ({ channel, context, client }) => {
     let users = channel ? (await client.conversations.members({
         token: context.botToken,
@@ -328,14 +326,8 @@ const create_poll_modal = async ({ channel, context, client }) => {
 					type: 'plain_text',
 					text: 'Question or statement'
                 },
-                // ...(message && message.text ? {
-                //     initial_value: message.text
-                //         .replace(re_ignore, '')
-                //         .replace(re_wss, ' ')
-                //         .trim().substring(0, 500)
-                // } : {}),
                 min_length: 5,
-                max_length: 500
+                max_length: 300
 			}
 		},
 		{
@@ -359,7 +351,7 @@ const create_poll_modal = async ({ channel, context, client }) => {
 					text: 'One choice per line'
                 },
                 min_length: 5,
-                max_length: 500
+                max_length: 300
 			}
 		},
         {

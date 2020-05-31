@@ -5,7 +5,7 @@ const divider = {
     type: 'divider'
 };
 
-// TODO error on over 100 blocks (use pagination)
+// TODO 100 block error; select from macros, filtered polls, etc
 const home_view = async ({ user, store, options={} }) => {
     let blocks = [
         ...await list_polls({ user, store, options: options.polls }),
