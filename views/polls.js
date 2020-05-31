@@ -299,7 +299,7 @@ const create_poll_modal = async ({ channel, context, client }) => {
 			},
 			hint: {
 				type: 'plain_text',
-				text: "The users who may participate in the poll (not restricted to the audience)."
+				text: "The users who can participate (not restricted to the audience)."
 			},
 			element: {
                 type: 'multi_users_select',
@@ -321,7 +321,7 @@ const create_poll_modal = async ({ channel, context, client }) => {
 			},
 			hint: {
 				type: 'plain_text',
-				text: 'The question or statement that the members vote on (no formatting or emoji).'
+				text: 'The question or statement members vote on (no formatting, emoji okay).'
 			},
 			element: {
                 type: 'plain_text_input',
@@ -344,7 +344,7 @@ const create_poll_modal = async ({ channel, context, client }) => {
 			},
 			hint: {
 				type: 'plain_text',
-				text: 'The choices that members vote for, one per line (no formatting, emoji okay).'
+				text: 'The choices members vote for (one per line, no formatting, emoji okay).'
 			},
 			element: {
                 type: 'plain_text_input',
@@ -373,18 +373,6 @@ const create_poll_modal = async ({ channel, context, client }) => {
 					{
 						text: {
 							type: 'plain_text',
-                            text: ':bell: Participation Notices',
-                            emoji: true
-						},
-						description: {
-							type: 'plain_text',
-							text: 'Announce each time a member votes or unvotes.'
-						},
-						value: 'participation'
-					},
-					{
-						text: {
-							type: 'plain_text',
                             text: ':bust_in_silhouette: Anonymous Voting',
                             emoji: true
 						},
@@ -393,6 +381,18 @@ const create_poll_modal = async ({ channel, context, client }) => {
 							text: 'Results show only tallies, not member names.'
 						},
 						value: 'anonymous'
+                    },
+                    {
+						text: {
+							type: 'plain_text',
+                            text: ':bell: Participation Notices',
+                            emoji: true
+						},
+						description: {
+							type: 'plain_text',
+							text: 'Announce each time a member votes or unvotes.'
+						},
+						value: 'participation'
 					},
 					{
 						text: {

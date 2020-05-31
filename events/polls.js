@@ -43,15 +43,18 @@ module.exports = (app, store) => {
         }
     });
 
-    const re_lines = /\r\n|\r|\n/;
+    const re_lines = /\r\n|\r|\n/,
+          re_mrkdwn = /([*_~`])/g;
     app.view('create_poll_modal', async ({ ack, body, context, view, client }) => {
         let errors = {},
             host = body.user.id,
             data = view.state.values,
             audience = data.audience.input.selected_channel,
             members = data.members.input.selected_users,
-            prompt = data.prompt.input.value.replace(re_lines, ' '),
-            choices = data.choices.input.value.trim().split(re_lines).map(choice => choice.trim()).filter(Boolean),
+            // TODO cleanse formatting from prompt
+            prompt = data.prompt.input.value.replace(re_lines, ' ').replace(re_mrkdwn, ''),
+            // TODO cleanse formatting from choices
+            choices = data.choices.input.value.trim().split(re_lines).map(choice => choice.trim().replace(re_mrkdwn, '')).filter(Boolean),
             setup = (data.setup.inputs.selected_options || []).map(checkbox => checkbox.value);
 
         if (members.includes(context.botUserId)) // TODO filter all bots
@@ -282,7 +285,6 @@ module.exports = (app, store) => {
         let header,
             sections = [];
 
-        // TODO cleanse formatting and emoji from prompt
         header = `:ballot_box_with_ballot: *${poll.prompt}* \u2022 <slack://app?team=${body.team.id}&id=${body.api_app_id}|go to polls>`;
 
         if (mode == 'open' || mode == 'reopen' || mode == 'reannounce') {
@@ -298,7 +300,6 @@ module.exports = (app, store) => {
                 `*Members:* ${names(poll.members)}`
             );
 
-            // TODO cleanse formatting from choices
             sections.push(
                 `*Choices:* ${poll.choices.join(' \u2022 ')}`
             );
@@ -336,7 +337,6 @@ module.exports = (app, store) => {
             poll.choices.forEach((choice, index) => {
                 let cohort = poll.members.filter(member => poll.votes[member] === index);
                 sections.push(
-                    // TODO cleanse formatting from choice
                     `${progressBar(cohort.length, poll.members.length, 12)} *${cohort.length}* \u2022 *${choice}*${!poll.setup.includes('anonymous') ? ` \u2022 ${names(cohort)}` : ''}`
                 );
             });
