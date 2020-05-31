@@ -342,11 +342,36 @@ module.exports = (app, store) => {
             });
         }
 
-        let succinct = (await client.conversations.history({
-            token: context.botToken,
-            channel: poll.audience,
-            limit: 1
-        })).messages[0].user == context.botUserId;
+        let succinct;
+        try {
+            succinct = (await client.conversations.history({
+                token: context.botToken,
+                channel: poll.audience,
+                limit: 1
+            })).messages[0].user == context.botUserId;
+        }
+        catch (error) {
+            if (error.data.error == 'not_in_channel') {
+                succinct = false;
+
+                await client.conversations.join({
+                    token: context.botToken,
+                    channel: poll.audience
+                });
+
+                let modal = await informative_modal({ context, client,
+                    title: 'Notice',
+                    error: `<@${context.botUserId}> automatically joined the <#${poll.audience}> channel.`
+                });
+
+                await client.views.open({
+                    token: context.botToken,
+                    trigger_id: body.trigger_id,
+                    view: modal
+                });
+            }
+            else throw error;
+        }
 
         let post = {
             token: context.botToken,
@@ -363,31 +388,7 @@ module.exports = (app, store) => {
             }]
         };
 
-        try {
-            await client.chat.postMessage(post);
-        }
-        catch (error) {
-            if (error.data.error == 'not_in_channel') {
-                await client.conversations.join({
-                    token: context.botToken,
-                    channel: poll.audience
-                });
-
-                let modal = await informative_modal({ context, client,
-                    title: 'Notice',
-                    error: `Automatically added <@${context.botUserId}> to the <#${poll.audience}> channel.`
-                });
-
-                await client.views.open({
-                    token: context.botToken,
-                    trigger_id: body.trigger_id,
-                    view: modal
-                });
-
-                await client.chat.postMessage(post);
-            }
-            else throw error;
-        }
+        await client.chat.postMessage(post);
     };
 
 };

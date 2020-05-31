@@ -64,7 +64,11 @@ const list_polls = async ({ user, store, options={ filter: 'open' } }) => {
                 { members: { $in: [user] } }
             ]
         }
-    )).sort({ opened: -1 });
+    )).sort(
+        options.filter != 'closed'
+        ? { opened: -1 }
+        : { closed: -1 }
+    );
 
     if (await polls.count() > 0) {
         await polls.forEach((poll) => {
