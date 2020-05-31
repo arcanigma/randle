@@ -33,7 +33,7 @@ module.exports = (app, store) => {
     };
     app.message(anywhere, listen_roll, async ({ message, context, say }) => {
         try {
-            context.clauses = await macroize(store, context.clauses, message.user);
+            context.clauses = await macroize(store, context, message.user);
 
             let clauses = context.clauses.length;
             for (let i = 0; i < clauses; i++)
@@ -60,23 +60,23 @@ module.exports = (app, store) => {
         }
     });
 
-    // TODO super user creates, bot owns
-    const DICTIONARY = {
-        adv: '2d20H',
-        dis: '2d20L'
-    };
-
-    async function macroize(store, clauses, uid) {
+    async function macroize(store, context, uid) {
         let coll = (await store).db().collection('macros');
         let macros = (await coll.findOne(
-            { _id: uid },
-            { projection: { _id: 0} }
-        ));
+                { _id: uid },
+                { projection: { _id: 0} }
+            )) || {},
+            globals = (await coll.findOne( // TODO super user creates
+                { _id: context.botUserId },
+                { projection: { _id: 0} }
+            )) || {};
+        Object.keys(globals).forEach(name => {
+            if (!macros[name])
+                macros[name] = globals[name];
+        });
 
-        macros = macros ? Object.assign(DICTIONARY, macros) : DICTIONARY;
         let re_macros = new RegExp(`\\b(${Object.keys(macros).join('|')})\\b`, 'gi');
-
-        return clauses.map(clause => ({
+        return context.clauses.map(clause => ({
             text: clause.text.replace(re_macros, m => macros[m.toLowerCase()]),
             where: clause.where
         }));
