@@ -2,8 +2,8 @@ const { App, ExpressReceiver } = require('@slack/bolt'),
       { MongoClient } = require('mongodb');
 
 const receiver = new ExpressReceiver({
-    signingSecret: process.env.SLACK_SIGNING_SECRET
-});
+        signingSecret: process.env.SLACK_SIGNING_SECRET
+    });
 
 const app = new App({
     token: process.env.SLACK_BOT_TOKEN,
@@ -17,17 +17,13 @@ const store = MongoClient.connect(
     }
 );
 
-require('./routes/web.js')(receiver);
-require('./routes/distribute.js')(app, receiver);
-
-// TODO refactor each with one function per file
-require('./events/home.js')(app, store);
-require('./events/macros.js')(app, store);
-require('./events/polls.js')(app, store);
-
-require('./commands/echo.js')(app);
-require('./commands/roll.js')(app, store);
-require('./commands/deck.js')(app);
+require('./components/deck.js')({ app });
+require('./components/echo.js')({ app });
+require('./components/home.js')({ app, store });
+require('./components/macros.js')({ app, store });
+require('./components/polls.js')({ app, store });
+require('./components/roll.js')({ app, store });
+require('./components/routes.js')({ app, receiver });
 
 (async () => {
     const port = process.env.PORT || 3000;

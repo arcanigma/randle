@@ -1,14 +1,13 @@
 const randomInt = require('php-random-int'),
       toOrdinal = require('ordinal');
 
-const { who, trunc, wss, blame } = require('../plugins/factory.js'),
-      { anywhere } = require('../plugins/listen.js');
+const { who, trunc, wss, blame } = require('../library/factory.js'),
+      { anywhere } = require('../library/listeners.js');
 
-module.exports = (app, store) => {
-
-    const SLACK_MAX_TEXT = 300,
-          SLACK_MAX_MESSAGE_BLOCKS = 50,
-          SLACK_MAX_CONTEXT_ELEMENTS = 10;
+module.exports = ({ app, store }) => {
+    const MAX_TEXT = 300,
+          MAX_MESSAGE_BLOCKS = 50,
+          MAX_CONTEXT_ELEMENTS = 10;
 
     const re_roll = /^!?roll\s+(.+)/i,
           re_parens = /(?:\([^'()][^()]*\)|\[[^'[\]][^[\]]*\])/g;
@@ -221,10 +220,10 @@ module.exports = (app, store) => {
                 atoms[0] = `_undefined_`;
             atoms = [`*${expr}:*`, ...atoms];
 
-            if (elements.length < SLACK_MAX_CONTEXT_ELEMENTS)
+            if (elements.length < MAX_CONTEXT_ELEMENTS)
                 elements.push({
                     type: 'mrkdwn',
-                    text: trunc(`${prefix} ${atoms.join(' ')}`, SLACK_MAX_TEXT)
+                    text: trunc(`${prefix} ${atoms.join(' ')}`, MAX_TEXT)
                 });
 
             return total;
@@ -235,10 +234,10 @@ module.exports = (app, store) => {
 
             elements = [];
             let outcome = clauses[i].text.replace(re_dice_code, re_dice_fun);
-            if (elements.length == SLACK_MAX_CONTEXT_ELEMENTS)
-                elements[SLACK_MAX_CONTEXT_ELEMENTS-1] = {
+            if (elements.length == MAX_CONTEXT_ELEMENTS)
+                elements[MAX_CONTEXT_ELEMENTS-1] = {
                     type: 'mrkdwn',
-                    text: `:warning: Too many context elements to show (limit of ${SLACK_MAX_CONTEXT_ELEMENTS}).`
+                    text: `:warning: Too many context elements to show (limit of ${MAX_CONTEXT_ELEMENTS}).`
                 };
 
             if (outcome != clauses[i].text) {
@@ -248,13 +247,13 @@ module.exports = (app, store) => {
                 clauses[i] = prettifyMarkdown(clauses[i]);
                 phrases[clauses[i].where].push(clauses[i].text);
 
-                if (blocks[clauses[i].where].length < SLACK_MAX_MESSAGE_BLOCKS) {
+                if (blocks[clauses[i].where].length < MAX_MESSAGE_BLOCKS) {
                     if (blocks[clauses[i].where].length == 0)
                         blocks[clauses[i].where].push({
                             type: 'section',
                             text: {
                                 type: 'mrkdwn',
-                                text: trunc(`${clauses[i].where == 'inline' ? who(message, 'You') : 'You'} rolled ${clauses[i].text}.`, SLACK_MAX_TEXT)
+                                text: trunc(`${clauses[i].where == 'inline' ? who(message, 'You') : 'You'} rolled ${clauses[i].text}.`, MAX_TEXT)
                             }
                         });
                     else
@@ -262,7 +261,7 @@ module.exports = (app, store) => {
                             type: 'section',
                             text: {
                                 type: 'mrkdwn',
-                                text: trunc(`Then ${clauses[i].text}.`, SLACK_MAX_TEXT)
+                                text: trunc(`Then ${clauses[i].text}.`, MAX_TEXT)
                             }
                         });
 
@@ -277,18 +276,18 @@ module.exports = (app, store) => {
 
         let results = {};
         for (let where in phrases) {
-            if (blocks[where].length == SLACK_MAX_MESSAGE_BLOCKS)
-                blocks[where][SLACK_MAX_MESSAGE_BLOCKS-1] = {
+            if (blocks[where].length == MAX_MESSAGE_BLOCKS)
+                blocks[where][MAX_MESSAGE_BLOCKS-1] = {
                     type: 'section',
                     text: {
                         type: 'mrkdwn',
-                        text: `:warning: Too many message blocks to show (limit of ${SLACK_MAX_MESSAGE_BLOCKS}).`
+                        text: `:warning: Too many message blocks to show (limit of ${MAX_MESSAGE_BLOCKS}).`
                     }
                 };
 
             if (phrases[where].length > 0)
                 results[where] = {
-                      text: trunc(phrases[where].join('; '), SLACK_MAX_TEXT),
+                      text: trunc(phrases[where].join('; '), MAX_TEXT),
                       blocks: blocks[where]
                 };
         }
@@ -359,5 +358,4 @@ module.exports = (app, store) => {
         } while (clause.text != old);
         return clause;
     }
-
 };

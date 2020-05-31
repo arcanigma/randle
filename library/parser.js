@@ -36,14 +36,14 @@ const alike = (token, terminal) => {
         return terminal.test(token);
     else
         return token == terminal;
-}
+};
 
 const truncate = (string, width) => {
     if (string.length <= width)
         return string;
     else
         return string.slice(0, width) + '...';
-}
+};
 
 module.exports = {
     tokenize,

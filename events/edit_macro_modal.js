@@ -1,37 +1,7 @@
-const { edit_macro_modal } = require('../views/macros.js'),
-      { home_view } = require('../views/home.js');
+const { size } = require('../library/factory.js'),
+      app_home = require('../views/app_home.js');
 
-module.exports = (app, store) => {
-
-    app.action('edit_macro_button', async ({ ack, body, action, context, client }) => {
-        await ack();
-
-        let user = body.user.id,
-            name = action.value;
-
-        let replacement;
-        if (name) {
-            name = name.toLowerCase();
-
-            let coll = (await store).db().collection('macros');
-            let macros = (await coll.findOne(
-                { _id: user },
-                { projection: { _id: 0} }
-            ));
-
-            if (macros[name])
-                replacement = macros[name];
-        }
-
-        let modal = await edit_macro_modal({ name, replacement });
-
-        await client.views.open({
-            token: context.botToken,
-            trigger_id: body.trigger_id,
-            view: modal
-        });
-    });
-
+module.exports = ({ app, store }) => {
     const re_macro = /^[\w_][\w\d_]{2,14}$/;
     app.view('edit_macro_modal', async ({ ack, body, context, view, client }) => {
         let user = body.user.id,
@@ -63,11 +33,10 @@ module.exports = (app, store) => {
                 { projection: { _id: 0} }
             )).value;
 
-            if (Object.keys(macros).length == 1) {
+            if (size(macros)  == 1)
                 coll.deleteOne(
                     { _id: user }
-                )
-            }
+                );
         }
         else {
             (await coll.findOneAndUpdate(
@@ -77,7 +46,7 @@ module.exports = (app, store) => {
             )).value;
         }
 
-        let home = await home_view({ user, store });
+        let home = await app_home({ user, store });
 
         await client.views.publish({
             token: context.botToken,
@@ -85,5 +54,4 @@ module.exports = (app, store) => {
             view: home
         });
     });
-
-}
+};

@@ -19,6 +19,10 @@ const names = (list, user, delim=', ') => {
     ) || 'nobody';
 };
 
+const size = (object) => {
+    return Object.keys(object).length;
+};
+
 const trunc = (text, limit) => {
     if (text.length <= limit)
         return text;
@@ -29,6 +33,12 @@ const trunc = (text, limit) => {
 const re_wss = /\s+/g;
 const wss = (text) => {
     return text.replace(re_wss, ' ').trim();
+};
+
+const progress = (count, total, limit) => {
+    let width = Math.min(total, limit),
+        squares = Math.round(count / total * width);
+    return '\uD83D\uDD33'.repeat(squares) + '\u2B1C'.repeat(width - squares);
 };
 
 // TODO refactor into informative modal?
@@ -97,7 +107,9 @@ module.exports = {
     who,
     commas,
     names,
+    size,
     trunc,
     wss,
+    progress,
     blame
 };

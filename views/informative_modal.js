@@ -1,13 +1,11 @@
-const informative_modal = async ({ title, error }) => {
-    let blocks = [
-		{
-			type: 'section',
-			text: {
-				type: 'mrkdwn',
-				text: error
-			}
-		}
-	];
+module.exports = async ({ title, error }) => {
+    let blocks = [{
+        type: 'section',
+        text: {
+            type: 'mrkdwn',
+            text: error
+        }
+    }];
 
     let view = {
         type: 'modal',
@@ -23,8 +21,4 @@ const informative_modal = async ({ title, error }) => {
     };
 
     return JSON.stringify(view);
-};
-
-module.exports = {
-  informative_modal
 };

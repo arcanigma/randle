@@ -1,13 +1,12 @@
 const randomInt = require('php-random-int');
 
-const { who, commas, names, trunc, wss, blame } = require('../plugins/factory.js'),
-      { tokenize, expect, accept } = require('../plugins/parser.js'),
-      { nonthread, anywhere, community } = require('../plugins/listen.js');
+const { who, commas, names, trunc, wss, blame } = require('../library/factory.js'),
+      { tokenize, expect, accept } = require('../library/parser.js'),
+      { nonthread, anywhere, community } = require('../library/listeners.js');
 
-module.exports = (app) => {
-
-    const SLACK_MAX_TEXT = 300,
-          SLACK_MAX_CONTEXT_ELEMENTS = 10;
+module.exports = ({ app }) => {
+    const MAX_TEXT = 300,
+          MAX_CONTEXT_ELEMENTS = 10;
 
     const re_shuffle = /^!?shuffle\s+(.+)/is;
     app.message(nonthread, anywhere, re_shuffle, async ({ message, context, say }) => {
@@ -20,7 +19,7 @@ module.exports = (app) => {
                     type: 'section',
                     text: {
                         type: 'mrkdwn',
-                        text: trunc(`${who(message, 'You')} shuffled ${commas(items.map(item => `*${item}*`))}.`, SLACK_MAX_TEXT)
+                        text: trunc(`${who(message, 'You')} shuffled ${commas(items.map(item => `*${item}*`))}.`, MAX_TEXT)
                     }
                 }]
             });
@@ -42,7 +41,7 @@ module.exports = (app) => {
                     type: 'section',
                     text: {
                         type: 'mrkdwn',
-                        text: trunc(`${who(message, 'You')} drew ${commas(items.map(item => `*${item}*`))}.`, SLACK_MAX_TEXT)
+                        text: trunc(`${who(message, 'You')} drew ${commas(items.map(item => `*${item}*`))}.`, MAX_TEXT)
                     }
                 }]
             });
@@ -110,7 +109,7 @@ module.exports = (app) => {
                         type: 'section',
                         text: {
                             type: 'mrkdwn',
-                            text: trunc(per_summary, SLACK_MAX_TEXT)
+                            text: trunc(per_summary, MAX_TEXT)
                         }
                     }];
 
@@ -121,7 +120,7 @@ module.exports = (app) => {
                             Object.keys(dealt).filter(them => them != us && dealt[them].includes(show)).forEach(them => {
                                 shown.push({
                                     type: 'mrkdwn',
-                                    text: trunc(`:eye-in-speech-bubble: Because you were dealt *${to}* you see that <@${them}> was dealt *${rule.as ? rule.as : show}*.`, SLACK_MAX_TEXT)
+                                    text: trunc(`:eye-in-speech-bubble: Because you were dealt *${to}* you see that <@${them}> was dealt *${rule.as ? rule.as : show}*.`, MAX_TEXT)
                                 });
                             });
                         });
@@ -130,12 +129,12 @@ module.exports = (app) => {
                 if (shown.length > 0) {
                     shown = shuffle(shown);
 
-                    if (shown.length > SLACK_MAX_CONTEXT_ELEMENTS)
+                    if (shown.length > MAX_CONTEXT_ELEMENTS)
                         shown = [
-                            ...shown.slice(0, SLACK_MAX_CONTEXT_ELEMENTS-1),
+                            ...shown.slice(0, MAX_CONTEXT_ELEMENTS-1),
                             {
                                 type: 'mrkdwn',
-                                text: trunc(`:warning: Too many context elements to show (limit of ${SLACK_MAX_CONTEXT_ELEMENTS}).`, SLACK_MAX_TEXT)
+                                text: trunc(`:warning: Too many context elements to show (limit of ${MAX_CONTEXT_ELEMENTS}).`, MAX_TEXT)
                             }
                         ];
 
@@ -163,7 +162,7 @@ module.exports = (app) => {
                     type: 'section',
                     text: {
                         type: 'mrkdwn',
-                        text: trunc(all_summary, SLACK_MAX_TEXT)
+                        text: trunc(all_summary, MAX_TEXT)
                     }
                 }];
 

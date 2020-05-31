@@ -1,8 +1,7 @@
-const { blame } = require('../plugins/factory.js'),
-      { nonthread, direct, debug } = require('../plugins/listen.js');
+const { blame } = require('../library/factory.js'),
+      { nonthread, direct, debug } = require('../library/listeners.js');
 
-module.exports = (app) => {
-
+module.exports = ({ app }) => {
     const re_echo = /^!?echo\s+(.*)/i;
     app.message(nonthread, direct, re_echo, debug, async ({ message, context, say }) => {
         try {
@@ -25,5 +24,4 @@ module.exports = (app) => {
             await say(blame(err, message));
         }
     });
-
 };
