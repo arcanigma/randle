@@ -44,6 +44,8 @@ module.exports = ({ app, store }) => {
                 await say({
                     token: context.botToken,
                     channel: message.channel,
+                    username: `Roll`,
+                    icon_emoji: ':game_die:',
                     text: `${who(message, 'You')} rolled dice`,
                     blocks: results[where].blocks,
                     ...(message.thread_ts ? {

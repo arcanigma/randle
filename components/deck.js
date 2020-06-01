@@ -5,15 +5,32 @@ const { who, commas, names, trunc, wss, blame } = require('../library/factory.js
       { nonthread, anywhere, community } = require('../library/listeners.js');
 
 module.exports = ({ app }) => {
+    const SUIT_NAMES = [
+        'Spade',
+        'Heart',
+        'Club',
+        'Diamond'
+    ];
+
+    const SUIT_EMOJIS = [
+        ':spades:',
+        ':hearts:',
+        ':clubs:',
+        ':diamonds:'
+    ];
+
     const MAX_TEXT = 300,
           MAX_CONTEXT_ELEMENTS = 10;
 
     const re_shuffle = /^!?shuffle\s+(.+)/is;
     app.message(nonthread, anywhere, re_shuffle, async ({ message, context, say }) => {
         try {
-            let items = parse_deck(context.matches[1]);
+            let suit = randomInt(0, 3),
+                items = parse_deck(context.matches[1]);
 
             await say({
+                username: `${SUIT_NAMES[suit]} Shuffle`,
+                icon_emoji: SUIT_EMOJIS[suit],
                 text: `${who(message, 'You')} shuffled item${items.length != 1 ? 's' : ''}`,
                 blocks: [{
                     type: 'section',
@@ -32,10 +49,13 @@ module.exports = ({ app }) => {
     const re_draw = /^!?draw\s+(?:([1-9][0-9]*)\s+from\s+)?(.+)/is;
     app.message(nonthread, anywhere, re_draw, async ({ message, context, say }) => {
         try {
-            let count = context.matches[1] || 1,
+            let suit = randomInt(0, 3),
+                count = context.matches[1] || 1,
                 items = parse_deck(`(${context.matches[2]}):${count}`);
 
             await say({
+                username: `${SUIT_NAMES[suit]} Draw`,
+                icon_emoji: SUIT_EMOJIS[suit],
                 text: `${who(message, 'You')} drew item${count != 1 ? 's' : ''}`,
                 blocks: [{
                     type: 'section',
@@ -55,7 +75,8 @@ module.exports = ({ app }) => {
           re_braces = /\{.+\}/s;
     app.message(nonthread, community, re_deal, async ({ message, context, say, client }) => {
         try {
-            let dry_run = context.matches[1] == '?';
+            let suit = randomInt(0, 3),
+                dry_run = context.matches[1] == '?';
 
             let setup, items;
             if (re_braces.test(context.matches[2])) {
@@ -104,7 +125,7 @@ module.exports = ({ app }) => {
                 let per_list = commas(dealt[us].map(item => `*${item}*`)),
                     per_venue = setup.event ? `for the *${setup.event}* event` : `from the <#${message.channel}> channel`,
                     per_notification = `${message.user != us ? `<@${message.user}>` : 'You'} dealt ${message.user != us ? 'you' : 'yourself'} items`,
-                    per_summary = `:twisted_rightwards_arrows: ${message.user != us ? `<@${message.user}>` : 'You'} dealt ${message.user != us ? 'you' : 'yourself'} ${per_list} ${per_venue}<!date^${Math.trunc(message.ts)}^ {date_short_pretty} at {time}| recently>.`,
+                    per_summary = `${message.user != us ? `<@${message.user}>` : 'You'} dealt ${message.user != us ? 'you' : 'yourself'} ${per_list} ${per_venue}<!date^${Math.trunc(message.ts)}^ {date_short_pretty} at {time}| recently>.`,
                     per_blocks = [{
                         type: 'section',
                         text: {
@@ -144,13 +165,20 @@ module.exports = ({ app }) => {
                     });
                 }
 
-                if (!dry_run)
+                if (!dry_run) {
+                    let dm = (await client.conversations.open({
+                        token: context.botToken,
+                        users: us
+                    })).channel.id;
                     await client.chat.postMessage({
                         token: context.botToken,
-                        channel: us,
+                        channel: dm,
+                        username: `${SUIT_NAMES[suit]} Deal`,
+                        icon_emoji: SUIT_EMOJIS[suit],
                         text: per_notification,
                         blocks: per_blocks
                     });
+                }
             });
 
             let all_list = commas(Object.keys(counts).sort().reverse().map(count => {
@@ -166,20 +194,24 @@ module.exports = ({ app }) => {
                     }
                 }];
 
-            if (!dry_run)
+            if (!dry_run) {
                 await client.chat.postMessage({
                     token: context.botToken,
                     channel: message.channel,
+                    username: `${SUIT_NAMES[suit]} Deal`,
+                    icon_emoji: SUIT_EMOJIS[suit],
                     text: all_notification,
                     blocks: all_blocks
                 });
-            else
+            }
+            else {
                 await client.chat.postEphemeral({
                     token: context.botToken,
                     channel: message.channel,
                     user: message.user,
                     text: 'Your `deal` script is valid.'
                 });
+            }
         }
         catch (err) {
             await say(blame(err, message));

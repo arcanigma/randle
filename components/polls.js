@@ -119,6 +119,7 @@ module.exports = ({ app, store }) => {
             }
         });
 
+        // TODO post as triggering user?
         let post;
         try {
             post = {
