@@ -125,7 +125,7 @@ module.exports = ({ app }) => {
                 let per_list = commas(dealt[us].map(item => `*${item}*`)),
                     per_venue = setup.event ? `for the *${setup.event}* event` : `from the <#${message.channel}> channel`,
                     per_notification = `${message.user != us ? `<@${message.user}>` : 'You'} dealt ${message.user != us ? 'you' : 'yourself'} items`,
-                    per_summary = `${message.user != us ? `<@${message.user}>` : 'You'} dealt ${message.user != us ? 'you' : 'yourself'} ${per_list} ${per_venue}<!date^${Math.trunc(message.ts)}^ {date_short_pretty} at {time}| recently>.`,
+                    per_summary = `${message.user != us ? `<@${message.user}>` : 'You'} dealt ${message.user != us ? 'you' : 'yourself'} ${per_list} ${per_venue} <!date^${Math.trunc(message.ts)}^{date_short_pretty} at {time}|recently>.`,
                     per_blocks = [{
                         type: 'section',
                         text: {

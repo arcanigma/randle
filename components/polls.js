@@ -121,7 +121,6 @@ module.exports = ({ app, store }) => {
             }
         });
 
-        // TODO post as triggering user or with icon next to username
         let message, ts;
         try {
             message = {

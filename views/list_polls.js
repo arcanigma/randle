@@ -103,7 +103,7 @@ module.exports = async ({ user, store, options={ filter: 'open' } }) => {
                         }] : []),
                         ...(poll.latest ? [{
                             type: 'mrkdwn',
-                            text: `*Latest:* ${poll.latest.summary}<!date^${Math.trunc(poll.latest.message_ts)}^ {date_short_pretty} at {time}^${poll.latest.permalink}| for the audience>`
+                            text: `*Latest:* ${poll.latest.summary} <!date^${Math.trunc(poll.latest.message_ts)}^{date_short_pretty} at {time}^${poll.latest.permalink}|for the audience>`
                         }] : [])
                     ]
                 },
