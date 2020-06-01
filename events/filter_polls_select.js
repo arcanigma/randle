@@ -7,7 +7,7 @@ module.exports = ({ app, store }) => {
         let user = body.user.id,
             filter = action.selected_option.value;
 
-        let home = await app_home({ user, store, options: {
+        let home = await app_home({ user, store, event: action, options: {
             polls: { filter }
         }});
 

@@ -68,7 +68,7 @@ module.exports = ({ app, store, announce, timers }) => {
             options = { polls: { filter: 'closed' } };
         }
 
-        let home = await app_home({ user, store, options });
+        let home = await app_home({ user, store, event: action, options });
 
         await client.views.publish({
             token: context.botToken,

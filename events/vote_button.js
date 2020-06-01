@@ -79,7 +79,7 @@ module.exports = ({ app, store, announce, timers }) => {
             }
         }
 
-        let home = await app_home({ user, store });
+        let home = await app_home({ user, store, event: action });
 
         await client.views.publish({
             token: context.botToken,

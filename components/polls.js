@@ -1,4 +1,6 @@
-const { commas, names, boxbar, onbox, offbox } = require('../library/factory.js'),
+const { ObjectID } = require('mongodb');
+
+const { commas, names, onbox, offbox } = require('../library/factory.js'),
       informative_modal = require('../views/informative_modal.js');
 
 module.exports = ({ app, store }) => {
@@ -17,7 +19,7 @@ module.exports = ({ app, store }) => {
                 open: 'opened',
                 reopen: 'reopened',
                 reannounce: 'reannounced'
-            }[mode]} a poll`;
+            }[mode]} the poll`;
 
             blocks.push({
                 type: 'actions',
@@ -30,7 +32,7 @@ module.exports = ({ app, store }) => {
                             emoji: true,
                             text: choice
                         },
-                        url: `slack://app?team=${body.team.id}&id=${body.api_app_id}`,
+                        url: `slack://app?team=${body.team.id}&id=${body.api_app_id}&tab=home`,
                         value: JSON.stringify({
                             poll: poll._id,
                             choice: index
@@ -79,8 +81,8 @@ module.exports = ({ app, store }) => {
         }
         else if (mode == 'close' || mode == 'autoclose') {
             summary = mode == 'close'
-                ? `<@${poll.host}> closed a poll`
-                : `<@${context.botUserId}> closed a poll for <@${poll.host}>`;
+                ? `<@${poll.host}> closed the poll`
+                : `<@${context.botUserId}> closed the poll for <@${poll.host}>`;
 
             blocks.push({
                 type: 'context',
@@ -119,19 +121,19 @@ module.exports = ({ app, store }) => {
             }
         });
 
-        // TODO post as triggering user?
-        let post;
+        // TODO post as triggering user or with icon next to username
+        let message, ts;
         try {
-            post = {
+            message = {
                 token: context.botToken,
                 channel: poll.audience,
-                username: `${poll.prompt}`,
+                username: `Poll: ${poll.prompt}`,
                 icon_emoji: ':ballot_box_with_ballot:',
                 text: summary,
                 blocks: blocks
             };
 
-            await client.chat.postMessage(post);
+            ts = (await client.chat.postMessage(message)).ts;
         }
         catch (error) {
             if (error.data.error == 'not_in_channel') {
@@ -151,10 +153,31 @@ module.exports = ({ app, store }) => {
                     view: modal
                 });
 
-                await client.chat.postMessage(post);
+                ts = (await client.chat.postMessage(message)).ts;
             }
             else throw error;
         }
+
+        let permalink = ts ? (await client.chat.getPermalink({
+            channel: poll.audience,
+            message_ts: ts
+        })).permalink : undefined;
+
+        let coll = (await store).db().collection('polls');
+        await coll.updateOne(
+            { _id: new ObjectID(poll._id) },
+            ts
+                ? { $set: {
+                    latest: {
+                        summary: summary,
+                        message_ts: ts,
+                        permalink: permalink
+                    }
+                } }
+                : { $unset: {
+                    latest: undefined
+                } }
+        );
     };
 
     require('../events/create_poll_modal.js')({ app, store, announce });

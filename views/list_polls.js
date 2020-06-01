@@ -99,7 +99,11 @@ module.exports = async ({ user, store, options={ filter: 'open' } }) => {
                         },
                         ...(poll.votes[user] !== undefined ? [{
                             type: 'mrkdwn',
-                            text: `*Your Vote:* ${poll.choices[poll.votes[user]]}`
+                            text: `*You Voted:* ${poll.choices[poll.votes[user]]}`
+                        }] : []),
+                        ...(poll.latest ? [{
+                            type: 'mrkdwn',
+                            text: `*Latest:* ${poll.latest.summary}<!date^${Math.trunc(poll.latest.message_ts)}^ {date_short_pretty} at {time}^${poll.latest.permalink}| for the audience>`
                         }] : [])
                     ]
                 },
@@ -172,7 +176,7 @@ module.exports = async ({ user, store, options={ filter: 'open' } }) => {
                                             admin: 'delete'
                                         })
                                     }
-                                ])
+                                ]),
                             ],
                             confirm: {
                                 title: {
@@ -202,12 +206,7 @@ module.exports = async ({ user, store, options={ filter: 'open' } }) => {
                             type: 'mrkdwn',
                             text: `*Host:* ${poll.host != user ? `<@${poll.host}>` : 'you'}`
                         },
-                        ...(user != poll.host ? [
-                            {
-                                type: 'mrkdwn',
-                                text: `*Members:* ${names(poll.members, user)}`
-                            }
-                        ] : [
+                        ...(user == poll.host || poll.setup.includes('participation') ? [
                             ...(voted.length > 0 ? [{
                                 type: 'mrkdwn',
                                 text: `*Voted:* ${names(voted, user)}`
@@ -216,7 +215,10 @@ module.exports = async ({ user, store, options={ filter: 'open' } }) => {
                                 type: 'mrkdwn',
                                 text: `*Not Voted:* ${names(unvoted, user)}`
                             }] : [])
-                        ]),
+                        ] : [{
+                            type: 'mrkdwn',
+                            text: `*Members:* ${names(poll.members, user)}`
+                        }]),
                         ...(poll.setup ? [{
                             type: 'mrkdwn',
                             text: `*Setup:* ${commas(poll.setup.map(option => ({
