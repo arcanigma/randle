@@ -23,23 +23,20 @@ module.exports = ({ app, store }) => {
 
             blocks.push({
                 type: 'actions',
-                elements: poll.choices.map((choice, index) =>
-                    ({
-                        type: 'button',
-                        action_id: `vote_button_${index}`,
-                        text: {
-                            type: 'plain_text',
-                            emoji: true,
-                            text: choice
-                        },
-                        // TODO investigate opening poll in modal, not app home
-                        url: `slack://app?team=${body.team.id}&id=${body.api_app_id}&tab=home`,
-                        value: JSON.stringify({
-                            poll: poll._id,
-                            choice: index
-                        })
+                elements: poll.choices.map((choice, index) => ({
+                    type: 'button',
+                    action_id: `vote_button_${index}`,
+                    text: {
+                        type: 'plain_text',
+                        emoji: true,
+                        text: choice
+                    },
+                    url: `slack://app?team=${body.team.id}&id=${body.api_app_id}&tab=home`,
+                    value: JSON.stringify({
+                        poll: poll._id,
+                        choice: index
                     })
-                )
+                }))
             });
 
             blocks.push({
@@ -67,12 +64,12 @@ module.exports = ({ app, store }) => {
             if (voted.length > 0)
                 counts.push({
                     type: 'mrkdwn',
-                    text: `*Voted:* ${onbox(voted.length)} *${voted.length}*` // (${names(voted)})`
+                    text: `*Voted:* ${onbox(voted.length)} *${voted.length}*`
                 });
             if (unvoted.length > 0)
                 counts.push({
                     type: 'mrkdwn',
-                    text: `*Not Voted:* ${offbox(unvoted.length)} *${unvoted.length}*` // (${names(unvoted)})`
+                    text: `*Not Voted:* ${offbox(unvoted.length)} *${unvoted.length}*`
                 });
             if (counts.length > 0)
                 blocks.push({
@@ -183,7 +180,6 @@ module.exports = ({ app, store }) => {
     require('../events/create_poll_modal.js')({ app, store, announce });
     require('../events/create_poll_shortcut.js')({ app });
     require('../events/filter_polls_select.js')({ app, store });
-    require('../events/go_to_polls_button.js')({ app });
     require('../events/poll_overflow_button.js')({ app, store, announce, timers });
     require('../events/vote_button.js')({ app, store, announce, timers });
 };

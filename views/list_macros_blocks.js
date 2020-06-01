@@ -15,9 +15,7 @@ module.exports = async ({ user, store }) => {
                 }
             }
         },
-        {
-            type: 'divider'
-        }
+        { type: 'divider' }
     ];
 
     let coll = (await store).db().collection('macros');

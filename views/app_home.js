@@ -1,17 +1,22 @@
-const list_macros = require('./list_macros.js'),
-      list_polls = require('./list_polls.js');
+const list_macros_blocks = require('./list_macros_blocks.js'),
+      list_polls_blocks = require('./list_polls_blocks.js');
 
-const divider = {
-    type: 'divider'
-};
+/*
+    TODO 100 block error
 
-// TODO 100 block error; select from macros, filtered polls, etc
+    selection menu:
+        open polls
+        closed polls
+        all polls
+        macros
+    remember selection
+*/
 module.exports = async ({ user, store, options={} }) => {
     let blocks = [
-        ...await list_polls({ user, store, options: options.polls }),
-        divider,
-        ...await list_macros({ user, store }),
-        divider
+        ...await list_polls_blocks({ user, store, options: options.polls }),
+        { type: 'divider' },
+        ...await list_macros_blocks({ user, store }),
+        { type: 'divider' }
     ].slice(0, 100);
 
     let view = {

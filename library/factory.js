@@ -48,7 +48,6 @@ const offbox = (count) => {
     return '\u2B1C'.repeat(count);
 };
 
-// TODO refactor into informative modal?
 const blame = (error, message) => {
     if (error instanceof Error) {
         return {
