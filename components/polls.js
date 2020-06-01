@@ -32,6 +32,7 @@ module.exports = ({ app, store }) => {
                             emoji: true,
                             text: choice
                         },
+                        // TODO investigate opening poll in modal, not app home
                         url: `slack://app?team=${body.team.id}&id=${body.api_app_id}&tab=home`,
                         value: JSON.stringify({
                             poll: poll._id,
@@ -66,12 +67,12 @@ module.exports = ({ app, store }) => {
             if (voted.length > 0)
                 counts.push({
                     type: 'mrkdwn',
-                    text: `*Voted:* ${onbox(voted.length)} *${voted.length}* (${names(voted)})`
+                    text: `*Voted:* ${onbox(voted.length)} *${voted.length}*` // (${names(voted)})`
                 });
             if (unvoted.length > 0)
                 counts.push({
                     type: 'mrkdwn',
-                    text: `*Not Voted:* ${offbox(unvoted.length)} *${unvoted.length}* (${names(unvoted)})`
+                    text: `*Not Voted:* ${offbox(unvoted.length)} *${unvoted.length}*` // (${names(unvoted)})`
                 });
             if (counts.length > 0)
                 blocks.push({
