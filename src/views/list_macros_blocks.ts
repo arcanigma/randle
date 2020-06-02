@@ -1,6 +1,11 @@
-module.exports = async ({ user, store }) => {
-    let blocks = [
-        {
+import { Block, SectionBlock, ContextBlock, DividerBlock } from '@slack/web-api';
+import { MongoClient } from 'mongodb';
+
+export default async (user: string, store: Promise<MongoClient>): Promise<Block[]> => {
+    const blocks: Block[] = [];
+
+    blocks.push(...[
+        <SectionBlock>{
             type: 'section',
             text: {
                 type: 'mrkdwn',
@@ -15,20 +20,20 @@ module.exports = async ({ user, store }) => {
                 }
             }
         },
-        { type: 'divider' }
-    ];
+        <DividerBlock>{ type: 'divider' }
+    ]);
 
-    let coll = (await store).db().collection('macros');
-    let macros = (await coll.findOne(
+    const coll = (await store).db().collection('macros');
+    const macros = (await coll.findOne(
         { _id: user },
         { projection: { _id: 0} }
     ));
 
     if (macros) {
-        let names = Object.keys(macros).sort();
+        const names = Object.keys(macros).sort();
 
-        for (let name of names) {
-            blocks.push({
+        for (const name of names) {
+            blocks.push(<SectionBlock>{
                 type: 'section',
                 text: {
                     type: 'mrkdwn',
@@ -39,7 +44,7 @@ module.exports = async ({ user, store }) => {
                     action_id: 'edit_macro_button',
                     text: {
                         type: 'plain_text',
-                        text: `Edit`
+                        text: 'Edit'
                     },
                     value: name
                 }
@@ -47,7 +52,7 @@ module.exports = async ({ user, store }) => {
         }
     }
     else {
-        blocks.push({
+        blocks.push(<ContextBlock>{
             type: 'context',
             elements: [
                 {

@@ -1,75 +1,83 @@
-const who = (message, pronoun) => {
-    return message.channel_type != 'im' ? `<@${message.user}>` : pronoun;
-};
+import { MessageEvent, SayArguments } from '@slack/bolt';
+import { SectionBlock, ContextBlock } from '@slack/web-api';
 
-const commas = (list, delim=', ') => {
+import { MAX_TEXT_SIZE } from '../app.js';
+
+export function who(message: MessageEvent, pronoun: string): string {
+    return message.channel_type != 'im' ? `<@${message.user}>` : pronoun;
+}
+
+export function commas(list: string[], separator=', '): string {
     if (list.length == 1)
         return list[0];
     else if (list.length == 2)
         return `${list[0]} and ${list[1]}`;
     else if (list.length >= 3)
-        return `${list.slice(0, -1).join(delim)}, and ${list.slice(-1)}`;
-};
+        return `${list.slice(0, -1).join(separator)}, and ${list.slice(-1)}`;
+    else
+        return '';
+}
 
-const names = (list, user, delim=', ') => {
+export function names(list: string[], user?: string, separator=', '): string {
     return commas(
         list.sort(u => u == user ? -1 : 0)
             .map(u => u != user ? `<@${u}>` : 'you'),
-        delim
+        separator
     ) || 'nobody';
-};
+}
 
-const size = (object) => {
+export function size(object: {[key: string]: unknown}): number {
     return Object.keys(object).length;
-};
+}
 
-const trunc = (text, limit) => {
+export function trunc(text: string, limit: number): string {
     if (text.length <= limit)
         return text;
     else
         return text.substring(0, limit-2) + '...';
-};
+}
 
 const re_wss = /\s+/g;
-const wss = (text) => {
+export function wss(text: string): string {
     return text.replace(re_wss, ' ').trim();
-};
+}
 
-const boxbar = (count, total) => {
-    let squares = Math.round(count / total * total);
+export function boxbar(count: number, total: number): string {
+    const squares = Math.round(count / total * total);
     return onbox(squares) + offbox(total - squares);
-};
+}
 
-const onbox = (count) => {
+export function onbox(count: number): string {
     return '\uD83D\uDD33'.repeat(count);
-};
+}
 
-const offbox = (count) => {
+export function offbox(count: number): string {
     return '\u2B1C'.repeat(count);
-};
+}
 
-const blame = (error, message) => {
+export function blame(error: string | Error, message: MessageEvent): SayArguments {
+    console.log({ error });
     if (error instanceof Error) {
         return {
-            text: 'Your message caused an error.',
+            text: 'There was an error',
             blocks: [
-                {
+                <SectionBlock>{
                     type: 'section',
                     text: {
                         type: 'plain_text',
                         text: 'Your message caused an error. Please report these details to the developer.'
                     }
                 },
-                {
+                <ContextBlock>{
                     type: 'context',
                     elements: [
                         {
                           type: 'mrkdwn',
-                          text: `:octagonal_sign: *${error.name}:* ${error.message}`
+                          text: `:octagonal_sign: *${error.name}:* ${trunc(error.message, MAX_TEXT_SIZE)}`
                         },
                         {
                           type: 'mrkdwn',
-                          text: `*Location:* ${error.stack.match(/\w+.js:\d+:\d+/g)[0]}`
+                          text: `*Location:* ${error.stack?.match(/\w+.ts:\d+:\d+/g)?.[0] ?? 'unknown'}`
                         },
                         {
                           type: 'mrkdwn',
@@ -77,7 +85,7 @@ const blame = (error, message) => {
                         },
                         {
                           type: 'mrkdwn',
-                          text: `*Text:* ${message.text}`
+                          text: `*Text:* ${trunc(message.text ?? 'undefined', MAX_TEXT_SIZE)}`
                         }
                     ]
                 }
@@ -86,38 +94,25 @@ const blame = (error, message) => {
     }
     else {
         return {
-            text: 'Your command has a problem.',
+            text: 'There was an error',
             blocks: [
-                {
+                <SectionBlock>{
                     type: 'section',
                     text: {
                         type: 'plain_text',
                         text: 'Your command has a problem. Please correct the problem before trying again.'
                     }
                 },
-                {
+                <ContextBlock>{
                     type: 'context',
                     elements: [
                         {
                           type: 'mrkdwn',
-                          text: `:warning: *User Error:* ${error}`
+                          text: `:warning: *User Error:* ${trunc(error, MAX_TEXT_SIZE)}`
                         }
                     ]
                 }
             ]
         };
     }
-};
-
-module.exports = {
-    who,
-    commas,
-    names,
-    size,
-    trunc,
-    wss,
-    boxbar,
-    onbox,
-    offbox,
-    blame
-};
+}

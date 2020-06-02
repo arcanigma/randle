@@ -1,21 +1,25 @@
-const { commas, names } = require('../library/factory.js');
+import { Block, SectionBlock, ActionsBlock, ContextBlock } from '@slack/web-api';
 
-module.exports = ({ user, poll, options }) => {
-    let voted = poll.members.filter(member => poll.votes[member] !== undefined),
+import { commas, names } from '../library/factory';
+import { Poll, PollSetupOptions } from '../components/polls';
+import { HomeOptions, PollFilterOptions } from '../views/app_home';
+
+export default async (user: string, poll: Poll, options: HomeOptions): Promise<Block[]> => {
+    const voted = poll.members.filter(member => poll.votes[member] !== undefined),
         unvoted = poll.members.filter(member => poll.votes[member] === undefined);
 
-    let blocks = [
-        {
+    const blocks: Block[] = [
+        <SectionBlock>{
             type: 'section',
             text: {
                 type: 'mrkdwn',
                 text: `*${poll.prompt}*`
             }
         },
-        {
+        <ContextBlock>{
             type: 'context',
             elements: [
-                ...(options.filter == 'all' ? [{
+                ...(options.polls.filter == PollFilterOptions.All ? [{
                     type: 'mrkdwn',
                     text: `*Status:* ${poll.closed !== undefined ? 'closed' : 'open'}`
                 }] : []),
@@ -29,11 +33,11 @@ module.exports = ({ user, poll, options }) => {
                 }] : []),
                 ...(poll.latest ? [{
                     type: 'mrkdwn',
-                    text: `*Latest:* ${poll.latest.summary} <!date^${Math.trunc(poll.latest.message_ts)}^{date_short_pretty} at {time}^${poll.latest.permalink}|for the audience>`
+                    text: `*Latest:* ${poll.latest.summary} <!date^${parseInt(poll.latest.message_ts)}^{date_short_pretty} at {time}^${poll.latest.permalink}|for the audience>`
                 }] : [])
             ]
         },
-        {
+        <ActionsBlock>{
             type: 'actions',
             elements: [
                 ...(poll.choices.map((choice, index) =>
@@ -125,14 +129,14 @@ module.exports = ({ user, poll, options }) => {
                 }] : [])
             ]
         },
-        {
+        <ContextBlock>{
             type: 'context',
             elements: [
                 {
                     type: 'mrkdwn',
                     text: `*Host:* ${poll.host != user ? `<@${poll.host}>` : 'you'}`
                 },
-                ...(user == poll.host || poll.setup.includes('participation') ? [
+                ...(user == poll.host || poll.setup.includes(PollSetupOptions.Participation) ? [
                     ...(voted.length > 0 ? [{
                         type: 'mrkdwn',
                         text: `*Voted:* ${names(voted, user)}`
@@ -151,7 +155,7 @@ module.exports = ({ user, poll, options }) => {
                         participation: 'participation notices',
                         anonymous: 'anonymous voting',
                         autoclose: 'automatic closing'
-                    })[option]))}`
+                    })[option])) || 'default'}`
                 }] : [])
             ]
         }

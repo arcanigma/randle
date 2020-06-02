@@ -1,11 +1,25 @@
-module.exports = async ({ channel, context, client }) => {
-    let users = channel ? (await client.conversations.members({
-        token: context.botToken,
-        channel: channel
-    })).members.filter(user => user != context.botUserId) : [];
+import { Context } from '@slack/bolt';
+import { View, InputBlock, WebClient, WebAPICallResult } from '@slack/web-api';
 
-    let blocks = [
-        {
+import { PollSetupOptions } from '../components/polls';
+
+export default async (channel: string, context: Context, client: WebClient): Promise<View> => ({
+    type: 'modal',
+    callback_id: 'create_poll_modal',
+    title: {
+        type: 'plain_text',
+        text: 'Create a poll'
+    },
+    submit: {
+        type: 'plain_text',
+        text: 'Create'
+    },
+    close: {
+        type: 'plain_text',
+        text: 'Cancel'
+    },
+    blocks: [
+        <InputBlock>{
             type: 'input',
             block_id: 'audience',
             label: {
@@ -29,7 +43,7 @@ module.exports = async ({ channel, context, client }) => {
                 } : {})
             }
         },
-        {
+        <InputBlock>{
             type: 'input',
             block_id: 'members',
             label: {
@@ -39,7 +53,7 @@ module.exports = async ({ channel, context, client }) => {
             },
             hint: {
                 type: 'plain_text',
-                text: "The users who can participate (not restricted to the audience)."
+                text: 'The users who can participate (not restricted to the audience).'
             },
             element: {
                 type: 'multi_users_select',
@@ -48,10 +62,15 @@ module.exports = async ({ channel, context, client }) => {
                     type: 'plain_text',
                     text: 'Select users'
                 },
-                initial_users: users
+                initial_users: channel ? (await client.conversations.members({
+                    token: context.botToken,
+                    channel: channel
+                }) as WebAPICallResult & {
+                    members: string[]
+                }).members.filter(user => user != context.botUserId) : []
             }
         },
-        {
+        <InputBlock>{
             type: 'input',
             block_id: 'prompt',
             label: {
@@ -74,7 +93,7 @@ module.exports = async ({ channel, context, client }) => {
                 max_length: 300
             }
         },
-        {
+        <InputBlock>{
             type: 'input',
             block_id: 'choices',
             label: {
@@ -98,7 +117,7 @@ module.exports = async ({ channel, context, client }) => {
                 max_length: 300
             }
         },
-        {
+        <InputBlock>{
             type: 'input',
             optional: true,
             block_id: 'setup',
@@ -120,7 +139,7 @@ module.exports = async ({ channel, context, client }) => {
                             type: 'plain_text',
                             text: 'Results show only tallies, not member names.'
                         },
-                        value: 'anonymous'
+                        value: PollSetupOptions.Anonymous
                     },
                     {
                         text: {
@@ -132,7 +151,7 @@ module.exports = async ({ channel, context, client }) => {
                             type: 'plain_text',
                             text: 'Announce each time a member votes or unvotes.'
                         },
-                        value: 'participation'
+                        value: PollSetupOptions.Participation
                     },
                     {
                         text: {
@@ -144,30 +163,10 @@ module.exports = async ({ channel, context, client }) => {
                             type: 'plain_text',
                             text: 'Closes automatically when all members have voted.'
                         },
-                        value: 'autoclose'
+                        value: PollSetupOptions.Autoclose
                     }
                 ]
             }
         }
-    ];
-
-    let view = {
-        type: 'modal',
-        callback_id: 'create_poll_modal',
-        title: {
-            type: 'plain_text',
-            text: 'Create a poll'
-        },
-        submit: {
-            type: 'plain_text',
-            text: 'Create'
-        },
-        close: {
-            type: 'plain_text',
-            text: 'Cancel'
-        },
-        blocks: blocks
-    };
-
-    return JSON.stringify(view);
-};
+    ]
+});

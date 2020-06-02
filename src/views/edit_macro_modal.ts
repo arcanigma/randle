@@ -1,11 +1,28 @@
-module.exports = async ({ name, replacement }) => {
-    let blocks = [
-        ...(!name ? [{
+import { View, InputBlock } from '@slack/web-api';
+
+export default async (name: string, replacement: string): Promise<View> => ({
+    type: 'modal',
+    callback_id: 'edit_macro_modal',
+    ...(name ? {private_metadata: name} : {}),
+    title: {
+        type: 'plain_text',
+        text: name ? `Edit macro ${name}` : 'Create new macro'
+    },
+    submit: {
+        type: 'plain_text',
+        text: name ? 'Update' : 'Create'
+    },
+    close: {
+        type: 'plain_text',
+        text: 'Cancel'
+    },
+    blocks: [
+        ...(!name ? [<InputBlock>{
             type: 'input',
             block_id: 'name',
             label: {
                 type: 'plain_text',
-                text: 'Name'
+                text: 'Macro Name'
             },
             hint: {
                 type: 'plain_text',
@@ -18,16 +35,16 @@ module.exports = async ({ name, replacement }) => {
                 max_length: 15,
                 placeholder: {
                     type: 'plain_text',
-                    text: 'name'
+                    text: 'Name'
                 }
             }
         }] : []),
-        {
+        <InputBlock>{
             type: 'input',
             block_id: 'replacement',
             label: {
                 type: 'plain_text',
-                text: 'Replacement'
+                text: 'Replacement Text'
             },
             element: {
                 type: 'plain_text_input',
@@ -36,11 +53,11 @@ module.exports = async ({ name, replacement }) => {
                 ...(replacement ? {initial_value: replacement} : {}),
                 placeholder: {
                     type: 'plain_text',
-                    text: 'replacement'
+                    text: 'Text'
                 }
             }
         },
-        ...(name ? [{
+        ...(name ? [<InputBlock>{
             type: 'input',
             optional: true,
             block_id: 'options',
@@ -54,8 +71,8 @@ module.exports = async ({ name, replacement }) => {
                 options: [
                     {
                         text: {
-                          type: 'plain_text',
-                          text: 'Delete this macro.'
+                            type: 'plain_text',
+                            text: 'Delete this macro.'
                         },
                         description: {
                             type: 'plain_text',
@@ -66,26 +83,5 @@ module.exports = async ({ name, replacement }) => {
                 ]
             }
         }] : [])
-    ];
-
-    let view = {
-        type: 'modal',
-        callback_id: 'edit_macro_modal',
-        ...(name ? {private_metadata: name} : {}),
-        title: {
-          type: 'plain_text',
-          text: name ? `Edit macro ${name}` : 'Create new macro'
-        },
-        submit: {
-          type: 'plain_text',
-          text: name ? 'Update' : 'Create'
-        },
-        close: {
-          type: 'plain_text',
-          text: 'Cancel'
-        },
-        blocks: blocks
-    };
-
-    return JSON.stringify(view);
-};
+    ]
+});

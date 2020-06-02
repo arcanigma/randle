@@ -1,0 +1,19 @@
+{
+    "files": [
+        "src/app.ts"
+    ],
+    "compilerOptions": {
+        "outDir": "dist/",
+        "strict": true,
+        "incremental": true,
+        "sourceMap": true,
+        "removeComments": true,
+        "target": "es2019",
+        "lib": [
+            "esnext"
+        ],
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "esModuleInterop": true
+    }
+}

@@ -1,21 +1,26 @@
-const { size } = require('../library/factory.js');
+import { App } from '@slack/bolt';
+import { MongoClient } from 'mongodb';
 
-module.exports = ({ app, store, announce }) => {
+import { size } from '../library/factory';
+import { announce, Poll } from '../components/polls';
+
+export default (app: App, store: Promise<MongoClient>): void => {
     const re_lines = /\r\n|\r|\n/,
           re_mrkdwn = /([*_~`])/g,
           re_mrkdwn_emoji = /([*_~`:])/g;
     app.view('create_poll_modal', async ({ ack, body, context, view, client }) => {
-        let errors = {},
-            host = body.user.id,
+        const host = body.user.id,
             data = view.state.values,
             audience = data.audience.input.selected_channel,
             members = data.members.input.selected_users,
             prompt = data.prompt.input.value.replace(re_lines, ' ').replace(re_mrkdwn_emoji, ''),
-            choices = data.choices.input.value.trim().split(re_lines).map(choice => choice.trim().replace(re_mrkdwn, '')).filter(Boolean),
-            setup = (data.setup.inputs.selected_options || []).map(checkbox => checkbox.value);
+            choices = data.choices.input.value.trim().split(re_lines).map((choice: string) => choice.trim().replace(re_mrkdwn, '')).filter(Boolean),
+            setup = (data.setup.inputs.selected_options ?? []).map((checkbox: { value: string}) => checkbox.value);
+
+        const errors: { [blockId: string]: string } = {};
 
         if (members.includes(context.botUserId))
-            errors.members = `You can't choose this bot as a member.`;
+            errors.members = "You can't choose this bot as a member.";
         else if (members.length < 2)
             errors.members = 'You must choose at least 2 members.';
 
@@ -27,12 +32,13 @@ module.exports = ({ app, store, announce }) => {
         if (size(errors) > 0)
             return await ack({
                 response_action: 'errors',
-                errors
+                errors: errors
             });
 
         await ack();
 
-        let poll = {
+        const poll: Poll = {
+            _id: undefined,
             opened: new Date(),
             host,
             audience,
@@ -43,9 +49,9 @@ module.exports = ({ app, store, announce }) => {
             votes: {}
         };
 
-        let coll = (await store).db().collection('polls');
+        const coll = (await store).db().collection('polls');
         poll._id = (await coll.insertOne(poll)).insertedId;
 
-        await announce({ context, body, poll, client, mode: 'open' });
+        await announce('open', poll, context, body, client, store);
     });
 };
