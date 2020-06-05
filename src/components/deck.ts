@@ -138,12 +138,53 @@ export default (app: App): void => {
                     counts[count].push(user);
             });
 
+            const all_list = commas(Object.keys(counts).map(Number).sort().reverse().map(count => {
+                    return `${count > 0 ? `*${count}* each` : '*none*'} to ${names(counts[count])}`;
+                }), '; '),
+                all_notification = `${who(message, 'You')} dealt items`,
+                all_summary = `${who(message, 'You')} dealt ${all_list} by direct message.`,
+                all_blocks: Block[] = [<SectionBlock>{
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: trunc(all_summary, MAX_TEXT_SIZE)
+                    }
+                }];
+
+            let ts;
+            if (!dry_run) {
+                ts = (await client.chat.postMessage({
+                    token: context.botToken,
+                    channel: message.channel,
+                    username: `${SUIT_NAMES[suit]} Deal`,
+                    icon_emoji: SUIT_EMOJIS[suit],
+                    text: all_notification,
+                    blocks: all_blocks
+                }) as WebAPICallResult & {
+                    ts: string
+                }).ts;
+            }
+            else {
+                await client.chat.postEphemeral({
+                    token: context.botToken,
+                    channel: message.channel,
+                    user: message.user,
+                    text: 'Your `deal` script is valid.'
+                });
+
+                return;
+            }
+
+            const permalink = ts ? (await client.chat.getPermalink({
+                channel: message.channel,
+                message_ts: ts
+            })).permalink : undefined;
+
             Object.keys(dealt).forEach(async (us) => {
                 const per_list = commas(dealt[us].map(item => `*${item}*`)),
                     per_venue = setup.event ? `for the *${setup.event}* event` : `from the <#${message.channel}> channel`,
                     per_notification = `${message.user != us ? `<@${message.user}>` : 'You'} dealt ${message.user != us ? 'you' : 'yourself'} ${dealt[us].length != 1 ? 'items' : 'an item'}`,
-                    // TODO add link to date (see Latest in polls)
-                    per_summary = `${message.user != us ? `<@${message.user}>` : 'You'} dealt ${message.user != us ? 'you' : 'yourself'} ${per_list} ${per_venue} <!date^${parseInt(message.ts)}^{date_short_pretty} at {time}|recently>.`,
+                    per_summary = `${message.user != us ? `<@${message.user}>` : 'You'} dealt ${message.user != us ? 'you' : 'yourself'} ${per_list} ${per_venue} <!date^${parseInt(message.ts)}^{date_short_pretty} at {time}^${permalink}|there>.`,
                     per_blocks: Block[] = [];
 
                 per_blocks.push(<SectionBlock>{
@@ -185,58 +226,24 @@ export default (app: App): void => {
                     });
                 }
 
-                if (!dry_run) {
-                    const dm = (await client.conversations.open({
-                        token: context.botToken,
-                        users: us
-                    }) as WebAPICallResult & {
-                        channel: {
-                            id: string
-                        }
-                    }).channel.id;
-
-                    await client.chat.postMessage({
-                        token: context.botToken,
-                        channel: dm,
-                        username: `${SUIT_NAMES[suit]} Deal`,
-                        icon_emoji: SUIT_EMOJIS[suit],
-                        text: per_notification,
-                        blocks: per_blocks
-                    });
-                }
-            });
-
-            const all_list = commas(Object.keys(counts).map(Number).sort().reverse().map(count => {
-                return `${count > 0 ? `*${count}* each` : '*none*'} to ${names(counts[count])}`;
-            }), '; '),
-                all_notification = `${who(message, 'You')} dealt items`,
-                all_summary = `${who(message, 'You')} dealt ${all_list} by direct message.`,
-                all_blocks: Block[] = [<SectionBlock>{
-                    type: 'section',
-                    text: {
-                        type: 'mrkdwn',
-                        text: trunc(all_summary, MAX_TEXT_SIZE)
+                const dm = (await client.conversations.open({
+                    token: context.botToken,
+                    users: us
+                }) as WebAPICallResult & {
+                    channel: {
+                        id: string
                     }
-                }];
+                }).channel.id;
 
-            if (!dry_run) {
                 await client.chat.postMessage({
                     token: context.botToken,
-                    channel: message.channel,
+                    channel: dm,
                     username: `${SUIT_NAMES[suit]} Deal`,
                     icon_emoji: SUIT_EMOJIS[suit],
-                    text: all_notification,
-                    blocks: all_blocks
+                    text: per_notification,
+                    blocks: per_blocks
                 });
-            }
-            else {
-                await client.chat.postEphemeral({
-                    token: context.botToken,
-                    channel: message.channel,
-                    user: message.user,
-                    text: 'Your `deal` script is valid.'
-                });
-            }
+            });
         }
         catch (err) {
             await say(blame(err, message));

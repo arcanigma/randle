@@ -33,7 +33,7 @@ export default async (user: string, poll: Poll, options: HomeOptions): Promise<B
                 }] : []),
                 ...(poll.latest ? [{
                     type: 'mrkdwn',
-                    text: `*Latest:* ${poll.latest.summary} <!date^${parseInt(poll.latest.message_ts)}^{date_short_pretty} at {time}^${poll.latest.permalink}|for the audience>`
+                    text: `*Latest:* ${poll.latest.summary} <!date^${parseInt(poll.latest.message_ts)}^{date_short_pretty} at {time}^${poll.latest.permalink}|there>`
                 }] : [])
             ]
         },
