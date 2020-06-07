@@ -14,11 +14,13 @@
     "dependencies": {
         "@slack/bolt": "^2.1",
         "@slack/web-api": "^5.9",
+        "json5": "^2.1",
         "mongodb": "^3.5",
         "ordinal": "*",
         "php-random-int": "^1.0"
     },
     "devDependencies": {
+        "@types/json5": "0.0.30",
         "@types/mongodb": "^3.5",
         "@types/node": "^14.0",
         "@typescript-eslint/eslint-plugin": "^3.1",

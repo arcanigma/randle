@@ -1,5 +1,6 @@
 import { App } from '@slack/bolt';
 import { Block, SectionBlock, ContextBlock, MrkdwnElement, WebAPICallResult } from '@slack/web-api';
+import JSON5 from 'json5';
 
 import randomInt from 'php-random-int';
 
@@ -93,8 +94,7 @@ export default (app: App): void => {
                 items: string[];
             if (re_braces.test(context.matches[2])) {
                 try {
-                    // TODO support JSON5/relaxed
-                    setup = JSON.parse(wss(context.matches[2]));
+                    setup = JSON5.parse(wss(context.matches[2]));
                 }
                 catch (err) {
                     throw err.message;
