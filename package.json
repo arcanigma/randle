@@ -17,10 +17,11 @@
         "json5": "^2.1",
         "mongodb": "^3.5",
         "ordinal": "*",
-        "php-random-int": "^1.0"
+        "php-random-int": "^1.0",
+        "yaml": "^1.10"
     },
     "devDependencies": {
-        "@types/json5": "0.0.30",
+        "@types/json5": "^0.0",
         "@types/mongodb": "^3.5",
         "@types/node": "^14.0",
         "@typescript-eslint/eslint-plugin": "^3.1",

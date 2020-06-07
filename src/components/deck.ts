@@ -1,6 +1,7 @@
 import { App } from '@slack/bolt';
 import { Block, SectionBlock, ContextBlock, MrkdwnElement, WebAPICallResult } from '@slack/web-api';
 import JSON5 from 'json5';
+import YAML from 'yaml';
 
 import randomInt from 'php-random-int';
 
@@ -9,6 +10,7 @@ import { who, commas, names, trunc, wss, blame } from '../library/factory';
 import { nonthread, anywhere, community } from '../library/listeners';
 import { tokenize, expect, expectEnd, accept } from '../library/parser';
 
+// TODO add a script builder modal
 export default (app: App): void => {
     const SUIT_NAMES = ['Spade', 'Heart', 'Club', 'Diamond' ];
     const SUIT_EMOJIS = [ ':spades:', ':hearts:', ':clubs:', ':diamonds:' ];
@@ -84,7 +86,8 @@ export default (app: App): void => {
     });
 
     const re_deal = /^([!?])?deal\s+(.+)/is,
-        re_braces = /\{.+\}/s;
+        re_json_doc = /^\{.+\}$/s,
+        re_yaml_doc = /^---.+$/s;
     app.message(re_deal, nonthread, community, async ({ message, context, say, client }) => {
         try {
             const suit = randomInt(0, 3),
@@ -92,9 +95,18 @@ export default (app: App): void => {
 
             let setup: DealScript,
                 items: string[];
-            if (re_braces.test(context.matches[2])) {
+            if (re_json_doc.test(context.matches[2])) {
                 try {
-                    setup = JSON5.parse(wss(context.matches[2]));
+                    setup = JSON5.parse(context.matches[2]);
+                }
+                catch (err) {
+                    throw err.message;
+                }
+                items = build_deck(setup.items);
+            }
+            else if (re_yaml_doc.test(context.matches[2])) {
+                try {
+                    setup = YAML.parse(context.matches[2]);
                 }
                 catch (err) {
                     throw err.message;
@@ -202,12 +214,12 @@ export default (app: App): void => {
 
                 let shown: MrkdwnElement[] = [];
                 if (setup.rules) enlist(setup.rules).filter(rule => rule.show).forEach(rule => {
-                    enlist(rule.to).filter(to => dealt[user].includes(to)).forEach(to => {
-                        enlist(rule.show).forEach(show => {
+                    enlist(rule.to).map(wss).filter(to => dealt[user].includes(to)).forEach(to => {
+                        enlist(rule.show).map(wss).forEach(show => {
                             Object.keys(dealt).filter(them => them != user && dealt[them].includes(show)).forEach(them => {
                                 shown.push(<MrkdwnElement>{
                                     type: 'mrkdwn',
-                                    text: trunc(`:eye-in-speech-bubble: Because you were dealt *${to}* you see that <@${them}> was dealt *${rule.as ? rule.as : show}*.`, MAX_TEXT_SIZE)
+                                    text: trunc(`:eye-in-speech-bubble: Because you were dealt *${to}* you see that <@${them}> was dealt *${!rule.as ? show : wss(rule.as)}*.`, MAX_TEXT_SIZE)
                                 });
                             });
                         });

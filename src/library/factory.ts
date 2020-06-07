@@ -39,7 +39,7 @@ export function trunc(text: string, limit: number): string {
 
 const re_wss = /\s+/g;
 export function wss(text: string): string {
-    return text.replace(re_wss, ' ').trim();
+    return text.trim().replace(re_wss, ' ');
 }
 
 export function boxbar(count: number, total: number): string {
