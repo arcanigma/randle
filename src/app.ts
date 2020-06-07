@@ -26,7 +26,7 @@ const store = MongoClient.connect(
     }
 );
 
-export const MAX_TEXT_SIZE = 300;
+export const MAX_TEXT_SIZE = 1000;
 export const MAX_VIEW_BLOCKS = 100;
 export const MAX_MESSAGE_BLOCKS = 50;
 export const MAX_CONTEXT_ELEMENTS = 10;

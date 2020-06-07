@@ -14,6 +14,7 @@ export default (app: App): void => {
 
     type DealScript = {
         event?: string;
+        moderator?: boolean;
         items: Deck;
         rules?: Rule[];
     };
@@ -25,8 +26,8 @@ export default (app: App): void => {
         | Deck[];
 
     type Rule = {
-        show: (string | string[]);
-        to: (string | string[]);
+        show: string | string[];
+        to: string | string[];
         as?: string;
     };
 
@@ -92,6 +93,7 @@ export default (app: App): void => {
                 items: string[];
             if (re_braces.test(context.matches[2])) {
                 try {
+                    // TODO support JSON5/relaxed
                     setup = JSON.parse(wss(context.matches[2]));
                 }
                 catch (err) {
@@ -111,7 +113,10 @@ export default (app: App): void => {
                 channel: message.channel
             }) as WebAPICallResult & {
                 members: string[]
-            }).members.filter(user => user != context.botUserId));
+            }).members.filter(user =>
+                user != context.botUserId
+                && (!setup.moderator || user != message.user)
+            ));
 
             const dealt: {
                 [user: string]: string[]
@@ -180,11 +185,11 @@ export default (app: App): void => {
                 message_ts: ts
             })).permalink : undefined;
 
-            Object.keys(dealt).forEach(async (us) => {
-                const per_list = commas(dealt[us].map(item => `*${item}*`)),
+            Object.keys(dealt).forEach(async (user) => {
+                const per_list = commas(dealt[user].map(item => `*${item}*`)),
                     per_venue = setup.event ? `for the *${setup.event}* event` : `from the <#${message.channel}> channel`,
-                    per_notification = `${message.user != us ? `<@${message.user}>` : 'You'} dealt ${message.user != us ? 'you' : 'yourself'} ${dealt[us].length != 1 ? 'items' : 'an item'}`,
-                    per_summary = `${message.user != us ? `<@${message.user}>` : 'You'} dealt ${message.user != us ? 'you' : 'yourself'} ${per_list} ${per_venue} <!date^${parseInt(message.ts)}^{date_short_pretty} at {time}^${permalink}|there>.`,
+                    per_notification = `${message.user != user ? `<@${message.user}>` : 'You'} dealt ${message.user != user ? 'you' : 'yourself'} ${dealt[user].length != 1 ? 'items' : 'an item'}`,
+                    per_summary = `${message.user != user ? `<@${message.user}>` : 'You'} dealt ${message.user != user ? 'you' : 'yourself'} ${per_list} ${per_venue} <!date^${parseInt(message.ts)}^{date_short_pretty} at {time}^${permalink}|there>.`,
                     per_blocks: Block[] = [];
 
                 per_blocks.push(<SectionBlock>{
@@ -197,9 +202,9 @@ export default (app: App): void => {
 
                 let shown: MrkdwnElement[] = [];
                 if (setup.rules) enlist(setup.rules).filter(rule => rule.show).forEach(rule => {
-                    enlist(rule.to).filter(to => dealt[us].includes(to)).forEach(to => {
+                    enlist(rule.to).filter(to => dealt[user].includes(to)).forEach(to => {
                         enlist(rule.show).forEach(show => {
-                            Object.keys(dealt).filter(them => them != us && dealt[them].includes(show)).forEach(them => {
+                            Object.keys(dealt).filter(them => them != user && dealt[them].includes(show)).forEach(them => {
                                 shown.push(<MrkdwnElement>{
                                     type: 'mrkdwn',
                                     text: trunc(`:eye-in-speech-bubble: Because you were dealt *${to}* you see that <@${them}> was dealt *${rule.as ? rule.as : show}*.`, MAX_TEXT_SIZE)
@@ -228,7 +233,7 @@ export default (app: App): void => {
 
                 const dm = (await client.conversations.open({
                     token: context.botToken,
-                    users: us
+                    users: !setup.moderator ? user : `${user},${message.user}`
                 }) as WebAPICallResult & {
                     channel: {
                         id: string
