@@ -72,7 +72,7 @@ export async function announce(
             open: 'opened',
             reopen: 'reopened',
             reannounce: 'reannounced'
-        }[mode]} the poll`;
+        }[mode]} the poll *${poll.prompt}*`;
 
         blocks.push(<ActionsBlock>{
             type: 'actions',
@@ -132,8 +132,8 @@ export async function announce(
     }
     else if (mode == 'close' || mode == 'autoclose') {
         summary = mode == 'close'
-            ? `<@${poll.host}> closed the poll`
-            : `<@${context.botUserId}> closed the poll for <@${poll.host}>`;
+            ? `<@${poll.host}> closed the poll *${poll.prompt}*`
+            : `<@${context.botUserId}> closed the poll *${poll.prompt}* for <@${poll.host}>`;
 
         blocks.push(<ContextBlock>{
             type: 'context',
