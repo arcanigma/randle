@@ -18,6 +18,7 @@ export default (app: App): void => {
     type DealScript = {
         event?: string;
         moderator?: boolean;
+        limit?: number;
         items: Deck;
         rules?: Rule[];
     };
@@ -126,14 +127,17 @@ export default (app: App): void => {
             }) as WebAPICallResult & {
                 members: string[]
             }).members.filter(user =>
-                user != context.botUserId
+                user != context.botUserId // TODO filter all bots
                 && (!setup.moderator || user != message.user)
             ));
 
             const dealt: {
                 [user: string]: string[]
             } = {};
-            do {
+            const rounds = setup.limit === undefined
+                ? Math.ceil(items.length / users.length)
+                : Math.min(setup.limit, Math.floor(items.length / users.length));
+            for (let round = 1; round <= rounds; round++)
                 users.forEach(user => {
                     if (items.length > 0) {
                         if (dealt[user])
@@ -142,8 +146,8 @@ export default (app: App): void => {
                             dealt[user] = [items.shift()!];
                     }
                 });
-            } while (items.length > 0);
 
+            // TODO figure out high/low groups with math
             const counts: {
                 [count: number]: string[]
             } = {};
@@ -159,7 +163,7 @@ export default (app: App): void => {
                     return `${count > 0 ? `*${count}* each` : '*none*'} to ${names(counts[count])}`;
                 }), '; '),
                 all_notification = `${who(message, 'You')} dealt items`,
-                all_summary = `${who(message, 'You')} dealt ${all_list} by direct message.`,
+                all_summary = `${who(message, 'You')} dealt ${all_list} by direct message${items.length == 0 ? '' : ` with *${items.length}* leftover${setup.moderator ? ` for <@${message.user}>` : ''}`}.`,
                 all_blocks: Block[] = [<SectionBlock>{
                     type: 'section',
                     text: {
@@ -261,6 +265,32 @@ export default (app: App): void => {
                     blocks: per_blocks
                 });
             });
+
+            if (setup.moderator && items.length > 0) {
+                const dm = (await client.conversations.open({
+                    token: context.botToken,
+                    users: message.user
+                }) as WebAPICallResult & {
+                    channel: {
+                        id: string
+                    }
+                }).channel.id;
+
+                await client.chat.postMessage({
+                    token: context.botToken,
+                    channel: dm,
+                    username: `${SUIT_NAMES[suit]} Deal`,
+                    icon_emoji: SUIT_EMOJIS[suit],
+                    text: `${who(message, 'You')} dealt with leftover${items.length != 1 ? 's' : ''}`,
+                    blocks: [<SectionBlock>{
+                        type: 'section',
+                        text: {
+                            type: 'mrkdwn',
+                            text: trunc(`${who(message, 'You')} dealt to ${names(Object.keys(dealt))} with ${commas(items.map(item => `*${item}*`))} leftover.`, MAX_TEXT_SIZE)
+                        }
+                    }]
+                });
+            }
         }
         catch (err) {
             await say(blame(err, message));
