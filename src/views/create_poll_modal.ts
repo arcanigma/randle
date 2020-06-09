@@ -24,8 +24,7 @@ export default async (channel: string, context: Context, client: WebClient): Pro
             block_id: 'audience',
             label: {
                 type: 'plain_text',
-                text: ':loudspeaker: Audience',
-                emoji: true
+                text: 'Audience'
             },
             hint: {
                 type: 'plain_text',
@@ -48,8 +47,7 @@ export default async (channel: string, context: Context, client: WebClient): Pro
             block_id: 'members',
             label: {
                 type: 'plain_text',
-                text: ':busts_in_silhouette: Members',
-                emoji: true
+                text: 'Members'
             },
             hint: {
                 type: 'plain_text',
@@ -75,8 +73,7 @@ export default async (channel: string, context: Context, client: WebClient): Pro
             block_id: 'prompt',
             label: {
                 type: 'plain_text',
-                text: ':question: Prompt',
-                emoji: true
+                text: 'Prompt'
             },
             hint: {
                 type: 'plain_text',
@@ -98,8 +95,7 @@ export default async (channel: string, context: Context, client: WebClient): Pro
             block_id: 'choices',
             label: {
                 type: 'plain_text',
-                text: ':exclamation: Choices',
-                emoji: true
+                text: 'Choices'
             },
             hint: {
                 type: 'plain_text',
@@ -132,7 +128,7 @@ export default async (channel: string, context: Context, client: WebClient): Pro
                     {
                         text: {
                             type: 'plain_text',
-                            text: ':bust_in_silhouette: Anonymous Voting',
+                            text: ':busts_in_silhouette: Anonymous Voting',
                             emoji: true
                         },
                         description: {
