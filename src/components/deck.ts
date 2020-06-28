@@ -27,13 +27,21 @@ export default (app: App): void => {
         | string
         | { choose: number; from: Deck; }
         | { repeat: number; from: Deck; }
+        | { cross: Deck; with: Deck; using?: string; }
+        | { zip: Deck; with: Deck; using?: string; }
         | Deck[];
 
     type Rule = {
-        show: string | string[];
-        to: string | string[];
+        show: Matcher | Matcher[];
+        to: Matcher | Matcher[];
         as?: string;
     };
+
+    type Matcher =
+        | string
+        | { startsWith: string }
+        | { endsWith: string }
+        | { includes: string };
 
     // TODO let all 3 commands work with both syntaxes
 
@@ -46,7 +54,7 @@ export default (app: App): void => {
             await say({
                 username: `${SUIT_NAMES[suit]} Shuffle`,
                 icon_emoji: SUIT_EMOJIS[suit],
-                text: `${who(message, 'You')} shuffled item${items.length != 1 ? 's' : ''}`,
+                text: `${who(message, 'You')} shuffled ${items.length != 1 ? 'items' : 'an item'}`,
                 blocks: [<SectionBlock>{
                     type: 'section',
                     text: {
@@ -71,7 +79,7 @@ export default (app: App): void => {
             await say({
                 username: `${SUIT_NAMES[suit]} Draw`,
                 icon_emoji: SUIT_EMOJIS[suit],
-                text: `${who(message, 'You')} drew item${count != 1 ? 's' : ''}`,
+                text: `${who(message, 'You')} drew ${count != 1 ? 'items' : 'an item'}`,
                 blocks: [<SectionBlock>{
                     type: 'section',
                     text: {
@@ -99,6 +107,7 @@ export default (app: App): void => {
             if (re_json_doc.test(context.matches[2])) {
                 try {
                     setup = JSON5.parse(context.matches[2]);
+                    // TODO validate against DealScript
                 }
                 catch (err) {
                     throw err.message;
@@ -108,6 +117,7 @@ export default (app: App): void => {
             else if (re_yaml_doc.test(context.matches[2])) {
                 try {
                     setup = YAML.parse(context.matches[2]);
+                    // TODO validate against DealScript
                 }
                 catch (err) {
                     throw err.message;
@@ -217,18 +227,19 @@ export default (app: App): void => {
                 });
 
                 let shown: MrkdwnElement[] = [];
-                if (setup.rules) enlist(setup.rules).filter(rule => rule.show).forEach(rule => {
-                    enlist(rule.to).map(wss).filter(to => dealt[user].includes(to)).forEach(to => {
-                        enlist(rule.show).map(wss).forEach(show => {
-                            Object.keys(dealt).filter(them => them != user && dealt[them].includes(show)).forEach(them => {
-                                shown.push(<MrkdwnElement>{
-                                    type: 'mrkdwn',
-                                    text: trunc(`:eye-in-speech-bubble: Because you were dealt *${to}* you see that <@${them}> was dealt *${!rule.as ? show : wss(rule.as)}*.`, MAX_TEXT_SIZE)
+                if (setup.rules)
+                    enlist(setup.rules).filter(rule => rule.show).forEach(rule => {
+                        enlist(rule.to).filter(to => dealt[user].some(it => matches(it, to))).forEach(to => {
+                            enlist(rule.show).forEach(show => {
+                                Object.keys(dealt).filter(them => them != user && dealt[them].some(it => matches(it, show))).forEach(them => {
+                                    shown.push(<MrkdwnElement>{
+                                        type: 'mrkdwn',
+                                        text: trunc(`:eye-in-speech-bubble: Because you were dealt *${unmatcherize(to)}* you see that <@${them}> was dealt *${!rule.as ? unmatcherize(show) : wss(rule.as)}*.`, MAX_TEXT_SIZE)
+                                    });
                                 });
                             });
                         });
                     });
-                });
                 if (shown.length > 0) {
                     shown = shuffle(shown);
 
@@ -308,8 +319,14 @@ export default (app: App): void => {
             return choose(unnest_deck(items.from), items.choose);
         else if ('repeat' in items)
             return repeat(unnest_deck(items.from), items.repeat);
-        else
+        else if ('cross' in items)
+            return cross(unnest_deck(items.cross), unnest_deck(items.with), items.using);
+        else if ('zip' in items)
+            return zip(unnest_deck(items.zip), unnest_deck(items.with), items.using);
+        else //if (Array.isArray(items))
             return items.map(item => unnest_deck(item)).flat();
+        // else
+        //     throw unexpected('item', items);
     }
 
     const re_terminals = /([(,):*])/;
@@ -368,7 +385,7 @@ export default (app: App): void => {
     }
 
     function shuffle<T>(list: T[]): T[] {
-        const copy = list;
+        const copy = [...list];
         for (let i = copy.length - 1; i >= 1; i--) {
             const j = randomInt(0, i);
             [copy[i], copy[j]] = [copy[j], copy[i]];
@@ -377,8 +394,7 @@ export default (app: App): void => {
     }
 
     function choose<T>(list: T[], quantity: number): T[] {
-        const copy = shuffle(list);
-        return copy.slice(list.length - quantity);
+        return shuffle(list).slice(list.length - quantity);
     }
 
     function repeat<T>(list: T[], quantity: number): T[] {
@@ -387,4 +403,52 @@ export default (app: App): void => {
             build.push(list[randomInt(0, list.length - 1)]);
         return build;
     }
+
+    function cross<T>(list1: T[], list2: T[], join?: T): string[] {
+        const build = [];
+        for (let i = 0; i < list1.length; i++)
+            for (let j = 0; j < list2.length; j++)
+                build.push(`${list1[i]}${join ? ` ${join} ` : ' '}${list2[j]}`);
+        return shuffle(build);
+    }
+
+    function zip<T>(list1: T[], list2: T[], join?: T): string[] {
+        const build = [],
+            copy1 = shuffle(list1),
+            copy2 = shuffle(list2);
+        for (let i = 0; i < Math.min(list1.length, list2.length); i++)
+            build.push(`${copy1[i]}${join ? ` ${join} ` : ' '}${copy2[i]}`);
+        return build;
+    }
+
+    function matches(it: string, matcher: string | Matcher): boolean {
+        if (typeof matcher === 'string')
+            return it == wss(matcher);
+        else if ('startsWith' in matcher)
+            return it.startsWith(wss(matcher.startsWith));
+        else if ('endsWith' in matcher)
+            return it.endsWith(wss(matcher.endsWith));
+        else //if ('includes' in matcher)
+            return it.includes(wss(matcher.includes));
+        // else
+        //     throw unexpected('matcher', matcher);
+    }
+
+    function unmatcherize(matcher: string | Matcher): string {
+        if (typeof matcher === 'string')
+            return wss(matcher);
+        else if ('startsWith' in matcher)
+            return `_starts with_ ${wss(matcher.startsWith)}`;
+        else if ('endsWith' in matcher)
+            return `_ends with_ ${wss(matcher.endsWith)}`;
+        else //if ('includes' in matcher)
+            return `_includes_ ${wss(matcher.includes)}`;
+        // else
+        //     throw unexpected('matcher', matcher);
+    }
+
+    // function unexpected(description: string, object: Record<string, unknown>): string {
+    //     const keys = Object.keys(object);
+    //     return `Unexpected ${description} with ${commas(keys.map(key => `\`${key}\``))} propert${keys.length != 1 ? 'ies' : 'y'}.`;
+    // }
 };
