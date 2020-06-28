@@ -77,7 +77,7 @@ export default async (channel: string, context: Context, client: WebClient): Pro
             },
             hint: {
                 type: 'plain_text',
-                text: 'The question or statement members vote on (no formatting or emoji).'
+                text: 'The question or statement members vote on (no formatting, emoji okay).'
             },
             element: {
                 type: 'plain_text_input',

@@ -6,14 +6,13 @@ import { announce, Poll } from '../components/polls';
 
 export default (app: App, store: Promise<MongoClient>): void => {
     const re_lines = /\r\n|\r|\n/,
-          re_mrkdwn = /([*_~`])/g,
-          re_mrkdwn_emoji = /([*_~`:])/g; // TODO relax colons
+          re_mrkdwn = /([*_~`<>])/g;
     app.view('create_poll_modal', async ({ ack, body, context, view, client }) => {
         const host = body.user.id,
             data = view.state.values,
             audience = data.audience.input.selected_channel,
             members = data.members.input.selected_users,
-            prompt = data.prompt.input.value.replace(re_lines, ' ').replace(re_mrkdwn_emoji, ''),
+            prompt = data.prompt.input.value.replace(re_lines, ' ').replace(re_mrkdwn, ''),
             choices = data.choices.input.value.trim().split(re_lines).map((choice: string) => choice.trim().replace(re_mrkdwn, '')).filter(Boolean),
             setup = (data.setup.inputs.selected_options ?? []).map((checkbox: { value: string}) => checkbox.value);
 

@@ -6,8 +6,7 @@ import { MAX_VIEW_BLOCKS } from '../app.js';
 import list_macros_blocks from '../views/list_macros_blocks';
 import list_polls_blocks from '../views/list_polls_blocks';
 
-/*
-    TODO 100 block error
+/* TODO 100 block error
 
     selection menu:
         open polls

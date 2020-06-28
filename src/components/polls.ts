@@ -51,6 +51,7 @@ export type Timers = {
     [poll: string]: NodeJS.Timeout;
 };
 
+const re_emoji = /(:[^:\s]*(?:::[^:\s]*)*:)/g;
 export async function announce(
     mode: string,
     poll: Poll,
@@ -181,7 +182,7 @@ export async function announce(
     const message: ChatPostMessageArguments = {
         token: context.botToken,
         channel: poll.audience,
-        username: `Poll: ${poll.prompt}`,
+        username: `Poll: ${poll.prompt.replace(re_emoji, '')}`,
         icon_emoji: ':ballot_box_with_ballot:',
         text: summary,
         blocks: blocks

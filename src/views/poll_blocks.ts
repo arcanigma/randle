@@ -95,7 +95,7 @@ export default async (user: string, poll: Poll, options: HomeOptions): Promise<B
                                     admin: 'reannounce'
                                 })
                             }
-                            // TODO edit with edited warning
+                            // TODO edit with "edited" warning
                         ] : [
                             {
                                 text: {
