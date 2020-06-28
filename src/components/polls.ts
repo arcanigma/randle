@@ -163,6 +163,9 @@ export async function announce(
                 elements: counts
             });
     }
+    else if (mode == 'abort') {
+        summary = `<@${poll.host}> aborted the poll *${poll.prompt}*`;
+    }
     else {
         throw 'Unsupported poll announcement mode.';
     }

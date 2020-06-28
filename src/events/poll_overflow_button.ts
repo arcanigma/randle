@@ -21,7 +21,7 @@ export default (app: App, store: Promise<MongoClient>, timers: Timers): void => 
         const coll = (await store).db().collection('polls');
 
         let filter;
-        if (data.admin == 'close') {
+        if (data.admin == 'close' || data.admin == 'abort') {
             const poll: Poll = (await coll.findOneAndUpdate(
                 {
                     _id: new ObjectID(data.poll),
@@ -30,7 +30,7 @@ export default (app: App, store: Promise<MongoClient>, timers: Timers): void => 
                 { $set: { closed: new Date() } }
             )).value;
 
-            await announce('close', poll, context, body, client, store);
+            await announce(data.admin, poll, context, body, client, store);
 
             filter = PollFilterOptions.Closed;
         }

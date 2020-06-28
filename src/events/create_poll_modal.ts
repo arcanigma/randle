@@ -7,7 +7,7 @@ import { announce, Poll } from '../components/polls';
 export default (app: App, store: Promise<MongoClient>): void => {
     const re_lines = /\r\n|\r|\n/,
           re_mrkdwn = /([*_~`])/g,
-          re_mrkdwn_emoji = /([*_~`:])/g;
+          re_mrkdwn_emoji = /([*_~`:])/g; // TODO relax colons
     app.view('create_poll_modal', async ({ ack, body, context, view, client }) => {
         const host = body.user.id,
             data = view.state.values,

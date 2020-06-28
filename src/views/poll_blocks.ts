@@ -78,6 +78,16 @@ export default async (user: string, poll: Poll, options: HomeOptions): Promise<B
                             {
                                 text: {
                                     type: 'plain_text',
+                                    text: 'Abort Poll'
+                                },
+                                value: JSON.stringify({
+                                    poll: poll._id,
+                                    admin: 'abort'
+                                })
+                            },
+                            {
+                                text: {
+                                    type: 'plain_text',
                                     text: 'Reannounce Poll'
                                 },
                                 value: JSON.stringify({
@@ -85,6 +95,7 @@ export default async (user: string, poll: Poll, options: HomeOptions): Promise<B
                                     admin: 'reannounce'
                                 })
                             }
+                            // TODO edit with edited warning
                         ] : [
                             {
                                 text: {
