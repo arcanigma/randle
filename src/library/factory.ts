@@ -7,13 +7,13 @@ export function who(message: MessageEvent, pronoun: string): string {
     return message.channel_type != 'im' ? `<@${message.user}>` : pronoun;
 }
 
-export function commas(list: string[], separator=', '): string {
+export function commas(list: string[], separator=', ', conjunction='and'): string {
     if (list.length == 1)
         return list[0];
     else if (list.length == 2)
-        return `${list[0]} and ${list[1]}`;
+        return `${list[0]} ${conjunction} ${list[1]}`;
     else if (list.length >= 3)
-        return `${list.slice(0, -1).join(separator)}, and ${list.slice(-1)}`;
+        return `${list.slice(0, -1).join(separator)}, ${conjunction} ${list.slice(-1)}`;
     else
         return '';
 }
