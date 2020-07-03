@@ -1,19 +1,66 @@
 import { App } from '@slack/bolt';
 import { Block, SectionBlock, ContextBlock, MrkdwnElement, WebAPICallResult } from '@slack/web-api';
 import JSON5 from 'json5';
-import YAML from 'yaml';
 
 import randomInt from 'php-random-int';
 
 import { MAX_TEXT_SIZE, MAX_CONTEXT_ELEMENTS } from '../app.js';
 import { who, commas, names, trunc, wss, blame } from '../library/factory';
 import { nonthread, anywhere, community } from '../library/listeners';
-import { tokenize, expect, expectEnd, accept } from '../library/parser';
 
 // TODO add a script builder modal
 export default (app: App): void => {
     const SUIT_NAMES = ['Spades', 'Hearts', 'Clubs', 'Diamonds' ];
     const SUIT_EMOJIS = [ ':spades:', ':hearts:', ':clubs:', ':diamonds:' ];
+
+    const re_shuffle = /^!?shuffle\s+(.+)/is;
+    app.message(re_shuffle, nonthread, anywhere, async ({ message, context, say }) => {
+        try {
+            const suit = randomInt(0, 3),
+                items = shuffle(<string[]>context.matches[1].split(','));
+
+            await say({
+                username: `Shuffle: ${SUIT_NAMES[suit]}`,
+                icon_emoji: SUIT_EMOJIS[suit],
+                text: `${who(message, 'You')} shuffled ${items.length != 1 ? 'items' : 'an item'}`,
+                blocks: [<SectionBlock>{
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: trunc(`${who(message, 'You')} shuffled ${commas(items.map(item => `*${wss(item)}*`))}.`, MAX_TEXT_SIZE)
+                    }
+                }]
+            });
+        }
+        catch (err) {
+            await say(blame(err, message));
+        }
+    });
+
+    const re_draw = /^!?draw\s+(?:([1-9][0-9]*)\s+from\s+)?(.+)/is;
+    app.message(re_draw, nonthread, anywhere, async ({ message, context, say }) => {
+        try {
+            const suit = randomInt(0, 3),
+                count = context.matches[1] ?? 1,
+                items = shuffle(<string[]>context.matches[2].split(',')).slice(0, count);
+
+            await say({
+                username: `Draw: ${SUIT_NAMES[suit]}`,
+                icon_emoji: SUIT_EMOJIS[suit],
+                text: `${who(message, 'You')} drew ${count != 1 ? 'items' : 'an item'}`,
+                blocks: [<SectionBlock>{
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: trunc(`${who(message, 'You')} drew ${commas(items.map(item => `*${wss(item)}*`))}.`, MAX_TEXT_SIZE)
+                    }
+                }]
+            });
+        }
+        catch (err) {
+            await say(blame(err, message));
+        }
+    });
 
     type Script = {
         event?: string;
@@ -21,7 +68,7 @@ export default (app: App): void => {
         limit?: number;
         values?: Values;
         options?: Options;
-        items: Items;
+        deal: Deck;
         rules?: Rules;
     }
 
@@ -33,15 +80,15 @@ export default (app: App): void => {
         [key: string]: boolean;
     }
 
-    type Items =
+    type Deck =
         | string
-        | { choose: Quantity; from: Items; }
-        | { repeat: Quantity; from: Items; }
-        | { duplicate: Quantity; of?: Quantity; from: Items; }
-        | { cross: Items; with: Items; using?: string; }
-        | { zip: Items; with: Items; using?: string; }
-        | { if: Option; then: Items; else?: Items }
-        | Items[]
+        | { choose: Quantity; from: Deck; }
+        | { repeat: Quantity; from: Deck; }
+        | { duplicate: Quantity; of?: Quantity; from: Deck; }
+        | { cross: Deck; with: Deck; using?: string; }
+        | { zip: Deck; with: Deck; using?: string; }
+        | { if: Option; then: Deck; else?: Deck }
+        | Deck[]
 
     type Quantity = number | string | Expression
 
@@ -72,92 +119,15 @@ export default (app: App): void => {
         | { excludes: string }
         | { matches: string }
 
-    // TODO unify all commands for both syntaxes
-
-    const re_shuffle = /^!?shuffle\s+(.+)/is;
-    app.message(re_shuffle, nonthread, anywhere, async ({ message, context, say }) => {
+    const re_script = /^\{.+\}\s*$/s;
+    app.message(re_script, nonthread, community, async ({ message, context, say, client }) => {
         try {
-            const suit = randomInt(0, 3),
-                items = parse_deck(context.matches[1]);
+            const suit = randomInt(0, 3);
 
-            await say({
-                username: `Shuffle: ${SUIT_NAMES[suit]}`,
-                icon_emoji: SUIT_EMOJIS[suit],
-                text: `${who(message, 'You')} shuffled ${items.length != 1 ? 'items' : 'an item'}`,
-                blocks: [<SectionBlock>{
-                    type: 'section',
-                    text: {
-                        type: 'mrkdwn',
-                        text: trunc(`${who(message, 'You')} shuffled ${commas(items.map(item => `*${item}*`))}.`, MAX_TEXT_SIZE)
-                    }
-                }]
-            });
-        }
-        catch (err) {
-            await say(blame(err, message));
-        }
-    });
+            // TODO verify script against Script type
+            const script = <Script>JSON5.parse(context.matches[0]);
 
-    const re_draw = /^!?draw\s+(?:([1-9][0-9]*)\s+from\s+)?(.+)/is;
-    app.message(re_draw, nonthread, anywhere, async ({ message, context, say }) => {
-        try {
-            const suit = randomInt(0, 3),
-                count = context.matches[1] ?? 1,
-                items = parse_deck(`(${context.matches[2]}):${count}`);
-
-            await say({
-                username: `Draw: ${SUIT_NAMES[suit]}`,
-                icon_emoji: SUIT_EMOJIS[suit],
-                text: `${who(message, 'You')} drew ${count != 1 ? 'items' : 'an item'}`,
-                blocks: [<SectionBlock>{
-                    type: 'section',
-                    text: {
-                        type: 'mrkdwn',
-                        text: trunc(`${who(message, 'You')} drew ${commas(items.map(item => `*${item}*`))}.`, MAX_TEXT_SIZE)
-                    }
-                }]
-            });
-        }
-        catch (err) {
-            await say(blame(err, message));
-        }
-    });
-
-    const re_deal = /^([!?])?deal\s+(.+)/is,
-        re_json_doc = /^\{.+\}$/s,
-        re_yaml_doc = /^---.+$/s;
-    app.message(re_deal, nonthread, community, async ({ message, context, say, client }) => {
-        try {
-            const suit = randomInt(0, 3),
-                dry_run = context.matches[1] == '?';
-
-            let setup: Script,
-                items: string[];
-            if (re_json_doc.test(context.matches[2])) {
-                try {
-                    setup = JSON5.parse(context.matches[2]);
-                }
-                catch (err) {
-                    throw err.message;
-                }
-                items = build_deck(setup.items, setup.values, setup.options);
-            }
-            else if (re_yaml_doc.test(context.matches[2])) {
-                try {
-                    setup = YAML.parse(context.matches[2]);
-                }
-                catch (err) {
-                    throw err.message;
-                }
-                items = build_deck(setup.items, setup.values, setup.options);
-            }
-            else {
-                setup = {
-                    items: context.matches[2]
-                };
-                items = parse_deck(<string>setup.items);
-            }
-            // TODO validate setup against DealScript
+            const items = build_deck(script.deal, script.values, script.options);
 
             const users = shuffle((await client.conversations.members({
                 token: context.botToken,
@@ -166,15 +136,15 @@ export default (app: App): void => {
                 members: string[]
             }).members.filter(user =>
                 user != context.botUserId // TODO filter all bots
-                && (!setup.moderator || user != message.user)
+                && (!script.moderator || user != message.user)
             ));
 
             const dealt: {
                 [user: string]: string[]
             } = {};
-            const rounds = setup.limit === undefined
+            const rounds = script.limit === undefined
                 ? Math.ceil(items.length / users.length)
-                : Math.min(setup.limit, Math.floor(items.length / users.length));
+                : Math.min(script.limit, Math.floor(items.length / users.length));
             for (let round = 1; round <= rounds; round++)
                 users.forEach(user => {
                     if (items.length > 0) {
@@ -201,7 +171,7 @@ export default (app: App): void => {
                     return `${count > 0 ? `*${count}* each` : '*none*'} to ${names(counts[count])}`;
                 }), '; '),
                 all_notification = `${who(message, 'You')} dealt items`,
-                all_summary = `${who(message, 'You')} dealt ${all_list} by direct message${items.length == 0 ? '' : ` with *${items.length}* leftover${setup.moderator ? ` for <@${message.user}>` : ''}`}.`,
+                all_summary = `${who(message, 'You')} dealt ${all_list} by direct message${items.length == 0 ? '' : ` with *${items.length}* leftover${script.moderator ? ` for <@${message.user}>` : ''}`}.`,
                 all_blocks: Block[] = [<SectionBlock>{
                     type: 'section',
                     text: {
@@ -210,29 +180,16 @@ export default (app: App): void => {
                     }
                 }];
 
-            let ts;
-            if (!dry_run) {
-                ts = (await client.chat.postMessage({
-                    token: context.botToken,
-                    channel: message.channel,
-                    username: `Deal: ${SUIT_NAMES[suit]}`,
-                    icon_emoji: SUIT_EMOJIS[suit],
-                    text: all_notification,
-                    blocks: all_blocks
-                }) as WebAPICallResult & {
-                    ts: string
-                }).ts;
-            }
-            else {
-                await client.chat.postEphemeral({
-                    token: context.botToken,
-                    channel: message.channel,
-                    user: message.user,
-                    text: 'Your `deal` script is valid.'
-                });
-
-                return;
-            }
+            const ts = (await client.chat.postMessage({
+                token: context.botToken,
+                channel: message.channel,
+                username: `Deal: ${SUIT_NAMES[suit]}`,
+                icon_emoji: SUIT_EMOJIS[suit],
+                text: all_notification,
+                blocks: all_blocks
+            }) as WebAPICallResult & {
+                ts: string
+            }).ts;
 
             const permalink = ts ? (await client.chat.getPermalink({
                 channel: message.channel,
@@ -241,7 +198,7 @@ export default (app: App): void => {
 
             Object.keys(dealt).forEach(async (user) => {
                 const per_list = commas(dealt[user].map(item => `*${item}*`)),
-                    per_venue = setup.event ? `for the *${setup.event}* event` : `from the <#${message.channel}> channel`,
+                    per_venue = script.event ? `for the *${script.event}* event` : `from the <#${message.channel}> channel`,
                     per_notification = `${message.user != user ? `<@${message.user}>` : 'You'} dealt ${message.user != user ? 'you' : 'yourself'} ${dealt[user].length != 1 ? 'items' : 'an item'}`,
                     per_summary = `${message.user != user ? `<@${message.user}>` : 'You'} dealt ${message.user != user ? 'you' : 'yourself'} ${per_list} ${per_venue} <!date^${parseInt(message.ts)}^{date_short_pretty} at {time}^${permalink}|there>.`,
                     per_blocks: Block[] = [];
@@ -255,8 +212,8 @@ export default (app: App): void => {
                 });
 
                 let shown: string[] = [];
-                if (setup.rules) {
-                    enlist(setup.rules).filter(rule => !rule.if || validate(rule.if, setup.options)).forEach(rule => {
+                if (script.rules) {
+                    enlist(script.rules).filter(rule => !rule.if || validate(rule.if, script.options)).forEach(rule => {
                         enlist(rule.to).forEach(to => {
                             dealt[user].filter(it => matches(it, to)).forEach(yours => {
                                 enlist(rule.show).forEach(show => {
@@ -292,7 +249,7 @@ export default (app: App): void => {
 
                 const dm = (await client.conversations.open({
                     token: context.botToken,
-                    users: !setup.moderator ? user : `${user},${message.user}`
+                    users: !script.moderator ? user : `${user},${message.user}`
                 }) as WebAPICallResult & {
                     channel: {
                         id: string
@@ -309,7 +266,7 @@ export default (app: App): void => {
                 });
             });
 
-            if (setup.moderator && items.length > 0) {
+            if (script.moderator && items.length > 0) {
                 const dm = (await client.conversations.open({
                     token: context.botToken,
                     users: message.user
@@ -340,11 +297,11 @@ export default (app: App): void => {
         }
     });
 
-    function build_deck(items: Items, values?: Values, options?: Options): string[] {
+    function build_deck(items: Deck, values?: Values, options?: Options): string[] {
         return shuffle(build_subdeck(items, values, options));
     }
 
-    function build_subdeck(items: Items, values?: Values, options?: Options): string[] {
+    function build_subdeck(items: Deck, values?: Values, options?: Options): string[] {
         if (typeof items === 'string')
             return [wss(items)];
         else if ('choose' in items)
@@ -389,51 +346,51 @@ export default (app: App): void => {
             throw `Unexpected deck \'${JSON.stringify(items)}\` in script.`;
     }
 
-    const re_terminals = /([(,):*])/;
-    function parse_deck(text: string): string[] {
-        const tokens = tokenize(text, re_terminals),
-            deck = parse_list(tokens);
-        expectEnd(tokens);
-        return shuffle(deck);
-    }
+    // const re_terminals = /([(,):*])/;
+    // function parse_deck(text: string): string[] {
+    //     const tokens = tokenize(text, re_terminals),
+    //         deck = parse_list(tokens);
+    //     expectEnd(tokens);
+    //     return shuffle(deck);
+    // }
 
-    function parse_list(tokens: string[]): string[] {
-        const list = [];
-        do {
-            list.push(...parse_element(tokens));
-        } while (accept(tokens, ','));
-        return list;
-    }
+    // function parse_list(tokens: string[]): string[] {
+    //     const list = [];
+    //     do {
+    //         list.push(...parse_element(tokens));
+    //     } while (accept(tokens, ','));
+    //     return list;
+    // }
 
-    const re_nonterminals = /[^(,):*]+/;
-    function parse_element(tokens: string[]): string[] {
-        let list;
-        if (accept(tokens, '(')) {
-            const items = parse_list(tokens);
-            list = items;
-            expect(tokens, ')');
-        }
-        else {
-            const item = expect(tokens, re_nonterminals);
-            list = [wss(item)];
-        }
-        return parse_quantifier(tokens, list);
-    }
+    // const re_nonterminals = /[^(,):*]+/;
+    // function parse_element(tokens: string[]): string[] {
+    //     let list;
+    //     if (accept(tokens, '(')) {
+    //         const items = parse_list(tokens);
+    //         list = items;
+    //         expect(tokens, ')');
+    //     }
+    //     else {
+    //         const item = expect(tokens, re_nonterminals);
+    //         list = [wss(item)];
+    //     }
+    //     return parse_quantifier(tokens, list);
+    // }
 
-    const re_integer = /[1-9][0-9]*/;
-    function parse_quantifier(tokens: string[], list: string[]): string[] {
-        if (accept(tokens, ':')) {
-            const quantity = parseInt(expect(tokens, re_integer));
-            list = choose(list, quantity);
-            return parse_quantifier(tokens, list);
-        }
-        else if (accept(tokens, '*')) {
-            const quantity = parseInt(expect(tokens, re_integer));
-            list = repeat(list, quantity);
-            return parse_quantifier(tokens, list);
-        }
-        else return list;
-    }
+    // const re_integer = /[1-9][0-9]*/;
+    // function parse_quantifier(tokens: string[], list: string[]): string[] {
+    //     if (accept(tokens, ':')) {
+    //         const quantity = parseInt(expect(tokens, re_integer));
+    //         list = choose(list, quantity);
+    //         return parse_quantifier(tokens, list);
+    //     }
+    //     else if (accept(tokens, '*')) {
+    //         const quantity = parseInt(expect(tokens, re_integer));
+    //         list = repeat(list, quantity);
+    //         return parse_quantifier(tokens, list);
+    //     }
+    //     else return list;
+    // }
 
     function enlist<T>(element: T | T[]): T[] {
         if (element === undefined)
