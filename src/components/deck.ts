@@ -15,27 +15,50 @@ export default (app: App): void => {
     const SUIT_NAMES = ['Spades', 'Hearts', 'Clubs', 'Diamonds' ];
     const SUIT_EMOJIS = [ ':spades:', ':hearts:', ':clubs:', ':diamonds:' ];
 
-    type DealScript = {
+    type Script = {
         event?: string;
         moderator?: boolean;
         limit?: number;
-        items: Deck;
-        rules?: Rule[];
-    };
+        values?: Values;
+        options?: Options;
+        items: Items;
+        rules?: Rules;
+    }
 
-    type Deck =
+    type Values = {
+        [key: string]: number;
+    }
+
+    type Options = {
+        [key: string]: boolean;
+    }
+
+    type Items =
         | string
-        | { choose: number; from: Deck; }
-        | { repeat: number; from: Deck; }
-        | { cross: Deck; with: Deck; using?: string; }
-        | { zip: Deck; with: Deck; using?: string; }
-        | Deck[];
+        | { choose: Quantity; from: Items; }
+        | { repeat: Quantity; from: Items; }
+        | { duplicate: Quantity; of?: Quantity; from: Items; }
+        | { cross: Items; with: Items; using?: string; }
+        | { zip: Items; with: Items; using?: string; }
+        | { if: Option; then: Items; else?: Items }
+        | Items[]
 
-    type Rule = {
-        show: Matcher | Matcher[];
-        to: Matcher | Matcher[];
-        as?: string;
-    };
+    type Quantity = number | string | Expression
+
+    type Expression =
+        | { value: Quantity; plus: Quantity; }
+        | { value: Quantity; minus: Quantity; }
+        | { value: Quantity; times: Quantity; }
+
+    type Option = string
+
+    type Rules = Rule[];
+
+    type Rule = { if?: Option; } & (
+        | { show: Matchers; to: Matchers; as?: string; }
+    )
+
+    type Matchers = Matcher | Matcher[];
 
     type Matcher =
         | string
@@ -47,9 +70,9 @@ export default (app: App): void => {
         | { endsWithout: string }
         | { includes: string }
         | { excludes: string }
-        | { matches: string };
+        | { matches: string }
 
-    // TODO support both syntaxes for any command, or unify commands
+    // TODO unify all commands for both syntaxes
 
     const re_shuffle = /^!?shuffle\s+(.+)/is;
     app.message(re_shuffle, nonthread, anywhere, async ({ message, context, say }) => {
@@ -108,7 +131,7 @@ export default (app: App): void => {
             const suit = randomInt(0, 3),
                 dry_run = context.matches[1] == '?';
 
-            let setup: DealScript,
+            let setup: Script,
                 items: string[];
             if (re_json_doc.test(context.matches[2])) {
                 try {
@@ -117,7 +140,7 @@ export default (app: App): void => {
                 catch (err) {
                     throw err.message;
                 }
-                items = build_deck(setup.items);
+                items = build_deck(setup.items, setup.values, setup.options);
             }
             else if (re_yaml_doc.test(context.matches[2])) {
                 try {
@@ -126,7 +149,7 @@ export default (app: App): void => {
                 catch (err) {
                     throw err.message;
                 }
-                items = build_deck(setup.items);
+                items = build_deck(setup.items, setup.values, setup.options);
             }
             else {
                 setup = {
@@ -233,7 +256,7 @@ export default (app: App): void => {
 
                 let shown: string[] = [];
                 if (setup.rules) {
-                    enlist(setup.rules).forEach(rule => {
+                    enlist(setup.rules).filter(rule => !rule.if || validate(rule.if, setup.options)).forEach(rule => {
                         enlist(rule.to).forEach(to => {
                             dealt[user].filter(it => matches(it, to)).forEach(yours => {
                                 enlist(rule.show).forEach(show => {
@@ -317,25 +340,53 @@ export default (app: App): void => {
         }
     });
 
-    function build_deck(items: Deck): string[] {
-        return shuffle(unnest_deck(items));
+    function build_deck(items: Items, values?: Values, options?: Options): string[] {
+        return shuffle(build_subdeck(items, values, options));
     }
 
-    function unnest_deck(items: Deck): string[] {
+    function build_subdeck(items: Items, values?: Values, options?: Options): string[] {
         if (typeof items === 'string')
             return [wss(items)];
         else if ('choose' in items)
-            return choose(unnest_deck(items.from), items.choose);
+            return choose(
+                build_subdeck(items.from, values, options),
+                evaluate(items.choose, values)
+            );
         else if ('repeat' in items)
-            return repeat(unnest_deck(items.from), items.repeat);
+            return repeat(
+                build_subdeck(items.from, values, options),
+                evaluate(items.repeat, values)
+            );
+        else if ('duplicate' in items)
+            return repeat(
+                choose(
+                    build_subdeck(items.from, values, options),
+                    items.of ? evaluate(items.of, values) : 1
+                ),
+                evaluate(items.duplicate, values)
+            );
         else if ('cross' in items)
-            return cross(unnest_deck(items.cross), unnest_deck(items.with), items.using);
+            return cross(
+                build_subdeck(items.cross, values, options),
+                build_subdeck(items.with, values, options),
+                items.using
+            );
         else if ('zip' in items)
-            return zip(unnest_deck(items.zip), unnest_deck(items.with), items.using);
-        else //if (Array.isArray(items))
-            return items.map(item => unnest_deck(item)).flat();
-        // else
-        //     throw unexpected('item', items);
+            return zip(
+                build_subdeck(items.zip, values, options),
+                build_subdeck(items.with, values, options),
+                items.using
+            );
+        else if ('if' in items)
+            return validate(items.if, options)
+                ? build_subdeck(items.then, values, options)
+                : ( items.else ? build_subdeck(items.else, values, options) : [] );
+        else if (Array.isArray(items))
+            return items.map(
+                item => build_subdeck(item, values, options)
+            ).flat();
+        else
+            throw `Unexpected deck \'${JSON.stringify(items)}\` in script.`;
     }
 
     const re_terminals = /([(,):*])/;
@@ -403,10 +454,19 @@ export default (app: App): void => {
     }
 
     function choose<T>(list: T[], quantity: number): T[] {
+        if (quantity > list.length || quantity < 0)
+            throw `Unexpected choose quantity \`${quantity}\` for list \`${JSON.stringify(list)}\` in script.`;
+
         return shuffle(list).slice(list.length - quantity);
     }
 
     function repeat<T>(list: T[], quantity: number): T[] {
+        if (quantity < 0)
+            throw `Unexpected repeat quantity \`${quantity}\` for list \`${JSON.stringify(list)}\` in script.`;
+
+        if (list.length == 0)
+            throw 'Unexpected empty list in script.';
+
         const build = [];
         for (let i = 1; i <= quantity; i++)
             build.push(list[randomInt(0, list.length - 1)]);
@@ -426,11 +486,33 @@ export default (app: App): void => {
             copy1 = shuffle(list1),
             copy2 = shuffle(list2);
         for (let i = 0; i < Math.min(list1.length, list2.length); i++)
-            build.push(`${copy1[i]}${join ? ` ${join} ` : ' '}${copy2[i]}`);
+            build.push(wss(`${copy1[i]} ${join ? `${join}` : '\u2022'} ${copy2[i]}`));
         return build;
     }
 
-    function matches(it: string, matcher: string | Matcher): boolean {
+    function evaluate(it: Quantity, values?: Values): number {
+        if (typeof it === 'number')
+            return it;
+        else if (typeof it === 'string')
+            if (values !== undefined && values[it] !== undefined)
+                return values[it];
+            else
+                throw `Unknown value \`${JSON.stringify(it)}\` in script.`;
+        else if ('plus' in it)
+            return evaluate(it.value, values) + evaluate(it.plus, values);
+        else if ('minus' in it)
+            return evaluate(it.value, values) - evaluate(it.minus, values);
+        else if ('times' in it)
+            return evaluate(it.value, values) * evaluate(it.times, values);
+        else
+            throw `Unexpected expression \'${JSON.stringify(it)}\` in script.`;
+    }
+
+    function validate(it: Option, options?: Options): boolean {
+        return options !== undefined && options[it] === true;
+    }
+
+    function matches(it: string, matcher: Matcher): boolean {
         if (typeof matcher === 'string')
             return it == wss(matcher);
         else if ('is' in matcher)
@@ -449,7 +531,9 @@ export default (app: App): void => {
             return it.includes(wss(matcher.includes));
         else if ('excludes' in matcher)
             return !it.includes(wss(matcher.excludes));
-        else //if ('matches' in matcher)
+        else if ('matches' in matcher)
             return it.match(wss(matcher.matches)) != null;
+        else
+            throw `Unexpected matcher \'${JSON.stringify(matcher)}\` in script.`;
     }
 };
