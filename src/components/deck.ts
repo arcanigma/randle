@@ -9,8 +9,6 @@ import { MAX_TEXT_SIZE, MAX_CONTEXT_ELEMENTS } from '../app.js';
 import { who, commas, names, trunc, wss, blame } from '../library/factory';
 import { nonthread, anywhere, community } from '../library/listeners';
 
-// TODO script builder modal/site
-
 export default (app: App): void => {
     const SUIT_NAMES = ['Spades', 'Hearts', 'Clubs', 'Diamonds' ];
     const SUIT_EMOJIS = [ ':spades:', ':hearts:', ':clubs:', ':diamonds:' ];
@@ -19,7 +17,8 @@ export default (app: App): void => {
     app.message(re_shuffle, nonthread, anywhere, async ({ message, context, say }) => {
         try {
             const suit = randomInt(0, 3),
-                items = shuffle(<string[]>context.matches[1].split(','));
+                list = <string>context.matches[1],
+                items = shuffle(list.split(','));
 
             await say({
                 username: `Shuffle: ${SUIT_NAMES[suit]}`,
@@ -44,7 +43,8 @@ export default (app: App): void => {
         try {
             const suit = randomInt(0, 3),
                 count = context.matches[1] ?? 1,
-                items = shuffle(<string[]>context.matches[2].split(',')).slice(0, count);
+                list = <string>context.matches[2],
+                items = shuffle(list.split(',')).slice(0, count);
 
             await say({
                 username: `Draw: ${SUIT_NAMES[suit]}`,
@@ -70,7 +70,7 @@ export default (app: App): void => {
         limit?: number;
         values?: Values;
         options?: Options;
-        deal: Deck;
+        deal?: Deck;
         rules?: Rules;
         url?: string;
     }
@@ -86,14 +86,18 @@ export default (app: App): void => {
     type Deck =
         | string
         | { choose: Quantity; from: Deck; }
+        | { choose: Quantity; grouping: Deck[] }
         | { repeat: Quantity; from: Deck; }
+        | { repeat: Quantity; grouping: Deck[] }
         | { duplicate: Quantity; of?: Quantity; from: Deck; }
         | { cross: Deck; with: Deck; using?: string; }
         | { zip: Deck; with: Deck; using?: string; }
         | { if: Option; then: Deck; else?: Deck }
         | Deck[]
 
-    type Quantity = number | string | Expression
+    type Quantity = Value | Expression
+
+    type Value = number | string;
 
     type Expression =
         | { value: Quantity; plus: Quantity; }
@@ -123,16 +127,15 @@ export default (app: App): void => {
         | { matches: string }
 
     const re_script = /^\{.+\}\s*$/s,
-        re_formatted_url = /^<([^|]+)(?:|.+)>$/;
+        re_formatted_url = /^<([^|]+?)(?:\|[^|]+)?>$/;
     app.message(re_script, nonthread, community, async ({ message, context, say, client }) => {
         try {
-            const suit = randomInt(0, 3);
-
-            const script = <Script>JSON5.parse(context.matches[0]);
+            const suit = randomInt(0, 3),
+                script = <Script>JSON5.parse(context.matches[0]);
 
             if (script.url) {
-                let match;
-                if (match = script.url.match(re_formatted_url))
+                const match = script.url.match(re_formatted_url);
+                if (match)
                     script.url = match[1];
 
                 try {
@@ -145,7 +148,8 @@ export default (app: App): void => {
                 }
             }
 
-            // TODO verify script against Script type
+            if (!script.deal)
+                throw `Unexpected deal \`${script.deal}\` in script.`;
 
             const items = build_deck(script.deal, script.values, script.options);
 
@@ -155,7 +159,7 @@ export default (app: App): void => {
             }) as WebAPICallResult & {
                 members: string[]
             }).members.filter(user =>
-                user != context.botUserId // TODO filter all bots
+                user != context.botUserId
                 && (!script.moderator || user != message.user)
             ));
 
@@ -175,7 +179,6 @@ export default (app: App): void => {
                     }
                 });
 
-            // TODO figure out high/low groups with math
             const counts: {
                 [count: number]: string[]
             } = {};
@@ -324,16 +327,34 @@ export default (app: App): void => {
     function build_subdeck(items: Deck, values?: Values, options?: Options): string[] {
         if (typeof items === 'string')
             return [wss(items)];
-        else if ('choose' in items)
-            return choose(
-                build_subdeck(items.from, values, options),
-                evaluate(items.choose, values)
-            );
-        else if ('repeat' in items)
-            return repeat(
-                build_subdeck(items.from, values, options),
-                evaluate(items.repeat, values)
-            );
+        else if ('choose' in items) {
+            if ('from' in items)
+                return choose(
+                    build_subdeck(items.from, values, options),
+                    evaluate(items.choose, values)
+                );
+            else if ('grouping' in items)
+                return build_subdeck(choose(
+                    items.grouping,
+                    evaluate(items.choose, values)
+                ), values, options);
+            else
+                throw `Unexpected choose \`${JSON.stringify(items)}\` in script.`;
+        }
+        else if ('repeat' in items) {
+            if ('from' in items)
+                return repeat(
+                    build_subdeck(items.from, values, options),
+                    evaluate(items.repeat, values)
+                );
+            else if ('grouping' in items)
+                return build_subdeck(repeat(
+                    items.grouping,
+                    evaluate(items.repeat, values)
+                ), values, options);
+            else
+                throw `Unexpected choose \`${JSON.stringify(items)}\` in script.`;
+        }
         else if ('duplicate' in items)
             return repeat(
                 choose(
@@ -361,56 +382,10 @@ export default (app: App): void => {
         else if (Array.isArray(items))
             return items.map(
                 item => build_subdeck(item, values, options)
-            ).flat(); // TODO skip flat until top level to allow subdecks
+            ).flat();
         else
             throw `Unexpected deck \'${JSON.stringify(items)}\` in script.`;
     }
-
-    // const re_terminals = /([(,):*])/;
-    // function parse_deck(text: string): string[] {
-    //     const tokens = tokenize(text, re_terminals),
-    //         deck = parse_list(tokens);
-    //     expectEnd(tokens);
-    //     return shuffle(deck);
-    // }
-
-    // function parse_list(tokens: string[]): string[] {
-    //     const list = [];
-    //     do {
-    //         list.push(...parse_element(tokens));
-    //     } while (accept(tokens, ','));
-    //     return list;
-    // }
-
-    // const re_nonterminals = /[^(,):*]+/;
-    // function parse_element(tokens: string[]): string[] {
-    //     let list;
-    //     if (accept(tokens, '(')) {
-    //         const items = parse_list(tokens);
-    //         list = items;
-    //         expect(tokens, ')');
-    //     }
-    //     else {
-    //         const item = expect(tokens, re_nonterminals);
-    //         list = [wss(item)];
-    //     }
-    //     return parse_quantifier(tokens, list);
-    // }
-
-    // const re_integer = /[1-9][0-9]*/;
-    // function parse_quantifier(tokens: string[], list: string[]): string[] {
-    //     if (accept(tokens, ':')) {
-    //         const quantity = parseInt(expect(tokens, re_integer));
-    //         list = choose(list, quantity);
-    //         return parse_quantifier(tokens, list);
-    //     }
-    //     else if (accept(tokens, '*')) {
-    //         const quantity = parseInt(expect(tokens, re_integer));
-    //         list = repeat(list, quantity);
-    //         return parse_quantifier(tokens, list);
-    //     }
-    //     else return list;
-    // }
 
     function enlist<T>(element: T | T[]): T[] {
         if (element === undefined)
@@ -454,7 +429,7 @@ export default (app: App): void => {
         const build = [];
         for (let i = 0; i < list1.length; i++)
             for (let j = 0; j < list2.length; j++)
-                build.push(`${list1[i]}${join ? ` ${join} ` : ' '}${list2[j]}`);
+                build.push(`${list1[i]} ${join ? `${join}` : '\u2022'} ${list2[j]}`);
         return shuffle(build);
     }
 
