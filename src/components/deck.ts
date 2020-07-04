@@ -75,41 +75,36 @@ export default (app: App): void => {
         url?: string;
     }
 
-    type Values = {
-        [key: string]: number;
-    }
+    type Values = { [key: string]: Value; }
+    type Value =
+        | number
+        | string
+        | { value: Value; plus: Value; }
+        | { value: Value; minus: Value; }
+        | { value: Value; times: Value; }
 
-    type Options = {
-        [key: string]: boolean;
-    }
+    type Options = { [key: string]: boolean; }
+    type Option = string
+    type Optional = { if?: Option; }
 
     type Deck =
         | string
-        | { choose: Quantity; from: Deck; }
-        | { choose: Quantity; grouping: Deck[] }
-        | { repeat: Quantity; from: Deck; }
-        | { repeat: Quantity; grouping: Deck[] }
-        | { duplicate: Quantity; of?: Quantity; from: Deck; }
+        | { choose: Value; from: Deck; }
+        | { choose: Value; grouping: Deck[] }
+        | { repeat: Value; from: Deck; }
+        | { repeat: Value; grouping: Deck[] }
+        | { duplicate: Value; of?: Value; from: Deck; }
         | { cross: Deck; with: Deck; using?: string; }
         | { zip: Deck; with: Deck; using?: string; }
         | { if: Option; then: Deck; else?: Deck }
         | Deck[]
 
-    type Quantity = Value | Expression
-    type Value = number | string;
-    type Expression =
-        | { value: Quantity; plus: Quantity; }
-        | { value: Quantity; minus: Quantity; }
-        | { value: Quantity; times: Quantity; }
-
-    type Rules = Rule[];
-
-    type Rule = ShowRule | AnnounceRule
-    type ShowRule = Optional & { show: Matchers; to: Matchers; as?: string; }
-    type AnnounceRule = Optional & { announce: Matchers; as?: string; }
-
-    type Option = string
-    type Optional = { if?: Option; }
+    type Rules = Rule | Rule[];
+    type Rule =
+        | ShowRule & Optional
+        | AnnounceRule & Optional
+    type ShowRule = { show: Matchers; to: Matchers; as?: string; }
+    type AnnounceRule = { announce: Matchers; as?: string; }
 
     type Matchers = Matcher | Matcher[];
     type Matcher =
@@ -142,12 +137,12 @@ export default (app: App): void => {
                     delete script.url;
                 }
                 catch (err) {
-                    throw `Web error \`${err.message}\` on URL \`${script.url}\`.`;
+                    throw `Web error \`${err.message}\` for \`${JSON.stringify(script.url)}\` URL.`;
                 }
             }
 
             if (!script.deal)
-                throw `Unexpected deal \`${script.deal}\` in script.`;
+                throw `Unexpected deal \`${JSON.stringify(script.deal)}\` in script.`;
 
             const items = build_deck(script.deal, script.values, script.options);
 
@@ -437,14 +432,14 @@ export default (app: App): void => {
 
     function choose<T>(list: T[], quantity: number): T[] {
         if (quantity > list.length || quantity < 0)
-            throw `Unexpected choose quantity \`${quantity}\` for list \`${JSON.stringify(list)}\` in script.`;
+            throw `Unexpected choose quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
 
         return shuffle(list).slice(list.length - quantity);
     }
 
     function repeat<T>(list: T[], quantity: number): T[] {
         if (quantity < 0)
-            throw `Unexpected repeat quantity \`${quantity}\` for list \`${JSON.stringify(list)}\` in script.`;
+            throw `Unexpected repeat quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
 
         if (list.length == 0)
             throw 'Unexpected empty list in script.';
@@ -472,12 +467,12 @@ export default (app: App): void => {
         return build;
     }
 
-    function evaluate(it: Quantity, values?: Values): number {
+    function evaluate(it: Value, values?: Values): number {
         if (typeof it === 'number')
             return it;
         else if (typeof it === 'string')
             if (values !== undefined && values[it] !== undefined)
-                return values[it];
+                return evaluate(values[it], values);
             else
                 throw `Unknown value \`${JSON.stringify(it)}\` in script.`;
         else if ('plus' in it)
