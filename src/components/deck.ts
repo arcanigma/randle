@@ -96,24 +96,22 @@ export default (app: App): void => {
         | Deck[]
 
     type Quantity = Value | Expression
-
     type Value = number | string;
-
     type Expression =
         | { value: Quantity; plus: Quantity; }
         | { value: Quantity; minus: Quantity; }
         | { value: Quantity; times: Quantity; }
 
-    type Option = string
-
     type Rules = Rule[];
 
-    type Rule = { if?: Option; } & (
-        | { show: Matchers; to: Matchers; as?: string; }
-    )
+    type Rule = ShowRule | AnnounceRule
+    type ShowRule = Optional & { show: Matchers; to: Matchers; as?: string; }
+    type AnnounceRule = Optional & { announce: Matchers; as?: string; }
+
+    type Option = string
+    type Optional = { if?: Option; }
 
     type Matchers = Matcher | Matcher[];
-
     type Matcher =
         | string
         | { is: string }
@@ -203,6 +201,38 @@ export default (app: App): void => {
                     }
                 }];
 
+            let announced: string[] = [];
+            if (script.rules) {
+                enlist(script.rules).filter((rule): rule is AnnounceRule => 'announce' in rule && (!rule.if || validate(rule.if, script.options))).forEach(rule => {
+                    enlist(rule.announce).forEach(announce => {
+                        Object.keys(dealt).forEach(who => {
+                            dealt[who].filter(it => matches(it, announce)).forEach(whose => {
+                                const text = trunc(`:eye-in-speech-bubble: You all see that <@${who}> was dealt *${!rule.as ? whose : rule.as}*.`, MAX_TEXT_SIZE);
+                                if (!announced.includes(text))
+                                announced.push(text);
+                            });
+                        });
+                    });
+                });
+            }
+            if (announced.length > 0) {
+                announced = shuffle(announced);
+
+                if (announced.length > MAX_CONTEXT_ELEMENTS)
+                    announced = [
+                        ...announced.slice(0, MAX_CONTEXT_ELEMENTS - 1),
+                        trunc(`:warning: Too many context elements to show (limit of ${MAX_CONTEXT_ELEMENTS}).`, MAX_TEXT_SIZE)
+                    ];
+
+                all_blocks.push(<ContextBlock>{
+                    type: 'context',
+                    elements: announced.map(text => (<MrkdwnElement>{
+                        type: 'mrkdwn',
+                        text: text
+                    }))
+                });
+            }
+
             const ts = (await client.chat.postMessage({
                 token: context.botToken,
                 channel: message.channel,
@@ -236,7 +266,7 @@ export default (app: App): void => {
 
                 let shown: string[] = [];
                 if (script.rules) {
-                    enlist(script.rules).filter(rule => !rule.if || validate(rule.if, script.options)).forEach(rule => {
+                    enlist(script.rules).filter((rule): rule is ShowRule => 'show' in rule && (!rule.if || validate(rule.if, script.options))).forEach(rule => {
                         enlist(rule.to).forEach(to => {
                             dealt[user].filter(it => matches(it, to)).forEach(yours => {
                                 enlist(rule.show).forEach(show => {
