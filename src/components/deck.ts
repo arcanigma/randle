@@ -1,14 +1,16 @@
 import { App } from '@slack/bolt';
 import { Block, SectionBlock, ContextBlock, MrkdwnElement, WebAPICallResult } from '@slack/web-api';
-import JSON5 from 'json5';
 
 import randomInt from 'php-random-int';
+import JSON5 from 'json5';
+import got from 'got';
 
 import { MAX_TEXT_SIZE, MAX_CONTEXT_ELEMENTS } from '../app.js';
 import { who, commas, names, trunc, wss, blame } from '../library/factory';
 import { nonthread, anywhere, community } from '../library/listeners';
 
-// TODO add a script builder modal
+// TODO script builder modal/site
+
 export default (app: App): void => {
     const SUIT_NAMES = ['Spades', 'Hearts', 'Clubs', 'Diamonds' ];
     const SUIT_EMOJIS = [ ':spades:', ':hearts:', ':clubs:', ':diamonds:' ];
@@ -70,6 +72,7 @@ export default (app: App): void => {
         options?: Options;
         deal: Deck;
         rules?: Rules;
+        url?: string;
     }
 
     type Values = {
@@ -119,13 +122,30 @@ export default (app: App): void => {
         | { excludes: string }
         | { matches: string }
 
-    const re_script = /^\{.+\}\s*$/s;
+    const re_script = /^\{.+\}\s*$/s,
+        re_formatted_url = /^<([^|]+)(?:|.+)>$/;
     app.message(re_script, nonthread, community, async ({ message, context, say, client }) => {
         try {
             const suit = randomInt(0, 3);
 
-            // TODO verify script against Script type
             const script = <Script>JSON5.parse(context.matches[0]);
+
+            if (script.url) {
+                let match;
+                if (match = script.url.match(re_formatted_url))
+                    script.url = match[1];
+
+                try {
+                    const extension = await got.get(script.url).json();
+                    Object.assign(script, extension);
+                    delete script.url;
+                }
+                catch (err) {
+                    throw `Web error \`${err.message}\` on URL \`${script.url}\`.`;
+                }
+            }
+
+            // TODO verify script against Script type
 
             const items = build_deck(script.deal, script.values, script.options);
 
@@ -341,7 +361,7 @@ export default (app: App): void => {
         else if (Array.isArray(items))
             return items.map(
                 item => build_subdeck(item, values, options)
-            ).flat();
+            ).flat(); // TODO skip flat until top level to allow subdecks
         else
             throw `Unexpected deck \'${JSON.stringify(items)}\` in script.`;
     }
