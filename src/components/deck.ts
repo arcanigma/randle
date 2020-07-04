@@ -66,8 +66,8 @@ export default (app: App): void => {
 
     type Script = {
         event?: string;
-        moderator?: boolean;
-        limit?: number;
+        moderator?: Option;
+        limit?: Value;
         values?: Values;
         options?: Options;
         deal?: Deck;
@@ -84,19 +84,19 @@ export default (app: App): void => {
         | { value: Value; times: Value; }
 
     type Options = { [key: string]: boolean; }
-    type Option = string
+    type Option = boolean | string
     type Optional = { if?: Option; }
 
     type Deck =
         | string
         | { choose: Value; from: Deck; }
-        | { choose: Value; grouping: Deck[] }
+        | { choose: Value; grouping: Deck[]; }
         | { repeat: Value; from: Deck; }
-        | { repeat: Value; grouping: Deck[] }
+        | { repeat: Value; grouping: Deck[]; }
         | { duplicate: Value; of?: Value; from: Deck; }
         | { cross: Deck; with: Deck; using?: string; }
         | { zip: Deck; with: Deck; using?: string; }
-        | { if: Option; then: Deck; else?: Deck }
+        | { if: Option; then: Deck; else?: Deck; }
         | Deck[]
 
     type Rules = Rule | Rule[];
@@ -109,15 +109,15 @@ export default (app: App): void => {
     type Matchers = Matcher | Matcher[];
     type Matcher =
         | string
-        | { is: string }
-        | { isNot: string }
-        | { startsWith: string }
-        | { startsWithout: string }
-        | { endsWith: string }
-        | { endsWithout: string }
-        | { includes: string }
-        | { excludes: string }
-        | { matches: string }
+        | { is: string; }
+        | { isNot: string; }
+        | { startsWith: string; }
+        | { startsWithout: string; }
+        | { endsWith: string; }
+        | { endsWithout: string; }
+        | { includes: string; }
+        | { excludes: string; }
+        | { matches: string; }
 
     const re_script = /^\{.+\}\s*$/s,
         re_formatted_url = /^<([^|]+?)(?:\|[^|]+)?>$/;
@@ -153,15 +153,16 @@ export default (app: App): void => {
                 members: string[]
             }).members.filter(user =>
                 user != context.botUserId
-                && (!script.moderator || user != message.user)
+                && (!validate(script.moderator, script.options) || user != message.user)
             ));
 
             const dealt: {
                 [user: string]: string[]
             } = {};
-            const rounds = script.limit === undefined
-                ? Math.ceil(items.length / users.length)
-                : Math.min(script.limit, Math.floor(items.length / users.length));
+            const limit = evaluate(script.limit, script.values),
+                rounds = !limit
+                    ? Math.ceil(items.length / users.length)
+                    : Math.min(limit, Math.floor(items.length / users.length));
             for (let round = 1; round <= rounds; round++)
                 users.forEach(user => {
                     if (items.length > 0) {
@@ -175,7 +176,7 @@ export default (app: App): void => {
             const counts: {
                 [count: number]: string[]
             } = {};
-            users.forEach(user => {
+            users.filter(user => dealt[user]).forEach(user => {
                 const count = dealt[user].length;
                 if (!counts[count])
                     counts[count] = [user];
@@ -186,8 +187,9 @@ export default (app: App): void => {
             const all_list = commas(Object.keys(counts).map(Number).sort().reverse().map(count => {
                     return `${count > 0 ? `*${count}* each` : '*none*'} to ${names(counts[count])}`;
                 }), '; '),
-                all_notification = `${who(message, 'You')} dealt items`,
-                all_summary = `${who(message, 'You')} dealt ${all_list} by direct message${items.length == 0 ? '' : ` with *${items.length}* leftover${script.moderator ? ` for <@${message.user}>` : ''}`}.`,
+                all_leftover = items.length == 0 ? '' : ` with *${items.length}* leftover${!validate(script.moderator, script.options) ? '' : ` for <@${message.user}> as the moderator`}`,
+                all_notification = `<@${message.user}> dealt items`,
+                all_summary = `<@${message.user}> dealt ${all_list} by direct message${all_leftover}.`,
                 all_blocks: Block[] = [<SectionBlock>{
                     type: 'section',
                     text: {
@@ -247,8 +249,10 @@ export default (app: App): void => {
             Object.keys(dealt).forEach(async (user) => {
                 const per_list = commas(dealt[user].map(item => `*${item}*`)),
                     per_venue = script.event ? `for the *${script.event}* event` : `from the <#${message.channel}> channel`,
-                    per_notification = `${message.user != user ? `<@${message.user}>` : 'You'} dealt ${message.user != user ? 'you' : 'yourself'} ${dealt[user].length != 1 ? 'items' : 'an item'}`,
-                    per_summary = `${message.user != user ? `<@${message.user}>` : 'You'} dealt ${message.user != user ? 'you' : 'yourself'} ${per_list} ${per_venue} <!date^${parseInt(message.ts)}^{date_short_pretty} at {time}^${permalink}|there>.`,
+                    per_who = message.user != user ? `<@${message.user}>${(!validate(script.moderator, script.options) ? '' : ' as the moderator')}` : 'You',
+                    per_whom = message.user != user ? (validate(script.moderator, script.options) ? `<@${user}>` : 'you') : 'yourself',
+                    per_notification = `${per_who} dealt ${per_whom} ${dealt[user].length != 1 ? 'items' : 'an item'}`,
+                    per_summary = `${per_who} dealt ${per_whom} ${per_list} ${per_venue} <!date^${parseInt(message.ts)}^{date_short_pretty} at {time}^${permalink}|there>.`,
                     per_blocks: Block[] = [];
 
                 per_blocks.push(<SectionBlock>{
@@ -295,26 +299,33 @@ export default (app: App): void => {
                     });
                 }
 
-                const dm = (await client.conversations.open({
-                    token: context.botToken,
-                    users: !script.moderator ? user : `${user},${message.user}`
-                }) as WebAPICallResult & {
-                    channel: {
-                        id: string
-                    }
-                }).channel.id;
+                try {
+                    const dm = (await client.conversations.open({
+                        token: context.botToken,
+                        users: !validate(script.moderator, script.options)
+                            ? user
+                            : `${user},${message.user}`
+                    }) as WebAPICallResult & {
+                        channel: {
+                            id: string
+                        }
+                    }).channel.id;
 
-                await client.chat.postMessage({
-                    token: context.botToken,
-                    channel: dm,
-                    username: `Deal: ${SUIT_NAMES[suit]}`,
-                    icon_emoji: SUIT_EMOJIS[suit],
-                    text: per_notification,
-                    blocks: per_blocks
-                });
+                    await client.chat.postMessage({
+                        token: context.botToken,
+                        channel: dm,
+                        username: `Deal: ${SUIT_NAMES[suit]}`,
+                        icon_emoji: SUIT_EMOJIS[suit],
+                        text: per_notification,
+                        blocks: per_blocks
+                    });
+                }
+                catch (err) {
+                    if (err.data.error != 'cannot_dm_bot') throw err;
+                }
             });
 
-            if (script.moderator && items.length > 0) {
+            if (items.length > 0 && validate(script.moderator, script.options)) {
                 const dm = (await client.conversations.open({
                     token: context.botToken,
                     users: message.user
@@ -329,12 +340,12 @@ export default (app: App): void => {
                     channel: dm,
                     username: `Deal: ${SUIT_NAMES[suit]}`,
                     icon_emoji: SUIT_EMOJIS[suit],
-                    text: `${who(message, 'You')} dealt with leftover${items.length != 1 ? 's' : ''}`,
+                    text: `You dealt with leftover${items.length != 1 ? 's' : ''}`,
                     blocks: [<SectionBlock>{
                         type: 'section',
                         text: {
                             type: 'mrkdwn',
-                            text: trunc(`${who(message, 'You')} dealt to ${names(Object.keys(dealt))} with ${commas(items.map(item => `*${item}*`))} leftover.`, MAX_TEXT_SIZE)
+                            text: trunc(`You as the moderator dealt to ${names(Object.keys(dealt))} with ${commas(items.map(item => `*${item}*`))} leftover.`, MAX_TEXT_SIZE)
                         }
                     }]
                 });
@@ -467,14 +478,22 @@ export default (app: App): void => {
         return build;
     }
 
-    function evaluate(it: Value, values?: Values): number {
+    function evaluate(it: Value | undefined, values?: Values): number {
+        if (it === undefined)
+            return 0;
         if (typeof it === 'number')
             return it;
-        else if (typeof it === 'string')
+        else if (typeof it === 'string') {
             if (values !== undefined && values[it] !== undefined)
-                return evaluate(values[it], values);
+                return values[it] = evaluate(
+                    values[it],
+                    Object.assign({}, values, { [it]: undefined })
+                );
+            else if (values !== undefined && Object.keys(values).includes(it))
+                throw `Recursive value \`${JSON.stringify(it)}\` in script.`;
             else
                 throw `Unknown value \`${JSON.stringify(it)}\` in script.`;
+        }
         else if ('plus' in it)
             return evaluate(it.value, values) + evaluate(it.plus, values);
         else if ('minus' in it)
@@ -482,11 +501,18 @@ export default (app: App): void => {
         else if ('times' in it)
             return evaluate(it.value, values) * evaluate(it.times, values);
         else
-            throw `Unexpected expression \'${JSON.stringify(it)}\` in script.`;
+            throw `Unexpected value \'${JSON.stringify(it)}\` in script.`;
     }
 
-    function validate(it: Option, options?: Options): boolean {
-        return options !== undefined && options[it] === true;
+    function validate(it: Option | undefined, options?: Options): boolean {
+        if (it === undefined)
+            return false;
+        if (typeof it === 'boolean')
+            return it;
+        else if (typeof it === 'string')
+            return options !== undefined && options[it] === true;
+        else
+            throw `Unexpected option \'${JSON.stringify(it)}\` in script.`;
     }
 
     function matches(it: string, matcher: Matcher): boolean {
