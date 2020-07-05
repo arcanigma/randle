@@ -72,7 +72,7 @@ export default (app: App): void => {
         options?: Options;
         deal?: Deck;
         rules?: Rules;
-        url?: string;
+        import?: string | string[];
     }
 
     type Values = { [key: string]: Value; }
@@ -125,6 +125,8 @@ export default (app: App): void => {
         | { excludes: string; }
         | { matches: string; }
 
+    const MAX_IMPORTS = 5;
+
     const re_script = /^\{.+\}\s*$/s,
         re_formatted_url = /^<([^|]+?)(?:\|[^|]+)?>$/;
     app.message(re_script, nonthread, community, async ({ message, context, say, client }) => {
@@ -132,18 +134,23 @@ export default (app: App): void => {
             const suit = randomInt(0, 3),
                 script = <Script>JSON5.parse(context.matches[0]);
 
-            if (script.url) {
-                const match = script.url.match(re_formatted_url);
-                if (match)
-                    script.url = match[1];
+            if (script.import) {
+                if (Array.isArray(script.import) && script.import.length > MAX_IMPORTS)
+                    throw `Too many imports (limit of ${MAX_IMPORTS}) in script.`;
 
                 try {
-                    const extension = await got.get(script.url).json();
-                    Object.assign(script, extension);
-                    delete script.url;
+                    const imports = [];
+                    for (let url of enlist(script.import)) {
+                        const match = url.match(re_formatted_url);
+                        if (match)
+                            url = match[1];
+                        imports.push(await got.get(url).json());
+                    }
+                    Object.assign(script, ...imports);
+                    delete script.import;
                 }
                 catch (err) {
-                    throw `Web error \`${err.message}\` for \`${JSON.stringify(script.url)}\` URL.`;
+                    throw `Web error \`${err.message}\` for \`${JSON.stringify(script.import)}\` URL.`;
                 }
             }
 
