@@ -15,6 +15,7 @@ export default (app: App, store: Promise<MongoClient>): void => {
         where: string;
     };
 
+    // TODO support JSON Script embeds and macros
     const re_roll = /^!?roll\s+(.+)/i,
           re_parens = /(?:\([^'()][^()]*\)|\[[^'[\]][^[\]]*\])/g;
     const listen_roll: Middleware<SlackEventMiddlewareArgs<'message'>> = async ({ message, context, next }) => {

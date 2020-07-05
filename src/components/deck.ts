@@ -75,6 +75,8 @@ export default (app: App): void => {
         import?: string | string[];
     }
 
+    // TODO unify Values and Options
+
     type Values = { [key: string]: Value; }
     type Value =
         | number
@@ -82,6 +84,8 @@ export default (app: App): void => {
         | { plus: Value[]; }
         | { minus: Value[]; }
         | { times: Value[]; }
+        | { max: Value[]; }
+        | { min: Value[]; }
 
     type Options = { [key: string]: boolean; }
     type Option =
@@ -128,7 +132,7 @@ export default (app: App): void => {
     const MAX_IMPORTS = 5;
 
     const re_script = /^\{.+\}\s*$/s,
-        re_formatted_url = /^<([^|]+?)(?:\|[^|]+)?>$/;
+        re_formatted_url = /^`*<([^|]+?)(?:\|[^|]+)?>`*$/;
     app.message(re_script, nonthread, community, async ({ message, context, say, client }) => {
         try {
             const suit = randomInt(0, 3),
@@ -508,11 +512,15 @@ export default (app: App): void => {
                 throw `Undefined value \`${JSON.stringify(it)}\` in script.`;
         }
         else if ('plus' in it)
-            return <number>it.plus.reduce( (a, b) => evaluate(a, values) + evaluate(b, values) );
+            return <number>it.plus.reduce((x, y) => evaluate(x, values) + evaluate(y, values));
         else if ('minus' in it)
-            return <number>it.minus.reduce( (a, b) => evaluate(a, values) - evaluate(b, values) );
+            return <number>it.minus.reduce((x, y) => evaluate(x, values) - evaluate(y, values));
         else if ('times' in it)
-            return <number>it.times.reduce( (a, b) => evaluate(a, values) * evaluate(b, values) );
+            return <number>it.times.reduce((x, y) => evaluate(x, values) * evaluate(y, values));
+        else if ('max' in it)
+            return Math.max(...it.max.map(x => evaluate(x, values)));
+        else if ('min' in it)
+            return Math.min(...it.min.map(x => evaluate(x, values)));
         else
             throw `Unexpected value \'${JSON.stringify(it)}\` in script.`;
     }
