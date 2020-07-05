@@ -84,8 +84,12 @@ export default (app: App): void => {
         | { value: Value; times: Value; }
 
     type Options = { [key: string]: boolean; }
-    type Option = boolean | string
-    type Optional = { if?: Option; }
+    type Option =
+        | boolean
+        | string
+        | { and: Option[]; }
+        | { or: Option[]; }
+        | { not: Option; }
 
     type Deck =
         | string
@@ -100,11 +104,13 @@ export default (app: App): void => {
         | Deck[]
 
     type Rules = Rule | Rule[];
-    type Rule =
-        | ShowRule & Optional
-        | AnnounceRule & Optional
+    type Rule = (
+        | ShowRule
+        | AnnounceRule
+    ) & Conditional
     type ShowRule = { show: Matchers; to: Matchers; as?: string; }
     type AnnounceRule = { announce: Matchers; as?: string; }
+    type Conditional = { if?: Option; }
 
     type Matchers = Matcher | Matcher[];
     type Matcher =
@@ -200,7 +206,7 @@ export default (app: App): void => {
 
             let announced: string[] = [];
             if (script.rules) {
-                enlist(script.rules).filter((rule): rule is AnnounceRule => 'announce' in rule && (!rule.if || validate(rule.if, script.options))).forEach(rule => {
+                enlist(script.rules).filter((rule): rule is AnnounceRule => 'announce' in rule && validate(rule.if ?? true, script.options)).forEach(rule => {
                     enlist(rule.announce).forEach(announce => {
                         Object.keys(dealt).forEach(who => {
                             dealt[who].filter(it => matches(it, announce)).forEach(whose => {
@@ -246,7 +252,7 @@ export default (app: App): void => {
                 message_ts: ts
             })).permalink : undefined;
 
-            Object.keys(dealt).forEach(async (user) => {
+            for (const user of Object.keys(dealt)) {
                 const per_list = commas(dealt[user].map(item => `*${item}*`)),
                     per_venue = script.event ? `for the *${script.event}* event` : `from the <#${message.channel}> channel`,
                     per_who = message.user != user ? `<@${message.user}>${(!validate(script.moderator, script.options) ? '' : ' as the moderator')}` : 'You',
@@ -265,7 +271,7 @@ export default (app: App): void => {
 
                 let shown: string[] = [];
                 if (script.rules) {
-                    enlist(script.rules).filter((rule): rule is ShowRule => 'show' in rule && (!rule.if || validate(rule.if, script.options))).forEach(rule => {
+                    enlist(script.rules).filter((rule): rule is ShowRule => 'show' in rule && validate(rule.if ?? true, script.options)).forEach(rule => {
                         enlist(rule.to).forEach(to => {
                             dealt[user].filter(it => matches(it, to)).forEach(yours => {
                                 enlist(rule.show).forEach(show => {
@@ -323,7 +329,7 @@ export default (app: App): void => {
                 catch (err) {
                     if (err.data.error != 'cannot_dm_bot') throw err;
                 }
-            });
+            }
 
             if (items.length > 0 && validate(script.moderator, script.options)) {
                 const dm = (await client.conversations.open({
@@ -389,7 +395,7 @@ export default (app: App): void => {
                     evaluate(items.repeat, values)
                 ), values, options);
             else
-                throw `Unexpected choose \`${JSON.stringify(items)}\` in script.`;
+                throw `Unexpected repeat \`${JSON.stringify(items)}\` in script.`;
         }
         else if ('duplicate' in items)
             return repeat(
@@ -492,7 +498,7 @@ export default (app: App): void => {
             else if (values !== undefined && Object.keys(values).includes(it))
                 throw `Recursive value \`${JSON.stringify(it)}\` in script.`;
             else
-                throw `Unknown value \`${JSON.stringify(it)}\` in script.`;
+                throw `Undefined value \`${JSON.stringify(it)}\` in script.`;
         }
         else if ('plus' in it)
             return evaluate(it.value, values) + evaluate(it.plus, values);
@@ -509,8 +515,23 @@ export default (app: App): void => {
             return false;
         if (typeof it === 'boolean')
             return it;
-        else if (typeof it === 'string')
-            return options !== undefined && options[it] === true;
+        else if (typeof it === 'string') {
+            if (options !== undefined && options[it] !== undefined)
+                return options[it] = validate(
+                    options[it],
+                    Object.assign({}, options, { [it]: undefined })
+                );
+            else if (options !== undefined && Object.keys(options).includes(it))
+                throw `Recursive option \`${JSON.stringify(it)}\` in script.`;
+            else
+                throw `Undefined option \`${JSON.stringify(it)}\` in script.`;
+        }
+        else if ('and' in it)
+            return it.and.every(opt => validate(opt, options));
+        else if ('or' in it)
+            return it.or.some(opt => validate(opt, options));
+        else if ('not' in it)
+            return !validate(it.not, options);
         else
             throw `Unexpected option \'${JSON.stringify(it)}\` in script.`;
     }
