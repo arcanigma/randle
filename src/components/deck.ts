@@ -79,9 +79,9 @@ export default (app: App): void => {
     type Value =
         | number
         | string
-        | { value: Value; plus: Value; }
-        | { value: Value; minus: Value; }
-        | { value: Value; times: Value; }
+        | { plus: Value[]; }
+        | { minus: Value[]; }
+        | { times: Value[]; }
 
     type Options = { [key: string]: boolean; }
     type Option =
@@ -474,20 +474,20 @@ export default (app: App): void => {
         return build;
     }
 
-    function cross<T>(list1: T[], list2: T[], join?: T): string[] {
+    function cross<T>(list1: T[], list2: T[], delimiter?: T): string[] {
         const build = [];
         for (let i = 0; i < list1.length; i++)
             for (let j = 0; j < list2.length; j++)
-                build.push(`${list1[i]} ${join ? `${join}` : '\u2022'} ${list2[j]}`);
+                build.push(`${list1[i]}${delimiter ?? ' \u2022 '}${list2[j]}`);
         return shuffle(build);
     }
 
-    function zip<T>(list1: T[], list2: T[], join?: T): string[] {
+    function zip<T>(list1: T[], list2: T[], delimiter?: T): string[] {
         const build = [],
             copy1 = shuffle(list1),
             copy2 = shuffle(list2);
         for (let i = 0; i < Math.min(list1.length, list2.length); i++)
-            build.push(wss(`${copy1[i]} ${join ? `${join}` : '\u2022'} ${copy2[i]}`));
+            build.push(wss(`${copy1[i]}${delimiter ?? ' \u2022 '}${copy2[i]}`));
         return build;
     }
 
@@ -508,11 +508,11 @@ export default (app: App): void => {
                 throw `Undefined value \`${JSON.stringify(it)}\` in script.`;
         }
         else if ('plus' in it)
-            return evaluate(it.value, values) + evaluate(it.plus, values);
+            return <number>it.plus.reduce( (a, b) => evaluate(a, values) + evaluate(b, values) );
         else if ('minus' in it)
-            return evaluate(it.value, values) - evaluate(it.minus, values);
+            return <number>it.minus.reduce( (a, b) => evaluate(a, values) - evaluate(b, values) );
         else if ('times' in it)
-            return evaluate(it.value, values) * evaluate(it.times, values);
+            return <number>it.times.reduce( (a, b) => evaluate(a, values) * evaluate(b, values) );
         else
             throw `Unexpected value \'${JSON.stringify(it)}\` in script.`;
     }
