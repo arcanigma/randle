@@ -13,6 +13,8 @@ export default (app: App): void => {
     const SUIT_NAMES = ['Spades', 'Hearts', 'Clubs', 'Diamonds' ];
     const SUIT_EMOJIS = [ ':spades:', ':hearts:', ':clubs:', ':diamonds:' ];
 
+    // TODO shuffle/draw from members of channel
+
     const re_shuffle = /^!?shuffle\s+(.+)/is;
     app.message(re_shuffle, nonthread, anywhere, async ({ message, context, say }) => {
         try {
@@ -131,12 +133,12 @@ export default (app: App): void => {
 
     const MAX_IMPORTS = 5;
 
-    const re_script = /^\{.+\}\s*$/s,
-        re_formatted_url = /^`*<([^|]+?)(?:\|[^|]+)?>`*$/;
+    const re_script = /^[`\s]*(\{.+\})[`\s]*$/s,
+        re_url = /^\s*<([^|]+)(?:\|[^|]+)?>\s*$/;
     app.message(re_script, nonthread, community, async ({ message, context, say, client }) => {
         try {
             const suit = randomInt(0, 3),
-                script = <Script>JSON5.parse(context.matches[0]);
+                script = <Script>JSON5.parse(context.matches[1]);
 
             if (script.import) {
                 if (Array.isArray(script.import) && script.import.length > MAX_IMPORTS)
@@ -145,7 +147,7 @@ export default (app: App): void => {
                 try {
                     const imports = [];
                     for (let url of enlist(script.import)) {
-                        const match = url.match(re_formatted_url);
+                        const match = url.match(re_url);
                         if (match)
                             url = match[1];
                         imports.push(await got.get(url).json());
