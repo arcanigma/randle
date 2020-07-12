@@ -161,6 +161,44 @@ export default async (channel: string, context: Context, client: WebClient): Pro
                         },
                         value: PollSetupOptions.Autoclose
                     }
+                ],
+                initial_options: [
+                    // {
+                    //     text: {
+                    //         type: 'plain_text',
+                    //         text: ':busts_in_silhouette: Anonymous Voting',
+                    //         emoji: true
+                    //     },
+                    //     description: {
+                    //         type: 'plain_text',
+                    //         text: 'Results show only tallies, not member names.'
+                    //     },
+                    //     value: PollSetupOptions.Anonymous
+                    // },
+                    {
+                        text: {
+                            type: 'plain_text',
+                            text: ':bell: Participation Notices',
+                            emoji: true
+                        },
+                        description: {
+                            type: 'plain_text',
+                            text: 'Announce each time a member votes or unvotes.'
+                        },
+                        value: PollSetupOptions.Participation
+                    },
+                    {
+                        text: {
+                            type: 'plain_text',
+                            text: ':hourglass_flowing_sand: Automatic Closing',
+                            emoji: true
+                        },
+                        description: {
+                            type: 'plain_text',
+                            text: 'Closes automatically when all members have voted.'
+                        },
+                        value: PollSetupOptions.Autoclose
+                    }
                 ]
             }
         }
