@@ -1,5 +1,5 @@
-import { App } from '@slack/bolt';
-import { Block, SectionBlock, ContextBlock, MrkdwnElement, WebAPICallResult } from '@slack/web-api';
+import { App, MessageEvent, Context } from '@slack/bolt';
+import { WebClient, Block, SectionBlock, ContextBlock, MrkdwnElement, WebAPICallResult } from '@slack/web-api';
 
 import randomInt from 'php-random-int';
 import JSON5 from 'json5';
@@ -13,14 +13,19 @@ export default (app: App): void => {
     const SUIT_NAMES = ['Spades', 'Hearts', 'Clubs', 'Diamonds' ];
     const SUIT_EMOJIS = [ ':spades:', ':hearts:', ':clubs:', ':diamonds:' ];
 
-    // TODO shuffle/draw from members of channel
-
     const re_shuffle = /^!?shuffle\s+(.+)/is;
-    app.message(re_shuffle, nonthread, anywhere, async ({ message, context, say }) => {
+    app.message(re_shuffle, nonthread, anywhere, async ({ message, context, say, client }) => {
         try {
             const suit = randomInt(0, 3),
-                list = <string>context.matches[1],
-                items = shuffle(list.split(','));
+                list = <string[]>context.matches[1].trim().split(',');
+
+            let items;
+            if (list.length == 1 && list[0] == '<!channel>')
+                items = (await members(message.channel, context, client))
+                    .map(user => `<@${user}>`);
+            else
+                items = list;
+            items = shuffle(items);
 
             await say({
                 username: `Shuffle: ${SUIT_NAMES[suit]}`,
@@ -41,12 +46,19 @@ export default (app: App): void => {
     });
 
     const re_draw = /^!?draw\s+(?:([1-9][0-9]*)\s+from\s+)?(.+)/is;
-    app.message(re_draw, nonthread, anywhere, async ({ message, context, say }) => {
+    app.message(re_draw, nonthread, anywhere, async ({ message, context, say, client }) => {
         try {
             const suit = randomInt(0, 3),
                 count = context.matches[1] ?? 1,
-                list = <string>context.matches[2],
-                items = shuffle(list.split(',')).slice(0, count);
+                list = <string[]>context.matches[2].trim().split(',');
+
+            let items;
+            if (list.length == 1 && list[0] == '<!channel>')
+                items = (await members(message.channel, context, client))
+                    .map(user => `<@${user}>`);
+            else
+                items = list;
+            items = shuffle(items).slice(0, count);
 
             await say({
                 username: `Draw: ${SUIT_NAMES[suit]}`,
@@ -163,17 +175,9 @@ export default (app: App): void => {
             if (!script.deal)
                 throw `Unexpected deal \`${JSON.stringify(script.deal)}\` in script.`;
 
-            const items = build_deck(script.deal, script.values, script.options);
-
-            const users = shuffle((await client.conversations.members({
-                token: context.botToken,
-                channel: message.channel
-            }) as WebAPICallResult & {
-                members: string[]
-            }).members.filter(user =>
-                user != context.botUserId
-                && (!validate(script.moderator, script.options) || user != message.user)
-            ));
+            const items = build_deck(script.deal, script.values, script.options),
+                users = (await members(message.channel, context, client))
+                    .filter(user => user != message.user || !validate(script.moderator, script.options));
 
             const dealt: {
                 [user: string]: string[]
@@ -374,6 +378,17 @@ export default (app: App): void => {
             await say(blame(err, message));
         }
     });
+
+    async function members(channel: string, context: Context, client: WebClient) {
+        return shuffle((await client.conversations.members({
+            token: context.botToken,
+            channel: channel
+        }) as WebAPICallResult & {
+            members: string[]
+        }).members.filter(user =>
+            user != context.botUserId
+        ));
+    }
 
     function build_deck(items: Deck, values?: Values, options?: Options): string[] {
         return shuffle(build_subdeck(items, values, options));
