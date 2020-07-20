@@ -10,7 +10,7 @@ export default (app: App, store: Promise<MongoClient>): void => {
     app.view('edit_macro_modal', async ({ ack, body, context, view, client }) => {
         const user = body.user.id;
 
-        let name = view.private_metadata ?? view.state.values.name.input.value;
+        let name = view.private_metadata || view.state.values.name.input.value;
 
         if (!re_macro.test(name)) {
             return await ack({
