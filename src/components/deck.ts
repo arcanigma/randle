@@ -1,5 +1,6 @@
-import { App, MessageEvent, Context } from '@slack/bolt';
+import { App, MessageEvent, Context, SayArguments } from '@slack/bolt';
 import { WebClient, Block, SectionBlock, ContextBlock, MrkdwnElement, WebAPICallResult } from '@slack/web-api';
+import { MongoClient } from 'mongodb';
 
 import randomInt from 'php-random-int';
 import JSON5 from 'json5';
@@ -9,74 +10,107 @@ import { MAX_TEXT_SIZE, MAX_CONTEXT_ELEMENTS } from '../app.js';
 import { who, commas, names, trunc, wss, blame } from '../library/factory';
 import { nonthread, anywhere, community } from '../library/listeners';
 
-export default (app: App): void => {
+export default (app: App, store: Promise<MongoClient>): void => {
     const SUIT_NAMES = ['Spades', 'Hearts', 'Clubs', 'Diamonds' ];
     const SUIT_EMOJIS = [ ':spades:', ':hearts:', ':clubs:', ':diamonds:' ];
 
     const re_shuffle = /^!?shuffle\s+(.+)/is;
     app.message(re_shuffle, nonthread, anywhere, async ({ message, context, say, client }) => {
         try {
-            const suit = randomInt(0, 3),
-                list = <string[]>context.matches[1].trim().split(',');
-
-            let items;
-            if (list.length == 1 && list[0] == '<!channel>')
-                items = (await members(message.channel, context, client))
-                    .map(user => `<@${user}>`);
-            else
-                items = list;
-            items = shuffle(items);
-
-            await say({
-                username: `Shuffle: ${SUIT_NAMES[suit]}`,
-                icon_emoji: SUIT_EMOJIS[suit],
-                text: `${who(message, 'You')} shuffled ${items.length != 1 ? 'items' : 'an item'}`,
-                blocks: [<SectionBlock>{
-                    type: 'section',
-                    text: {
-                        type: 'mrkdwn',
-                        text: trunc(`${who(message, 'You')} shuffled ${commas(items.map(item => `*${wss(item)}*`))}.`, MAX_TEXT_SIZE)
-                    }
-                }]
-            });
+            await say(await process(
+                context.matches[1],
+                items => shuffle(items),
+                'Shuffle',
+                'shuffled',
+                message, context, client
+            ));
         }
         catch (err) {
             await say(blame(err, message));
         }
     });
 
-    const re_draw = /^!?draw\s+(?:([1-9][0-9]*)\s+from\s+)?(.+)/is;
+    const re_draw = /^!?draw\s+(?:([1-9][0-9]*)\s+(?:from|of)\s+)?(.+)/is;
     app.message(re_draw, nonthread, anywhere, async ({ message, context, say, client }) => {
         try {
-            const suit = randomInt(0, 3),
-                count = context.matches[1] ?? 1,
-                list = <string[]>context.matches[2].trim().split(',');
-
-            let items;
-            if (list.length == 1 && list[0] == '<!channel>')
-                items = (await members(message.channel, context, client))
-                    .map(user => `<@${user}>`);
-            else
-                items = list;
-            items = shuffle(items).slice(0, count);
-
-            await say({
-                username: `Draw: ${SUIT_NAMES[suit]}`,
-                icon_emoji: SUIT_EMOJIS[suit],
-                text: `${who(message, 'You')} drew ${count != 1 ? 'items' : 'an item'}`,
-                blocks: [<SectionBlock>{
-                    type: 'section',
-                    text: {
-                        type: 'mrkdwn',
-                        text: trunc(`${who(message, 'You')} drew ${commas(items.map(item => `*${wss(item)}*`))}.`, MAX_TEXT_SIZE)
-                    }
-                }]
-            });
+            await say(await process(
+                context.matches[2],
+                items => choose(items, context.matches[1] ?? 1),
+                'Draw',
+                'drew',
+                message, context, client
+            ));
         }
         catch (err) {
             await say(blame(err, message));
         }
     });
+
+    const re_pool = /^!?pool\s+(?:([1-9][0-9]*)\s+(?:from|of)\s+)?(.+)/is;
+    app.message(re_pool, nonthread, anywhere, async ({ message, context, say, client }) => {
+        try {
+            await say(await process(
+                context.matches[2],
+                items => repeat(items, context.matches[1] ?? 1),
+                'Pool',
+                'pooled',
+                message, context, client
+            ));
+        }
+        catch (err) {
+            await say(blame(err, message));
+        }
+    });
+
+    const re_macro = /^[\w_][\w\d_]{2,14}$/;
+    async function process(
+        list: string,
+        fun: (list: string[]) => string[],
+        title: string,
+        verbed: string,
+        message: MessageEvent,
+        context: Context,
+        client: WebClient
+    ): Promise<SayArguments> {
+        const suit = randomInt(0, 3);
+
+        let items = <string[]>list.trim().split(',');
+        if (items.length == 1) {
+            if (items[0] == '<!channel>')
+                items = (await members(message.channel, context, client))
+                    .map(user => `<@${user}>`);
+            else if (items.length == 1 && re_macro.test(items[0]))
+                items = (await macro(store, context, message.user, items[0]))
+                    .trim().split(',');
+        }
+        items = fun(items);
+
+        return {
+            username: `${title}: ${SUIT_NAMES[suit]}`,
+            icon_emoji: SUIT_EMOJIS[suit],
+            text: `${who(message, 'You')} ${verbed} ${items.length != 1 ? 'items' : 'an item'}`,
+            blocks: [<SectionBlock>{
+                type: 'section',
+                text: {
+                    type: 'mrkdwn',
+                    text: trunc(`${who(message, 'You')} ${verbed} ${commas(items.map(item => `*${wss(item)}*`))}.`, MAX_TEXT_SIZE)
+                }
+            }]
+        };
+    }
+
+    async function macro(store: Promise<MongoClient>, context: Context, user: string, name: string): Promise<string> {
+        const coll = (await store).db().collection('macros');
+        return (await coll.findOne(
+            { _id: user },
+            { projection: { _id: 0} }
+        ) || {})[name]
+        ?? (await coll.findOne(
+            { _id: context.botUserId },
+            { projection: { _id: 0} }
+        ) || {})[name]
+        ?? name;
+    }
 
     type Script = {
         event?: string;

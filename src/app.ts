@@ -31,7 +31,7 @@ export const MAX_VIEW_BLOCKS = 100;
 export const MAX_MESSAGE_BLOCKS = 50;
 export const MAX_CONTEXT_ELEMENTS = 10;
 
-import deck from './components/deck'; deck(app);
+import deck from './components/deck'; deck(app, store);
 import echo from './components/echo'; echo (app);
 import home from './components/home'; home(app, store);
 import macros from './components/macros'; macros(app, store);
