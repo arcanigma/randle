@@ -1,5 +1,5 @@
-import { App, MessageEvent, Context, SayArguments } from '@slack/bolt';
-import { WebClient, Block, SectionBlock, ContextBlock, MrkdwnElement, WebAPICallResult } from '@slack/web-api';
+import { App, MessageEvent, Context, BlockAction, MultiStaticSelectAction, SayFn } from '@slack/bolt';
+import { WebClient, Block, SectionBlock, ContextBlock, MultiSelect, MrkdwnElement, WebAPICallResult } from '@slack/web-api';
 import { MongoClient } from 'mongodb';
 
 import randomInt from 'php-random-int';
@@ -7,23 +7,24 @@ import JSON5 from 'json5';
 import got from 'got';
 
 import { MAX_TEXT_SIZE, MAX_CONTEXT_ELEMENTS } from '../app.js';
-import { who, commas, names, trunc, wss, blame } from '../library/factory';
+import { commas, names, trunc, wss, blame } from '../library/factory';
 import { nonthread, anywhere, community } from '../library/listeners';
 
-export default (app: App, store: Promise<MongoClient>): void => {
-    const SUIT_NAMES = ['Spades', 'Hearts', 'Clubs', 'Diamonds' ];
-    const SUIT_EMOJIS = [ ':spades:', ':hearts:', ':clubs:', ':diamonds:' ];
+const MAX_IMPORTS = 5;
 
+// TODO refactor monolithic component
+
+export default (app: App, store: Promise<MongoClient>): void => {
     const re_shuffle = /^!?shuffle\s+(.+)/is;
     app.message(re_shuffle, nonthread, anywhere, async ({ message, context, say, client }) => {
         try {
-            await say(await process(
+            await process(
+                'Shuffle',
                 context.matches[1],
                 items => shuffle(items),
-                'Shuffle',
-                'shuffled',
-                message, context, client
-            ));
+                0,
+                message, context, say, client
+            );
         }
         catch (err) {
             await say(blame(err, message));
@@ -33,13 +34,13 @@ export default (app: App, store: Promise<MongoClient>): void => {
     const re_draw = /^!?draw\s+(?:([1-9][0-9]*)\s+(?:from|of)\s+)?(.+)/is;
     app.message(re_draw, nonthread, anywhere, async ({ message, context, say, client }) => {
         try {
-            await say(await process(
+            await process(
+                'Draw',
                 context.matches[2],
                 items => choose(items, context.matches[1] ?? 1),
-                'Draw',
-                'drew',
-                message, context, client
-            ));
+                0,
+                message, context, say, client
+            );
         }
         catch (err) {
             await say(blame(err, message));
@@ -49,55 +50,193 @@ export default (app: App, store: Promise<MongoClient>): void => {
     const re_pool = /^!?pool\s+(?:([1-9][0-9]*)\s+(?:from|of)\s+)?(.+)/is;
     app.message(re_pool, nonthread, anywhere, async ({ message, context, say, client }) => {
         try {
-            await say(await process(
+            await process(
+                'Pool',
                 context.matches[2],
                 items => repeat(items, context.matches[1] ?? 1),
-                'Pool',
-                'pooled',
-                message, context, client
-            ));
+                0,
+                message, context, say, client
+            );
         }
         catch (err) {
             await say(blame(err, message));
         }
     });
 
+    const SUIT_EMOJIS: ({
+        [suit: string]: string
+    }) = {
+        'Spades': ':spades:',
+        'Hearts': ':hearts:',
+        'Clubs': ':clubs:',
+        'Diamonds': ':diamonds:',
+        'Stars': ':star:'
+    };
+
+    const MODE_WORD: ({
+        [mode: string]: {
+            did: string,
+            redo: string,
+            redid: string
+        }
+    }) = {
+        'Shuffle': {
+            did: 'Shuffled',
+            redo: 'Reshuffle',
+            redid: 'Reshuffled'
+        },
+        'Draw': {
+            did: 'Drew',
+            redo: 'Redraw',
+            redid: 'Redrew'
+        },
+        'Pool': {
+            did: 'Pooled',
+            redo: 'Repool',
+            redid: 'Repooled'
+        }
+    };
+
     const re_macro = /^[\w_][\w\d_]{2,14}$/;
     async function process(
-        list: string,
+        mode: string,
+        expression: string,
         fun: (list: string[]) => string[],
-        title: string,
-        verbed: string,
+        recount: number,
         message: MessageEvent,
         context: Context,
+        say: SayFn,
         client: WebClient
-    ): Promise<SayArguments> {
-        const suit = randomInt(0, 3);
+    ): Promise<void> {
+        const suit = pluck(SUIT_EMOJIS);
 
-        let items = <string[]>list.trim().split(',');
-        if (items.length == 1) {
-            if (items[0] == '<!channel>')
-                items = (await members(message.channel, context, client))
-                    .map(user => `<@${user}>`);
-            else if (items.length == 1 && re_macro.test(items[0]))
-                items = (await macro(store, context, message.user, items[0]))
-                    .trim().split(',');
+        let list = <string[]>expression.split(',').map(it => it.trim());
+        if (list.length == 1) {
+            if (Number(list[0]) >= 1 && Number(list[0]) % 1 == 0)
+                list = Array(Number(list[0])).fill(1).map((v, i) => String(v + i));
+            else if (list[0] == '<!channel>')
+                list = (await members(message.channel, context, client)).map(user => `<@${user}>`);
+            else if (re_macro.test(list[0]))
+                list = (await macro(store, context, message.user, list[0])).split(',').map(it => it.trim());
         }
-        items = fun(items);
 
-        return {
-            username: `${title}: ${SUIT_NAMES[suit]}`,
+        const items = fun(list);
+
+        await client.chat.postMessage({
+            token: context.botToken,
+            channel: message.channel,
+            username: `${mode}: ${suit}`,
             icon_emoji: SUIT_EMOJIS[suit],
-            text: `${who(message, 'You')} ${verbed} ${items.length != 1 ? 'items' : 'an item'}`,
-            blocks: [<SectionBlock>{
-                type: 'section',
-                text: {
-                    type: 'mrkdwn',
-                    text: trunc(`${who(message, 'You')} ${verbed} ${commas(items.map(item => `*${wss(item)}*`))}.`, MAX_TEXT_SIZE)
-                }
-            }]
-        };
+            text: `<@${message.user}> ${MODE_WORD[mode].did.toLowerCase()} ${list.length != 1 ? 'items' : 'an item'}`,
+            blocks: [
+                <SectionBlock>{
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: trunc(`<@${message.user}> ${MODE_WORD[mode].did.toLowerCase()} ${commas(items.map(item => `*${wss(item)}*`))}.`, MAX_TEXT_SIZE)
+                    }
+                },
+                ...(mode == 'Pool' ? [
+                    <SectionBlock>{
+                        type: 'section',
+                        block_id: `deck_message_block_${message.user}_${JSON.stringify(list)}`,
+                        text: {
+                            type: 'mrkdwn',
+                            text: ':left_speech_bubble: These results are original.'
+                        },
+                        accessory: <MultiSelect>{
+                            type: 'multi_static_select',
+                            action_id: `deck_message_select_${mode}_${recount+1}_${JSON.stringify(items.map(item => list.indexOf(item)))}`,
+                            placeholder: {
+                                type: 'plain_text',
+                                emoji: true,
+                                text: MODE_WORD[mode].redo
+                            },
+                            options: items.map((item, index) => ({
+                                text: {
+                                    type: 'plain_text',
+                                    emoji: true,
+                                    text: `${item}`
+                                },
+                                value: `${index}`
+                            }))
+                        }
+                    }
+                ] : [])
+            ]
+        });
     }
+
+    const re_action_id = /^deck_message_select_(\w+)_(\d+)_(\[[^\]]+\])$/,
+        re_block_id = /^deck_message_block_(U\w+)_(\[[^\]]+\])$/;
+    app.action<BlockAction>(re_action_id, async ({ ack, respond, body, action, }) => {
+        await ack();
+
+        const user = body.user.id,
+            selected = (action as MultiStaticSelectAction).selected_options
+                .map(it => Number(it.value)).sort(),
+            [, mode, str_recount, json_items ] = action.action_id.match(re_action_id) ?? [],
+            [, whom, json_list ] = action.block_id.match(re_block_id) ?? [],
+            recount = Number(str_recount),
+            list = <string[]>JSON.parse(json_list),
+            items = (<number[]>JSON.parse(json_items)).map(index => list[index]);
+
+        if (user != whom)
+            return await respond({
+                replace_original: false,
+                response_type: 'ephemeral',
+                text: `That ${mode.toLowerCase()} belongs to <@${whom}>.`
+            });
+
+        if (mode == 'Pool') {
+            selected.forEach(index => {
+                items[index] = repeat(list, 1)[0];
+            });
+
+            const text = (body as BlockAction).message!.text!,
+                blocks = [
+                    <SectionBlock>{
+                        type: 'section',
+                        text: {
+                            type: 'mrkdwn',
+                            text: trunc(`<@${user}> ${MODE_WORD[mode].did.toLowerCase()} ${commas(items.map(item => `*${wss(item)}*`))}.`, MAX_TEXT_SIZE)
+                        }
+                    },
+                    <SectionBlock>{
+                        type: 'section',
+                        block_id: `deck_message_block_${user}_${JSON.stringify(list)}`,
+                        text: {
+                            type: 'mrkdwn',
+                            text: `:eye-in-speech-bubble: The results are ${MODE_WORD[mode].redid.toLowerCase()} *${recount}* time${recount != 1 ? 's' : ''}.`
+                        },
+                        accessory: <MultiSelect>{
+                            type: 'multi_static_select',
+                            action_id: `deck_message_select_${mode}_${recount+1}_${JSON.stringify(items.map(item => list.indexOf(item)))}`,
+                            placeholder: {
+                                type: 'plain_text',
+                                emoji: true,
+                                text: MODE_WORD[mode].redo
+                            },
+                            options: items.map((item, index) => ({
+                                text: {
+                                    type: 'plain_text',
+                                    emoji: true,
+                                    text: `${item}`
+                                },
+                                value: `${index}`
+                            }))
+                        }
+                    }
+                ];
+
+            respond({
+                replace_original: true,
+                text: text,
+                blocks: blocks
+            });
+        }
+        else throw `Unsupported mode \`${mode}\` on redo.`;
+    });
 
     async function macro(store: Promise<MongoClient>, context: Context, user: string, name: string): Promise<string> {
         const coll = (await store).db().collection('macros');
@@ -174,8 +313,6 @@ export default (app: App, store: Promise<MongoClient>): void => {
         | { includes: string; }
         | { excludes: string; }
         | { matches: string; }
-
-    const MAX_IMPORTS = 5;
 
     const re_script = /^[`\s]*(\{.+\})[`\s]*$/s,
         re_url = /^\s*<([^|]+)(?:\|[^|]+)?>\s*$/;
@@ -259,7 +396,7 @@ export default (app: App, store: Promise<MongoClient>): void => {
                     enlist(rule.announce).forEach(announce => {
                         Object.keys(dealt).forEach(who => {
                             dealt[who].filter(it => matches(it, announce)).forEach(whose => {
-                                const text = trunc(`:eye-in-speech-bubble: You all see that <@${who}> was dealt *${!rule.as ? whose : rule.as}*.`, MAX_TEXT_SIZE);
+                                const text = trunc(`${!rule.as ? ':eye-in-speech-bubble:' : ':left_speech_bubble:'} You all see that <@${who}> was dealt ${!rule.as ? `*${whose}*` : `*${rule.as}* as an alias`}.`, MAX_TEXT_SIZE);
                                 if (!announced.includes(text))
                                 announced.push(text);
                             });
@@ -288,7 +425,7 @@ export default (app: App, store: Promise<MongoClient>): void => {
             const ts = (await client.chat.postMessage({
                 token: context.botToken,
                 channel: message.channel,
-                username: `Deal: ${SUIT_NAMES[suit]}`,
+                username: `Deal: ${suit}`,
                 icon_emoji: SUIT_EMOJIS[suit],
                 text: all_notification,
                 blocks: all_blocks
@@ -326,7 +463,7 @@ export default (app: App, store: Promise<MongoClient>): void => {
                                 enlist(rule.show).forEach(show => {
                                     Object.keys(dealt).filter(them => them != user).forEach(them => {
                                         dealt[them].filter(it => matches(it, show)).forEach(theirs => {
-                                            const text = trunc(`:eye-in-speech-bubble: Because you were dealt *${yours}* you see that <@${them}> was dealt *${!rule.as ? theirs : rule.as}*.`, MAX_TEXT_SIZE);
+                                            const text = trunc(`${!rule.as ? ':eye-in-speech-bubble:' : ':left_speech_bubble:'} Because you were dealt *${yours}* you see that <@${them}> was dealt ${!rule.as ? `*${theirs}*` : `*${rule.as}* as an alias`}.`, MAX_TEXT_SIZE);
                                             if (!shown.includes(text))
                                                 shown.push(text);
                                         });
@@ -369,7 +506,7 @@ export default (app: App, store: Promise<MongoClient>): void => {
                     await client.chat.postMessage({
                         token: context.botToken,
                         channel: dm,
-                        username: `Deal: ${SUIT_NAMES[suit]}`,
+                        username: `Deal: ${suit}`,
                         icon_emoji: SUIT_EMOJIS[suit],
                         text: per_notification,
                         blocks: per_blocks
@@ -393,7 +530,7 @@ export default (app: App, store: Promise<MongoClient>): void => {
                 await client.chat.postMessage({
                     token: context.botToken,
                     channel: dm,
-                    username: `Deal: ${SUIT_NAMES[suit]}`,
+                    username: `Deal: ${suit}`,
                     icon_emoji: SUIT_EMOJIS[suit],
                     text: `You dealt with leftover${items.length != 1 ? 's' : ''}`,
                     blocks: [<SectionBlock>{
@@ -525,6 +662,10 @@ export default (app: App, store: Promise<MongoClient>): void => {
         for (let i = 1; i <= quantity; i++)
             build.push(list[randomInt(0, list.length - 1)]);
         return build;
+    }
+
+    function pluck(object: Record<string, unknown>): string {
+        return choose(Object.keys(object), 1)[0];
     }
 
     function cross<T>(list1: T[], list2: T[], delimiter?: T): string[] {

@@ -55,6 +55,7 @@ export function offbox(count: number): string {
     return '\u2B1C'.repeat(count);
 }
 
+// TODO for blames, use respond empheral instead of say
 export function blame(error: string | Error, message: MessageEvent): SayArguments {
     console.log({ error });
     if (error instanceof Error) {

@@ -7,9 +7,9 @@ import { announce, Poll, PollSetupOptions, Timers } from '../components/polls';
 import informative_modal from '../views/informative_modal';
 import app_home from '../views/app_home';
 
-export default (app: App, store: Promise<MongoClient>, timers: Timers): void => {
-    const AUTOCLOSE_GRACE = 30;
+const AUTOCLOSE_GRACE = 30;
 
+export default (app: App, store: Promise<MongoClient>, timers: Timers): void => {
     app.action(/^vote_button_\d+$/, async ({ ack, body, action, context, client }) => {
         await ack();
 

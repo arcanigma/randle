@@ -31,6 +31,12 @@ export const MAX_VIEW_BLOCKS = 100;
 export const MAX_MESSAGE_BLOCKS = 50;
 export const MAX_CONTEXT_ELEMENTS = 10;
 
+// TODO restructure with 1 folder per bot feature, not per model
+
+// TODO refactor timers up to this level as shared mechanism
+
+// TODO retrofit respond() instead of chat.postMessage() when possible
+
 import deck from './components/deck'; deck(app, store);
 import echo from './components/echo'; echo (app);
 import home from './components/home'; home(app, store);
