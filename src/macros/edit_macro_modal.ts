@@ -70,9 +70,10 @@ export const view = async (name: string, replacement: string): Promise<View> => 
                 text: 'Settings'
             },
             element: {
-                type: 'checkboxes',  // TODO super user creates for bot
+                type: 'checkboxes',
                 action_id: 'inputs',
                 options: [
+                    // TODO team-scoped macros if super user
                     {
                         text: {
                             type: 'plain_text',

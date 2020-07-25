@@ -6,6 +6,8 @@ import { HomeOptions, PollFilterOptions } from '../home';
 import { Poll } from './polls';
 import * as poll_blocks from './poll_blocks';
 
+const MAX_POLLS_SHOWN = 20;
+
 export const blocks = async (user: string, store: Promise<MongoClient>, options: HomeOptions): Promise<Block[]> => {
     const blocks: Block[] = [];
 
@@ -61,7 +63,6 @@ export const blocks = async (user: string, store: Promise<MongoClient>, options:
         }
     ]);
 
-    // TODO limit number of polls returned
     const coll = (await store).db().collection('polls');
     const polls: Cursor<Poll> = (await coll.find({
         ...(options.polls.filter != PollFilterOptions.All ? {
@@ -75,7 +76,7 @@ export const blocks = async (user: string, store: Promise<MongoClient>, options:
         options.polls.filter != PollFilterOptions.Closed
         ? { opened: -1 }
         : { closed: -1 }
-    );
+    ).limit(MAX_POLLS_SHOWN);
 
     if (await polls.count() > 0) {
         await polls.forEach(async (poll) => {
