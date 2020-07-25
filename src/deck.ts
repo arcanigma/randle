@@ -50,7 +50,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
     app.message(re_pool, nonthread, anywhere, async ({ message, context, client, say }) => {
         try {
             await process(
-                'Pool',
+                'Pool', // TODO evidentiary version
                 context.matches[2],
                 items => repeat(items, context.matches[1] ?? 1),
                 0,
@@ -188,31 +188,30 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
             });
 
         if (mode == 'Pool') {
-            const message = (body as BlockAction).message!;
+            const history: Block[] = [];
 
-            if (recount == 1) {
-                const history = Array.of(...items);
-
-                say({
-                    token: context.botToken,
-                    channel: body.channel!.id,
-                    thread_ts: body.message!.ts,
-                    text: message.text!,
-                    blocks: [
-                        <SectionBlock>{
-                            type: 'section',
-                            text: {
-                                type: 'mrkdwn',
-                                text: trunc(`Original \u2022 ${commas(history.map(item => `*${wss(item)}*`))}`, MAX_TEXT_SIZE)
-                            }
-                        }
-                    ]
+            if (recount == 1)
+                history.push(<SectionBlock>{
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: trunc(`Original \u2022 ${commas(Array.of(...items).map(item => `*${wss(item)}*`))}.`, MAX_TEXT_SIZE)
+                    }
                 });
-            }
 
             selected.forEach(index => {
                 items[index] = repeat(list, 1)[0];
             });
+
+            history.push(<SectionBlock>{
+                type: 'section',
+                text: {
+                    type: 'mrkdwn',
+                    text: trunc(`${MODE_WORD[mode].redo} *${recount}* \u2022 ${commas(items.map((item, index) => `*${wss(selected.includes(index) ? `(${item})` : item)}*`))}.`, MAX_TEXT_SIZE)
+                }
+            });
+
+            const message = body.message!;
 
             respond({
                 replace_original: true,
@@ -258,15 +257,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                 channel: body.channel!.id,
                 thread_ts: body.message!.ts,
                 text: message.text!,
-                blocks: [
-                    <SectionBlock>{
-                        type: 'section',
-                        text: {
-                            type: 'mrkdwn',
-                            text: trunc(`${MODE_WORD[mode].redo} *${recount}* \u2022 ${commas(items.map((item, index) => `*${wss(selected.includes(index) ? `(${item})` : item)}*`))}.`, MAX_TEXT_SIZE)
-                        }
-                    }
-                ]
+                blocks: history
             });
         }
         else throw `Unsupported mode \`${mode}\` on redo.`;
