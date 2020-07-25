@@ -15,7 +15,9 @@ export default (app: App, store: Promise<MongoClient>): void => {
         where: string;
     };
 
-    // TODO support JSON Script embeds and macros
+    // TODO refactor into parser
+    // TODO support JSON Script embeds, even in macros
+
     const re_roll = /^!?roll\s+(.+)/i,
           re_parens = /(?:\([^'()][^()]*\)|\[[^'[\]][^[\]]*\])/g;
     const listen_roll: Middleware<SlackEventMiddlewareArgs<'message'>> = async ({ message, context, next }) => {
@@ -142,16 +144,14 @@ export default (app: App, store: Promise<MongoClient>): void => {
 
             const elements = [];
 
-            const re_dice_code = /(~|\b)([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?(?:(\*|\/|\||\\)([0-9]+(?:\.[0-9]+)?))?\b/ig;
-            const outcome = clauses[i].text.replace(re_dice_code, (expr, avg, count, size, hilo, keep, mod, muldev, fact) => {
+            const re_dice_code = /\b([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?\b/ig;
+            const outcome = clauses[i].text.replace(re_dice_code, (expr, count, size, hilo, keep, mod) => {
                 count = parseInt(count) || 1;
                 size = (size != '%' ? parseInt(size) || 1 : 100);
+
                 const rolls = [];
-                const generate = !avg
-                    ? randomInt
-                    : (low: number, high: number) => (low+high)/2;
                 for (let i = 1; i <= count; i++)
-                    rolls.push(generate(1, size));
+                    rolls.push(randomInt(1, size));
 
                 const strikes: {
                     [key: number]: number
@@ -179,9 +179,7 @@ export default (app: App, store: Promise<MongoClient>): void => {
                     const roll = rolls[i],
                         key = roll.toString(),
                         sign = roll >= 0 ? '+' : '-',
-                        face = !avg
-                            ? `${Math.abs(roll)}`
-                            : `_${Math.abs(roll)}_`;
+                        face = `${Math.abs(roll)}`;
 
                     if (atoms.length > 0 || sign == '-')
                         atoms.push(sign);
@@ -197,43 +195,12 @@ export default (app: App, store: Promise<MongoClient>): void => {
                 }
 
                 let prefix;
-                if (avg)
-                    prefix = ':bar_chart:';
-                else if (total == 1 * (!hilo ? count : keep) + mod)
+                if (total == 1 * (!hilo ? count : keep) + mod)
                     prefix = ':heavy_multiplication_x:';
                 else if (total == size * (!hilo ? count : keep) + mod)
                     prefix = ':heavy_check_mark:';
                 else
                     prefix = ':white_square:';
-
-                if (muldev) {
-                    fact = parseFloat(fact) || 1;
-
-                    if (atoms.length > 1)
-                        atoms = ['(', ...atoms, ')'];
-
-                    if (muldev == '*') {
-                        atoms = [...atoms, '×', fact];
-                        total *= fact;
-                    }
-                    else {
-                        atoms = [...atoms, '÷', fact];
-                        const quotient = total / fact,
-                            fractional = !Number.isInteger(quotient);
-                        if (muldev == '/') {
-                            if (fractional) atoms.push('rounded down');
-                            total = Math.floor(quotient);
-                        }
-                        else if (muldev == '|') {
-                            if (fractional) atoms.push('rounded naturally');
-                            total = Math.round(quotient);
-                        }
-                        else if (muldev == '\\') {
-                            if (fractional) atoms.push('rounded up');
-                            total = Math.ceil(quotient);
-                        }
-                    }
-                }
 
                 if (atoms.length > 1)
                     atoms = [...atoms, '=', `*${total}*`];
@@ -261,7 +228,6 @@ export default (app: App, store: Promise<MongoClient>): void => {
             if (outcome != clauses[i].text) {
                 clauses[i].text = outcome;
                 clauses[i] = evaluateArithmetic(clauses[i]);
-                clauses[i] = evaluateComparisons(clauses[i]);
                 clauses[i] = prettifyMarkdown(clauses[i]);
                 results[clauses[i].where].phrases.push(clauses[i].text);
 
@@ -308,15 +274,15 @@ export default (app: App, store: Promise<MongoClient>): void => {
         return results;
     }
 
-    // TODO refactor into true parser
-
-    const re_number = /\b(?<![#_*])[0-9]+(?:\.[0-9]+)?(?![:_*])\b/g,
-        re_ignore = /<(.*?)>/g,
+    const re_number = /\b(?<![:_~*])[1-9][0-9]*(?![:_~*])\b/g,
+        re_tag = /<([^>]+)>/g,
         re_trail = /^[\s.;,]+|[\s.;,]+$/g;
     function prettifyMarkdown(clause: Clause) {
-        clause.text = wss(clause.text.replace(re_number, '*$&*')
-            .replace(re_ignore, '')
-            .replace(re_trail, ''));
+        clause.text = wss(clause.text
+            .replace(re_number, '*$&*')
+            .replace(re_tag, '')
+            .replace(re_trail, '')
+        );
         return clause;
     }
 
@@ -330,33 +296,6 @@ export default (app: App, store: Promise<MongoClient>): void => {
                 ? '+' + sum
                 : sum.toString();
         });
-    }
-
-    const re_comp = /([0-9]+(?:\.[0-9]+)?)\s*(=|==|&gt;|&lt;|&gt;=|=&gt;|&lt;=|=&lt;|!=|&lt;&gt;|&gt;&lt;)\s*([0-9]+(?:\.[0-9]+)?)/g;
-    function evaluateComparisons(clause: Clause) {
-        clause.text = clause.text.replace(re_comp, (_, x, relop, y) => {
-            x = parseFloat(x);
-            y = parseFloat(y);
-
-            let flag;
-            if (relop == '=' || relop == '==')
-                flag = (x == y);
-            else if (relop == '&gt;')
-                flag = (x > y);
-            else if (relop == '&lt;')
-                flag = (x < y);
-            else if (relop == '&gt;=' || relop == '=&gt;')
-                flag = (x >= y);
-            else if (relop == '&lt;=' || relop == '=&lt;')
-                flag = (x <= y);
-            else if (relop == '!=' || relop == '&lt;&gt;' || relop == '&gt;&lt;')
-                flag = (x != y);
-
-            const answer = `${x} [*${flag ? 'Yes' : 'No'}*]`;
-
-            return answer;
-        });
-        return clause;
     }
 
     function regexClosure(clause: Clause, re: RegExp, fun: (substring: string, ...args: (string | number)[]) => string) {
