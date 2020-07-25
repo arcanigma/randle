@@ -4,8 +4,9 @@ import { MongoClient } from 'mongodb';
 import ordinal from 'ordinal';
 import randomInt from 'php-random-int';
 import { MAX_CONTEXT_ELEMENTS, MAX_MESSAGE_BLOCKS, MAX_TEXT_SIZE } from './app.js';
-import { blame, trunc, who, wss } from './library/factory';
+import { trunc, who, wss } from './library/factory';
 import { anywhere } from './library/listeners';
+import { blame } from './library/messages';
 
 export const events = (app: App, store: Promise<MongoClient>): void => {
     type Clause = {
@@ -37,7 +38,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
             }
         }
     };
-    app.message(listen_roll, anywhere, async ({ message, context, say }) => {
+    app.message(listen_roll, anywhere, async ({ message, context, client, say }) => {
         try {
             context.clauses = await macroize(store, context, message.user);
 
@@ -65,7 +66,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
             }
         }
         catch (err) {
-            await say(blame(err, message));
+            await blame(err, message, context, client);
         }
     });
 
@@ -75,7 +76,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                 { _id: user },
                 { projection: { _id: 0} }
             )) ?? {};
-        const community = (await coll.findOne( // TODO super user creates
+        const community = (await coll.findOne(
             { _id: context.botUserId },
             { projection: { _id: 0} }
         )) ?? {};

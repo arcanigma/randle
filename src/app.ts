@@ -33,8 +33,6 @@ export const MAX_VIEW_BLOCKS = 100;
 export const MAX_MESSAGE_BLOCKS = 50;
 export const MAX_CONTEXT_ELEMENTS = 10;
 
-// TODO say/respond instead of chat.postMessage where possible
-
 import * as deck from './deck'; deck.events(app, store);
 import * as echo from './echo'; echo.events(app);
 import * as home from './home'; home.events(app, store);

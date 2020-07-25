@@ -197,7 +197,7 @@ export const view = async (channel: string, context: Context, client: WebClient)
 export const events = (app: App, store: Promise<MongoClient>): void => {
     const re_lines = /\r\n|\r|\n/,
           re_mrkdwn = /([*_~`<>])/g;
-    app.view('create_poll_modal', async ({ ack, body, context, view, client }) => {
+    app.view('create_poll_modal', async ({ ack, body, view, context, client }) => {
         const host = body.user.id,
             data = view.state.values,
             audience = data.audience.input.selected_channel,

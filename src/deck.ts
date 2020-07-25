@@ -5,8 +5,9 @@ import JSON5 from 'json5';
 import { MongoClient } from 'mongodb';
 import randomInt from 'php-random-int';
 import { MAX_CONTEXT_ELEMENTS, MAX_TEXT_SIZE } from './app.js';
-import { blame, commas, names, trunc, wss } from './library/factory';
+import { commas, names, trunc, wss } from './library/factory';
 import { anywhere, community, nonthread } from './library/listeners';
+import { blame } from './library/messages';
 
 const MAX_IMPORTS = 5;
 
@@ -14,50 +15,50 @@ const MAX_IMPORTS = 5;
 
 export const events = (app: App, store: Promise<MongoClient>): void => {
     const re_shuffle = /^!?shuffle\s+(.+)/is;
-    app.message(re_shuffle, nonthread, anywhere, async ({ message, context, say, client }) => {
+    app.message(re_shuffle, nonthread, anywhere, async ({ message, context, client, say }) => {
         try {
             await process(
                 'Shuffle',
                 context.matches[1],
                 items => shuffle(items),
                 0,
-                message, context, say, client
+                message, context, client, say
             );
         }
         catch (err) {
-            await say(blame(err, message));
+            await blame(err, message, context, client);
         }
     });
 
     const re_draw = /^!?draw\s+(?:([1-9][0-9]*)\s+(?:from|of)\s+)?(.+)/is;
-    app.message(re_draw, nonthread, anywhere, async ({ message, context, say, client }) => {
+    app.message(re_draw, nonthread, anywhere, async ({ message, context, client, say }) => {
         try {
             await process(
                 'Draw',
                 context.matches[2],
                 items => choose(items, context.matches[1] ?? 1),
                 0,
-                message, context, say, client
+                message, context, client, say
             );
         }
         catch (err) {
-            await say(blame(err, message));
+            await blame(err, message, context, client);
         }
     });
 
     const re_pool = /^!?pool\s+(?:([1-9][0-9]*)\s+(?:from|of)\s+)?(.+)/is;
-    app.message(re_pool, nonthread, anywhere, async ({ message, context, say, client }) => {
+    app.message(re_pool, nonthread, anywhere, async ({ message, context, client, say }) => {
         try {
             await process(
                 'Pool',
                 context.matches[2],
                 items => repeat(items, context.matches[1] ?? 1),
                 0,
-                message, context, say, client
+                message, context, client, say
             );
         }
         catch (err) {
-            await say(blame(err, message));
+            await blame(err, message, context, client);
         }
     });
 
@@ -103,8 +104,8 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
         recount: number,
         message: MessageEvent,
         context: Context,
-        say: SayFn,
-        client: WebClient
+        client: WebClient,
+        say: SayFn
     ): Promise<void> {
         const suit = pluck(SUIT_EMOJIS);
 
@@ -120,7 +121,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
 
         const items = fun(list);
 
-        await client.chat.postMessage({
+        await say({
             token: context.botToken,
             channel: message.channel,
             username: `${mode}: ${suit}`,
@@ -167,7 +168,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
 
     const re_action_id = /^deck_message_select_(\w+)_(\d+)_(\[[^\]]+\])$/,
         re_block_id = /^deck_message_block_(U\w+)_(\[[^\]]+\])$/;
-    app.action<BlockAction>(re_action_id, async ({ ack, respond, say, body, action, context }) => {
+    app.action<BlockAction>(re_action_id, async ({ ack, body, action, context, say, respond }) => {
         await ack();
 
         const user = body.user.id,
@@ -349,7 +350,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
 
     const re_script = /^[`\s]*(\{.+\})[`\s]*$/s,
         re_url = /^\s*<([^|]+)(?:\|[^|]+)?>\s*$/;
-    app.message(re_script, nonthread, community, async ({ message, context, say, client }) => {
+    app.message(re_script, nonthread, community, async ({ message, context, client }) => {
         try {
             const suit = randomInt(0, 3),
                 script = <Script>JSON5.parse(context.matches[1]);
@@ -397,6 +398,9 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                             dealt[user] = [items.shift()!];
                     }
                 });
+
+            if (Object.keys(dealt).length == 0)
+                throw 'You must deal at least 1 item.';
 
             const counts: {
                 [count: number]: string[]
@@ -577,7 +581,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
             }
         }
         catch (err) {
-            await say(blame(err, message));
+            await blame(err, message, context, client);
         }
     });
 

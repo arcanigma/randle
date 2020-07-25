@@ -1,7 +1,6 @@
-import { MessageEvent, SayArguments } from '@slack/bolt';
-import { ContextBlock, SectionBlock } from '@slack/web-api';
-import { MAX_TEXT_SIZE } from '../app.js';
+import { MessageEvent } from '@slack/bolt';
 
+// TODO ensure consistency across application
 export function who(message: MessageEvent, pronoun: string): string {
     return message.channel_type != 'im' ? `<@${message.user}>` : pronoun;
 }
@@ -52,67 +51,4 @@ export function onbox(count: number): string {
 
 export function offbox(count: number): string {
     return '\u2B1C'.repeat(count);
-}
-
-// TODO for blames, use respond empheral instead of say
-export function blame(error: string | Error, message: MessageEvent): SayArguments {
-    console.log({ error });
-    if (error instanceof Error) {
-        return {
-            text: 'There was an error',
-            blocks: [
-                <SectionBlock>{
-                    type: 'section',
-                    text: {
-                        type: 'plain_text',
-                        text: 'Your message caused an error. Please report these details to the developer.'
-                    }
-                },
-                <ContextBlock>{
-                    type: 'context',
-                    elements: [
-                        {
-                          type: 'mrkdwn',
-                          text: `:octagonal_sign: *${error.name}:* ${trunc(error.message, MAX_TEXT_SIZE)}`
-                        },
-                        {
-                          type: 'mrkdwn',
-                          text: `*Location:* ${error.stack?.match(/\w+.ts:\d+:\d+/g)?.[0] ?? 'unknown'}`
-                        },
-                        {
-                          type: 'mrkdwn',
-                          text: `*Context:* ${message.channel_type}-${message.channel}`
-                        },
-                        {
-                          type: 'mrkdwn',
-                          text: `*Text:* ${trunc(message.text ?? 'undefined', MAX_TEXT_SIZE)}`
-                        }
-                    ]
-                }
-            ]
-        };
-    }
-    else {
-        return {
-            text: 'There was an error',
-            blocks: [
-                <SectionBlock>{
-                    type: 'section',
-                    text: {
-                        type: 'plain_text',
-                        text: 'Your command has a problem. Please correct the problem before trying again.'
-                    }
-                },
-                <ContextBlock>{
-                    type: 'context',
-                    elements: [
-                        {
-                          type: 'mrkdwn',
-                          text: `:warning: *User Error:* ${trunc(error, MAX_TEXT_SIZE)}`
-                        }
-                    ]
-                }
-            ]
-        };
-    }
 }

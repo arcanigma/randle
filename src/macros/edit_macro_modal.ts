@@ -70,7 +70,7 @@ export const view = async (name: string, replacement: string): Promise<View> => 
                 text: 'Settings'
             },
             element: {
-                type: 'checkboxes',
+                type: 'checkboxes',  // TODO super user creates for bot
                 action_id: 'inputs',
                 options: [
                     {
@@ -92,7 +92,7 @@ export const view = async (name: string, replacement: string): Promise<View> => 
 
 export const events = (app: App, store: Promise<MongoClient>): void => {
     const re_macro = /^[\w_][\w\d_]{2,14}$/;
-    app.view('edit_macro_modal', async ({ ack, body, context, view, client }) => {
+    app.view('edit_macro_modal', async ({ ack, body, view, context, client }) => {
         const user = body.user.id;
 
         let name = view.private_metadata || view.state.values.name.input.value;

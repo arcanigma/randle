@@ -6,8 +6,6 @@ import { HomeOptions, PollFilterOptions } from '../home';
 import { Poll } from './polls';
 import * as poll_blocks from './poll_blocks';
 
-// TODO limit number of polls returned
-
 export const blocks = async (user: string, store: Promise<MongoClient>, options: HomeOptions): Promise<Block[]> => {
     const blocks: Block[] = [];
 
@@ -63,6 +61,7 @@ export const blocks = async (user: string, store: Promise<MongoClient>, options:
         }
     ]);
 
+    // TODO limit number of polls returned
     const coll = (await store).db().collection('polls');
     const polls: Cursor<Poll> = (await coll.find({
         ...(options.polls.filter != PollFilterOptions.All ? {
