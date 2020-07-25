@@ -1,7 +1,7 @@
-import { Block, SectionBlock, ContextBlock, DividerBlock } from '@slack/web-api';
+import { Block, ContextBlock, DividerBlock, SectionBlock } from '@slack/web-api';
 import { MongoClient } from 'mongodb';
 
-export default async (user: string, store: Promise<MongoClient>): Promise<Block[]> => {
+export const blocks = async (user: string, store: Promise<MongoClient>): Promise<Block[]> => {
     const blocks: Block[] = [];
 
     blocks.push(...[

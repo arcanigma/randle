@@ -1,6 +1,5 @@
 import { MessageEvent, SayArguments } from '@slack/bolt';
-import { SectionBlock, ContextBlock } from '@slack/web-api';
-
+import { ContextBlock, SectionBlock } from '@slack/web-api';
 import { MAX_TEXT_SIZE } from '../app.js';
 
 export function who(message: MessageEvent, pronoun: string): string {

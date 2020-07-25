@@ -1,12 +1,14 @@
-import { Block, SectionBlock, ContextBlock, DividerBlock } from '@slack/web-api';
-import { MongoClient, Cursor } from 'mongodb';
+import { App, StaticSelectAction } from '@slack/bolt';
+import { Block, ContextBlock, DividerBlock, SectionBlock } from '@slack/web-api';
+import { Cursor, MongoClient } from 'mongodb';
+import * as home from '../home';
+import { HomeOptions, PollFilterOptions } from '../home';
+import { Poll } from './polls';
+import * as poll_blocks from './poll_blocks';
 
-import { Poll } from '../components/polls';
-import { HomeOptions, PollFilterOptions } from '../views/app_home';
+// TODO limit number of polls returned
 
-import poll_blocks from '../views/poll_blocks';
-
-export default async (user: string, store: Promise<MongoClient>, options: HomeOptions): Promise<Block[]> => {
+export const blocks = async (user: string, store: Promise<MongoClient>, options: HomeOptions): Promise<Block[]> => {
     const blocks: Block[] = [];
 
     blocks.push(...[
@@ -80,7 +82,7 @@ export default async (user: string, store: Promise<MongoClient>, options: HomeOp
         await polls.forEach(async (poll) => {
             blocks.push(...[
                 <DividerBlock>{ type: 'divider' },
-                ...await poll_blocks(user, poll, options)
+                ...await poll_blocks.blocks(user, poll, options)
             ]);
         });
     }
@@ -104,4 +106,25 @@ export default async (user: string, store: Promise<MongoClient>, options: HomeOp
     }
 
     return blocks;
+};
+
+export const events = (app: App, store: Promise<MongoClient>):void  => {
+    app.action('filter_polls_select', async ({ ack, body, action, context, client }) => {
+        await ack();
+
+        const user = body.user.id,
+            filter = (action as StaticSelectAction).selected_option.value;
+
+        const options: HomeOptions = {
+            polls: {
+                filter: <PollFilterOptions>filter
+            }
+        };
+
+        await client.views.publish({
+            token: context.botToken,
+            user_id: user,
+            view: await home.view(user, store, options)
+        });
+    });
 };

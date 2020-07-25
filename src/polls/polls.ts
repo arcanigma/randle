@@ -1,25 +1,14 @@
-import { App, Context, InteractiveMessage, SlackAction, SlackViewAction, BlockAction, ViewSubmitAction  } from '@slack/bolt';
-import { Block, SectionBlock, ContextBlock, MrkdwnElement, ActionsBlock, WebClient, ChatPostMessageArguments, WebAPICallResult } from '@slack/web-api';
+import { App, BlockAction, Context, InteractiveMessage, SlackAction, SlackViewAction, ViewSubmitAction } from '@slack/bolt';
+import { ActionsBlock, Block, ChatPostMessageArguments, ContextBlock, MrkdwnElement, SectionBlock, WebAPICallResult, WebClient } from '@slack/web-api';
 import { MongoClient, ObjectID } from 'mongodb';
+import { commas, names, offbox, onbox } from '../library/factory';
+import * as information_modal from '../library/information_modal';
+import * as create_poll_modal from './create_poll_modal';
+import * as create_poll_shortcut from './create_poll_shortcut';
+import * as polls_home from './polls_home';
+import * as poll_blocks from './poll_blocks';
 
-import { commas, names, onbox, offbox } from '../library/factory';
-
-import informative_modal from '../views/informative_modal';
-import create_poll_modal from '../events/create_poll_modal';
-import create_poll_shortcut from '../events/create_poll_shortcut';
-import filter_polls_select from '../events/filter_polls_select';
-import poll_overflow_button from '../events/poll_overflow_button';
-import vote_button from '../events/vote_button';
-
-export default (app: App, store: Promise<MongoClient>): void => {
-    const timers: Timers = {};
-
-    create_poll_modal(app, store);
-    create_poll_shortcut(app);
-    filter_polls_select(app, store);
-    poll_overflow_button(app, store, timers);
-    vote_button(app, store, timers);
-};
+export const AUTOCLOSE_GRACE = 30;
 
 export type Poll = {
     _id?: ObjectID;
@@ -46,10 +35,6 @@ export enum PollSetupOptions {
     Participation = 'participation',
     Autoclose = 'autoclose'
 }
-
-export type Timers = {
-    [poll: string]: NodeJS.Timeout;
-};
 
 const re_emoji = /(:[^:\s]*(?:::[^:\s]*)*:)/g;
 export async function announce(
@@ -206,7 +191,7 @@ export async function announce(
             await client.views.open({
                 token: context.botToken,
                 trigger_id: (<InteractiveMessage>body).trigger_id,
-                view: await informative_modal({
+                view: await information_modal.view({
                     title: 'Notice',
                     error: `<@${context.botUserId}> automatically joined the <#${poll.audience}> channel.`
                 })
@@ -242,3 +227,10 @@ export async function announce(
             } }
     );
 }
+
+export const events = (app: App, store: Promise<MongoClient>, timers: Record<string, NodeJS.Timeout>): void => {
+    create_poll_modal.events(app, store);
+    create_poll_shortcut.events(app);
+    polls_home.events(app, store);
+    poll_blocks.events(app, store, timers);
+};

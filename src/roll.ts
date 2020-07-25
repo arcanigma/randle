@@ -1,15 +1,13 @@
-import { App, Context, Middleware, SlackEventMiddlewareArgs, MessageEvent } from '@slack/bolt';
-import { Block, SectionBlock, ContextBlock, MrkdwnElement } from '@slack/web-api';
+import { App, Context, MessageEvent, Middleware, SlackEventMiddlewareArgs } from '@slack/bolt';
+import { Block, ContextBlock, MrkdwnElement, SectionBlock } from '@slack/web-api';
 import { MongoClient } from 'mongodb';
-
-import randomInt from 'php-random-int';
 import ordinal from 'ordinal';
+import randomInt from 'php-random-int';
+import { MAX_CONTEXT_ELEMENTS, MAX_MESSAGE_BLOCKS, MAX_TEXT_SIZE } from './app.js';
+import { blame, trunc, who, wss } from './library/factory';
+import { anywhere } from './library/listeners';
 
-import { MAX_TEXT_SIZE, MAX_MESSAGE_BLOCKS, MAX_CONTEXT_ELEMENTS } from '../app.js';
-import { who, trunc, wss, blame } from '../library/factory';
-import { anywhere } from '../library/listeners';
-
-export default (app: App, store: Promise<MongoClient>): void => {
+export const events = (app: App, store: Promise<MongoClient>): void => {
     type Clause = {
         text: string;
         where: string;

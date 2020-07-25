@@ -1,20 +1,18 @@
-import { App, MessageEvent, Context, BlockAction, MultiStaticSelectAction, SayFn } from '@slack/bolt';
-import { WebClient, Block, SectionBlock, ContextBlock, MultiSelect, MrkdwnElement, WebAPICallResult } from '@slack/web-api';
-import { MongoClient } from 'mongodb';
-
-import randomInt from 'php-random-int';
-import JSON5 from 'json5';
+import { App, BlockAction, Context, MessageEvent, MultiStaticSelectAction, SayFn } from '@slack/bolt';
+import { Block, ContextBlock, MrkdwnElement, MultiSelect, SectionBlock, WebAPICallResult, WebClient } from '@slack/web-api';
 import got from 'got';
-
-import { MAX_TEXT_SIZE, MAX_CONTEXT_ELEMENTS } from '../app.js';
-import { commas, names, trunc, wss, blame } from '../library/factory';
-import { nonthread, anywhere, community } from '../library/listeners';
+import JSON5 from 'json5';
+import { MongoClient } from 'mongodb';
+import randomInt from 'php-random-int';
+import { MAX_CONTEXT_ELEMENTS, MAX_TEXT_SIZE } from './app.js';
+import { blame, commas, names, trunc, wss } from './library/factory';
+import { anywhere, community, nonthread } from './library/listeners';
 
 const MAX_IMPORTS = 5;
 
-// TODO refactor monolithic component
+// TODO refactor monolithic feature
 
-export default (app: App, store: Promise<MongoClient>): void => {
+export const events = (app: App, store: Promise<MongoClient>): void => {
     const re_shuffle = /^!?shuffle\s+(.+)/is;
     app.message(re_shuffle, nonthread, anywhere, async ({ message, context, say, client }) => {
         try {
@@ -190,6 +188,8 @@ export default (app: App, store: Promise<MongoClient>): void => {
 
         if (mode == 'Pool') {
             const history = Array.of(...items);
+
+            // TODO show which were changed.
 
             selected.forEach(index => {
                 items[index] = repeat(list, 1)[0];

@@ -26,24 +26,22 @@ const store = MongoClient.connect(
     }
 );
 
+const timers: Record<string, NodeJS.Timeout> = {};
+
 export const MAX_TEXT_SIZE = 1000;
 export const MAX_VIEW_BLOCKS = 100;
 export const MAX_MESSAGE_BLOCKS = 50;
 export const MAX_CONTEXT_ELEMENTS = 10;
 
-// TODO restructure with 1 folder per bot feature, not per model
+// TODO say/respond instead of chat.postMessage where possible
 
-// TODO refactor timers up to this level as shared mechanism
-
-// TODO retrofit respond() instead of chat.postMessage() when possible
-
-import deck from './components/deck'; deck(app, store);
-import echo from './components/echo'; echo (app);
-import home from './components/home'; home(app, store);
-import macros from './components/macros'; macros(app, store);
-import polls from './components/polls'; polls(app, store);
-import roll from './components/roll'; roll(app, store);
-import routes from './components/routes'; routes(app, receiver);
+import * as deck from './deck'; deck.events(app, store);
+import * as echo from './echo'; echo.events(app);
+import * as home from './home'; home.events(app, store);
+import * as macros from './macros/macros'; macros.events(app, store);
+import * as polls from './polls/polls'; polls.events(app, store, timers);
+import * as roll from './roll'; roll.events(app, store);
+import * as routes from './routes'; routes.events(app, receiver);
 
 (async () => {
     const port = process.env.PORT ?? 3000;

@@ -1,8 +1,7 @@
 import { App, ExpressReceiver } from '@slack/bolt';
-
 import path from 'path';
 
-export default (_: App, receiver: ExpressReceiver): void => {
+export const events = (_: App, receiver: ExpressReceiver): void => {
     const LOGO_FILE = process.env.npm_lifecycle_event != 'dev'
         ? 'logo.png'
         : 'logo-dev.png';

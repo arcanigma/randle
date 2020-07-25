@@ -1,6 +1,6 @@
-import { View, SectionBlock } from '@slack/web-api';
+import { SectionBlock, View } from '@slack/web-api';
 
-export default async ({title, error}: {title: string, error: unknown}): Promise<View> => ({
+export const view = async ({title, error}: {title: string, error: unknown}): Promise<View> => ({
     type: 'modal',
     title: {
         type: 'plain_text',

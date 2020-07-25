@@ -1,9 +1,8 @@
 import { App } from '@slack/bolt';
+import { blame } from './library/factory';
+import { debug, direct, nonthread } from './library/listeners';
 
-import { blame } from '../library/factory';
-import { nonthread, direct, debug } from '../library/listeners';
-
-export default (app: App): void => {
+export const events = (app: App): void => {
     const re_echo = /^!?echo\s+(.*)/i;
     app.message(re_echo, nonthread, direct, debug, async ({ message, context, say }) => {
         try {
