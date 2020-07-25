@@ -168,11 +168,11 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
 
     const re_action_id = /^deck_message_select_(\w+)_(\d+)_(\[[^\]]+\])$/,
         re_block_id = /^deck_message_block_(U\w+)_(\[[^\]]+\])$/;
-    app.action<BlockAction>(re_action_id, async ({ ack, body, action, context, say, respond }) => {
+    app.action<BlockAction<MultiStaticSelectAction>>(re_action_id, async ({ ack, body, action, context, say, respond }) => {
         await ack();
 
         const user = body.user.id,
-            selected = (action as MultiStaticSelectAction).selected_options
+            selected = action.selected_options
                 .map(it => Number(it.value)).sort(),
             [, mode, str_recount, json_items ] = action.action_id.match(re_action_id) ?? [],
             [, whom, json_list ] = action.block_id.match(re_block_id) ?? [],

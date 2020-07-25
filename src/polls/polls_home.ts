@@ -1,4 +1,4 @@
-import { App, StaticSelectAction } from '@slack/bolt';
+import { App, BlockAction, StaticSelectAction } from '@slack/bolt';
 import { Block, ContextBlock, DividerBlock, SectionBlock } from '@slack/web-api';
 import { Cursor, MongoClient } from 'mongodb';
 import * as home from '../home';
@@ -109,11 +109,11 @@ export const blocks = async (user: string, store: Promise<MongoClient>, options:
 };
 
 export const events = (app: App, store: Promise<MongoClient>):void  => {
-    app.action('filter_polls_select', async ({ ack, body, action, context, client }) => {
+    app.action<BlockAction<StaticSelectAction>>('filter_polls_select', async ({ ack, body, action, context, client }) => {
         await ack();
 
         const user = body.user.id,
-            filter = (action as StaticSelectAction).selected_option.value;
+            filter = action.selected_option.value;
 
         const options: HomeOptions = {
             polls: {

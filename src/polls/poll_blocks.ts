@@ -1,4 +1,4 @@
-import { App, ButtonAction, InteractiveMessage, StaticSelectAction } from '@slack/bolt';
+import { App, BlockAction, ButtonAction, StaticSelectAction } from '@slack/bolt';
 import { ActionsBlock, Block, ContextBlock, SectionBlock } from '@slack/web-api';
 import { MongoClient, ObjectID } from 'mongodb';
 import * as home from '../home';
@@ -179,11 +179,11 @@ export const blocks = async (user: string, poll: Poll, options: HomeOptions): Pr
 };
 
 export const events = (app: App, store: Promise<MongoClient>, timers: Record<string, NodeJS.Timeout>): void => {
-    app.action('poll_overflow_button', async ({ ack, body, action, context, client }) => {
+    app.action<BlockAction<StaticSelectAction>>('poll_overflow_button', async ({ ack, body, action, context, client }) => {
         await ack();
 
         const user = body.user.id,
-            data = JSON.parse((action as StaticSelectAction).selected_option.value);
+            data = JSON.parse(action.selected_option.value);
 
         if (timers[data.poll]) {
             clearTimeout(timers[data.poll]);
@@ -252,11 +252,11 @@ export const events = (app: App, store: Promise<MongoClient>, timers: Record<str
         });
     });
 
-    app.action(/^vote_button_\d+$/, async ({ ack, body, action, context, client }) => {
+    app.action<BlockAction<ButtonAction>>(/^vote_button_\d+$/, async ({ ack, body, action, context, client }) => {
         await ack();
 
         const user = body.user.id,
-            data = JSON.parse((action as ButtonAction).value);
+            data = JSON.parse(action.value);
 
         const coll = (await store).db().collection('polls');
         const poll: Poll = (await coll.findOneAndUpdate(
@@ -301,7 +301,7 @@ export const events = (app: App, store: Promise<MongoClient>, timers: Record<str
 
                     await client.views.open({
                         token: context.botToken,
-                        trigger_id: (body as InteractiveMessage).trigger_id,
+                        trigger_id: body.trigger_id,
                         view: await information_modal.view({
                             title: 'Warning',
                             error: `You voted last. The poll automatically closes after *${AUTOCLOSE_GRACE} seconds* unless somebody votes or unvotes before then.`
@@ -319,7 +319,7 @@ export const events = (app: App, store: Promise<MongoClient>, timers: Record<str
         else {
             await client.views.open({
                 token: context.botToken,
-                trigger_id: (body as InteractiveMessage).trigger_id,
+                trigger_id: body.trigger_id,
                 view: await information_modal.view({
                     title: 'Error',
                     error: "You can't vote in this poll."

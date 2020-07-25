@@ -1,14 +1,14 @@
-import { App, ButtonAction, InteractiveMessage } from '@slack/bolt';
+import { App, BlockAction, ButtonAction } from '@slack/bolt';
 import { MongoClient } from 'mongodb';
 import * as edit_macro_modal from './edit_macro_modal';
 
 export const events = (app: App, store: Promise<MongoClient>): void => {
-    app.action('edit_macro_button', async ({ ack, body, action, context, client }) => {
+    app.action<BlockAction<ButtonAction>>('edit_macro_button', async ({ ack, body, action, context, client }) => {
         await ack();
 
         const user = body.user.id;
 
-        let name = (action as ButtonAction).value;
+        let name = action.value;
 
         let replacement;
         if (name) {
@@ -26,7 +26,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
 
         await client.views.open({
             token: context.botToken,
-            trigger_id: (body as InteractiveMessage).trigger_id,
+            trigger_id: body.trigger_id,
             view: await edit_macro_modal.view(name, replacement)
         });
     });
