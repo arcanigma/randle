@@ -142,7 +142,7 @@ export default (app: App, store: Promise<MongoClient>): void => {
                         block_id: `deck_message_block_${message.user}_${JSON.stringify(list)}`,
                         text: {
                             type: 'mrkdwn',
-                            text: ':left_speech_bubble: These results are original.'
+                            text: ':left_speech_bubble: Original Results'
                         },
                         accessory: <MultiSelect>{
                             type: 'multi_static_select',
@@ -169,7 +169,7 @@ export default (app: App, store: Promise<MongoClient>): void => {
 
     const re_action_id = /^deck_message_select_(\w+)_(\d+)_(\[[^\]]+\])$/,
         re_block_id = /^deck_message_block_(U\w+)_(\[[^\]]+\])$/;
-    app.action<BlockAction>(re_action_id, async ({ ack, respond, body, action, }) => {
+    app.action<BlockAction>(re_action_id, async ({ ack, respond, say, body, action, context }) => {
         await ack();
 
         const user = body.user.id,
@@ -189,12 +189,18 @@ export default (app: App, store: Promise<MongoClient>): void => {
             });
 
         if (mode == 'Pool') {
+            const history = Array.of(...items);
+
             selected.forEach(index => {
                 items[index] = repeat(list, 1)[0];
             });
 
-            const text = (body as BlockAction).message!.text!,
-                blocks = [
+            const message = (body as BlockAction).message!;
+
+            respond({
+                replace_original: true,
+                text: message.text!,
+                blocks: [
                     <SectionBlock>{
                         type: 'section',
                         text: {
@@ -207,7 +213,7 @@ export default (app: App, store: Promise<MongoClient>): void => {
                         block_id: `deck_message_block_${user}_${JSON.stringify(list)}`,
                         text: {
                             type: 'mrkdwn',
-                            text: `:eye-in-speech-bubble: The results are ${MODE_WORD[mode].redid.toLowerCase()} *${recount}* time${recount != 1 ? 's' : ''}.`
+                            text: `:eye-in-speech-bubble: ${MODE_WORD[mode].redid} *${recount}* Time${recount != 1 ? 's' : ''}`
                         },
                         accessory: <MultiSelect>{
                             type: 'multi_static_select',
@@ -227,12 +233,23 @@ export default (app: App, store: Promise<MongoClient>): void => {
                             }))
                         }
                     }
-                ];
+                ]
+            });
 
-            respond({
-                replace_original: true,
-                text: text,
-                blocks: blocks
+            say({
+                token: context.botToken,
+                channel: body.channel!.id,
+                thread_ts: body.message!.ts,
+                text: message.text!,
+                blocks: [
+                    <SectionBlock>{
+                        type: 'section',
+                        text: {
+                            type: 'mrkdwn',
+                            text: trunc(`${recount == 1 ? 'Original Results' : `${MODE_WORD[mode].redid} *${recount-1}* Time${recount-1 != 1 ? 's' : ''}`} \u2022 ${commas(history.map(item => `*${wss(item)}*`))}.`, MAX_TEXT_SIZE)
+                        }
+                    }
+                ]
             });
         }
         else throw `Unsupported mode \`${mode}\` on redo.`;
