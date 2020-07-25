@@ -187,15 +187,31 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
             });
 
         if (mode == 'Pool') {
-            const history = Array.of(...items);
+            const message = (body as BlockAction).message!;
 
-            // TODO show which were changed.
+            if (recount == 1) {
+                const history = Array.of(...items);
+
+                say({
+                    token: context.botToken,
+                    channel: body.channel!.id,
+                    thread_ts: body.message!.ts,
+                    text: message.text!,
+                    blocks: [
+                        <SectionBlock>{
+                            type: 'section',
+                            text: {
+                                type: 'mrkdwn',
+                                text: trunc(`Original \u2022 ${commas(history.map(item => `*${wss(item)}*`))}`, MAX_TEXT_SIZE)
+                            }
+                        }
+                    ]
+                });
+            }
 
             selected.forEach(index => {
                 items[index] = repeat(list, 1)[0];
             });
-
-            const message = (body as BlockAction).message!;
 
             respond({
                 replace_original: true,
@@ -246,7 +262,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                         type: 'section',
                         text: {
                             type: 'mrkdwn',
-                            text: trunc(`${recount == 1 ? 'Original Results' : `${MODE_WORD[mode].redid} *${recount-1}* Time${recount-1 != 1 ? 's' : ''}`} \u2022 ${commas(history.map(item => `*${wss(item)}*`))}.`, MAX_TEXT_SIZE)
+                            text: trunc(`${MODE_WORD[mode].redo} *${recount}* \u2022 ${commas(items.map((item, index) => `*${wss(selected.includes(index) ? `(${item})` : item)}*`))}.`, MAX_TEXT_SIZE)
                         }
                     }
                 ]
