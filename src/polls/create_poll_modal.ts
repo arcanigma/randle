@@ -4,7 +4,7 @@ import { MongoClient } from 'mongodb';
 import { size } from '../library/factory';
 import { announce, Poll, PollSetupOptions } from './polls';
 
-export const view = async (channel: string, context: Context, client: WebClient): Promise<View> => ({
+export const view = async (channel: string | undefined, context: Context, client: WebClient): Promise<View> => ({
     type: 'modal',
     callback_id: 'create_poll_modal',
     title: {
@@ -38,7 +38,7 @@ export const view = async (channel: string, context: Context, client: WebClient)
                     type: 'plain_text',
                     text: 'Select a channel'
                 },
-                ...(channel ?{
+                ...(channel ? {
                     initial_channel: channel
                 } : {})
             }
