@@ -1,6 +1,6 @@
 {
     "name": "randle",
-    "description": "Dice rolling and game randomization bot for Slack.",
+    "description": "Dice, cards, and polling bot for Slack.",
     "version": "3.1.0",
     "main": "dist/app.js",
     "scripts": {
