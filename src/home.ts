@@ -8,10 +8,10 @@ import * as polls from './polls/polls_home';
 /* TODO 100 block error
 
     selection menu:
+        macros
         open polls
         closed polls
         all polls
-        macros
     remember selection
 */
 

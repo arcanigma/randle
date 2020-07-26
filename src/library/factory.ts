@@ -1,9 +1,3 @@
-import { MessageEvent } from '@slack/bolt';
-
-// TODO ensure consistency across application
-export function who(message: MessageEvent, pronoun: string): string {
-    return message.channel_type != 'im' ? `<@${message.user}>` : pronoun;
-}
 
 export function commas(list: string[], separator=', ', conjunction='and'): string {
     if (list.length == 1)
@@ -17,11 +11,7 @@ export function commas(list: string[], separator=', ', conjunction='and'): strin
 }
 
 export function names(list: string[], user?: string, separator=', '): string {
-    return commas(
-        list.sort(u => u == user ? -1 : 0)
-            .map(u => u != user ? `<@${u}>` : 'you'),
-        separator
-    ) || 'nobody';
+    return commas(list.map(u => `<@${u}>`), separator) || 'nobody';
 }
 
 export function size(object: {[key: string]: unknown}): number {

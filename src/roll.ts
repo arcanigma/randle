@@ -4,7 +4,7 @@ import { MongoClient } from 'mongodb';
 import ordinal from 'ordinal';
 import randomInt from 'php-random-int';
 import { MAX_CONTEXT_ELEMENTS, MAX_MESSAGE_BLOCKS, MAX_TEXT_SIZE } from './app.js';
-import { trunc, who, wss } from './library/factory';
+import { trunc, wss } from './library/factory';
 import { anywhere } from './library/listeners';
 import { blame } from './library/messages';
 
@@ -55,7 +55,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                         channel: message.channel,
                         username: 'Roll',
                         icon_emoji: ':game_die:',
-                        text: `${who(message, 'You')} rolled dice`,
+                        text: `<@${message.user}> rolled dice`,
                         blocks: results[where].blocks,
                         ...(message.thread_ts ? {
                             thread_ts: message.thread_ts
@@ -236,7 +236,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                             type: 'section',
                             text: {
                                 type: 'mrkdwn',
-                                text: trunc(`${clauses[i].where == 'inline' ? who(message, 'You') : 'You'} rolled ${clauses[i].text}.`, MAX_TEXT_SIZE)
+                                text: trunc(`<@${message.user}> rolled ${clauses[i].text}.`, MAX_TEXT_SIZE)
                             }
                         });
                     else
