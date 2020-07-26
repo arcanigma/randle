@@ -3,6 +3,7 @@ import { Block, ContextBlock, MrkdwnElement, MultiSelect, SectionBlock, WebAPICa
 import got from 'got';
 import JSON5 from 'json5';
 import { MongoClient } from 'mongodb';
+import ordinal from 'ordinal';
 import randomInt from 'php-random-int';
 import { MAX_CONTEXT_ELEMENTS, MAX_TEXT_SIZE } from './app.js';
 import { commas, names, trunc, wss } from './library/factory';
@@ -155,7 +156,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                                 text: {
                                     type: 'plain_text',
                                     emoji: true,
-                                    text: `${item}`
+                                    text: `${ordinal(index+1)} \u2022 ${item}`
                                 },
                                 value: `${index}`
                             }))
@@ -243,7 +244,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                                 text: {
                                     type: 'plain_text',
                                     emoji: true,
-                                    text: `${item}`
+                                    text: `${ordinal(index+1)} \u2022 ${item}`
                                 },
                                 value: `${index}`
                             }))
