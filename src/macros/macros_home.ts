@@ -9,7 +9,7 @@ export const blocks = async (user: string, store: Promise<MongoClient>): Promise
             type: 'section',
             text: {
                 type: 'mrkdwn',
-                text: '>>> *Roll Macros*'
+                text: '>>> *Macros*'
             },
             accessory: {
                 type: 'button',
