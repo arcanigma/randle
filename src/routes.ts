@@ -7,7 +7,7 @@ export const events = (_: App, receiver: ExpressReceiver): void => {
         : 'logo-dev.png';
 
     receiver.app.get('/', async (_, res) => {
-        res.sendFile(path.join(__dirname, `../../assets/${LOGO_FILE}`));
+        res.sendFile(path.join(__dirname, `../assets/${LOGO_FILE}`));
     });
 
     receiver.app.get('/status', async (_, res) => {
