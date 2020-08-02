@@ -33,7 +33,7 @@ export const MAX_VIEW_BLOCKS = 100;
 export const MAX_MESSAGE_BLOCKS = 50;
 export const MAX_CONTEXT_ELEMENTS = 10;
 
-import * as deck from './deck'; deck.events(app, store);
+import * as deck from './deck/deck'; deck.events(app, store);
 import * as echo from './echo'; echo.events(app);
 import * as home from './home'; home.events(app, store);
 import * as macros from './macros/macros'; macros.events(app, store);
