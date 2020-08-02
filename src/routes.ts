@@ -1,16 +1,17 @@
-import { App, ExpressReceiver } from '@slack/bolt';
+import { ExpressReceiver } from '@slack/bolt';
 import path from 'path';
 
-export const events = (_: App, receiver: ExpressReceiver): void => {
+export const events = (receiver: ExpressReceiver): void => {
     const LOGO_FILE = process.env.npm_lifecycle_event != 'dev'
         ? 'logo.png'
         : 'logo-dev.png';
 
-    receiver.app.get('/', async (_, res) => {
+    // TODO proper support for favicon
+    receiver.router.get(['/', '/favicon.png'], async (_, res) => {
         res.sendFile(path.join(__dirname, `../assets/${LOGO_FILE}`));
     });
 
-    receiver.app.get('/status', async (_, res) => {
+    receiver.router.get('/status', async (_, res) => {
         res.sendStatus(200);
     });
 

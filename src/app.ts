@@ -39,7 +39,7 @@ import * as home from './home'; home.events(app, store);
 import * as macros from './macros/macros'; macros.events(app, store);
 import * as polls from './polls/polls'; polls.events(app, store, timers);
 import * as roll from './roll'; roll.events(app, store);
-import * as routes from './routes'; routes.events(app, receiver);
+import * as routes from './routes'; routes.events(receiver);
 
 (async () => {
     const port = process.env.PORT ?? 3000;
