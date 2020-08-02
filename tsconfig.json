@@ -10,7 +10,8 @@
         "removeComments": true,
         "target": "es2019",
         "lib": [
-            "esnext"
+            "esnext",
+            "dom"
         ],
         "module": "commonjs",
         "moduleResolution": "node",

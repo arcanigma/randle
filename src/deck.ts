@@ -1,10 +1,12 @@
 import { App, BlockAction, Context, MessageEvent, MultiStaticSelectAction, SayFn } from '@slack/bolt';
 import { Block, ContextBlock, MrkdwnElement, MultiSelect, SectionBlock, WebAPICallResult, WebClient } from '@slack/web-api';
+import { ElementDefinition } from 'cytoscape';
 import got from 'got';
 import JSON5 from 'json5';
 import { MongoClient } from 'mongodb';
 import ordinal from 'ordinal';
 import randomInt from 'php-random-int';
+import puppeteer from 'puppeteer';
 import { MAX_CONTEXT_ELEMENTS, MAX_TEXT_SIZE } from './app.js';
 import { commas, names, trunc, wss } from './library/factory';
 import { anywhere, community, nonthread } from './library/listeners';
@@ -23,7 +25,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                 context.matches[1],
                 items => shuffle(items),
                 0,
-                message, context, client, say
+                message, context, client, say, store
             );
         }
         catch (err) {
@@ -39,7 +41,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                 context.matches[2],
                 items => choose(items, context.matches[1] ?? 1),
                 0,
-                message, context, client, say
+                message, context, client, say, store
             );
         }
         catch (err) {
@@ -55,117 +57,13 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                 context.matches[2],
                 items => repeat(items, context.matches[1] ?? 1),
                 0,
-                message, context, client, say
+                message, context, client, say, store
             );
         }
         catch (err) {
             await blame(err, message, context, client);
         }
     });
-
-    const SUIT_EMOJIS: ({
-        [suit: string]: string
-    }) = {
-        'Spades': ':spades:',
-        'Hearts': ':hearts:',
-        'Clubs': ':clubs:',
-        'Diamonds': ':diamonds:',
-        'Stars': ':star:'
-    };
-
-    const MODE_WORD: ({
-        [mode: string]: {
-            did: string,
-            redo: string,
-            redid: string
-        }
-    }) = {
-        'Shuffle': {
-            did: 'Shuffled',
-            redo: 'Reshuffle',
-            redid: 'Reshuffled'
-        },
-        'Draw': {
-            did: 'Drew',
-            redo: 'Redraw',
-            redid: 'Redrew'
-        },
-        'Pool': {
-            did: 'Pooled',
-            redo: 'Repool',
-            redid: 'Repooled'
-        }
-    };
-
-    const re_macro = /^[\w_][\w\d_]{2,14}$/;
-    async function process(
-        mode: string,
-        expression: string,
-        fun: (list: string[]) => string[],
-        recount: number,
-        message: MessageEvent,
-        context: Context,
-        client: WebClient,
-        say: SayFn
-    ): Promise<void> {
-        const suit = pluck(SUIT_EMOJIS);
-
-        let list = <string[]>expression.split(',').map(it => it.trim());
-        if (list.length == 1) {
-            if (Number(list[0]) >= 1 && Number(list[0]) % 1 == 0)
-                list = Array(Number(list[0])).fill(1).map((v, i) => String(v + i));
-            else if (list[0] == '<!channel>')
-                list = (await members(message.channel, context, client)).map(user => `<@${user}>`);
-            else if (re_macro.test(list[0]))
-                list = (await macro(store, context, message.user, list[0])).split(',').map(it => it.trim());
-        }
-
-        const items = fun(list);
-
-        await say({
-            token: context.botToken,
-            channel: message.channel,
-            username: `${mode}: ${suit}`,
-            icon_emoji: SUIT_EMOJIS[suit],
-            text: `<@${message.user}> ${MODE_WORD[mode].did.toLowerCase()} ${list.length != 1 ? 'items' : 'an item'}`,
-            blocks: [
-                <SectionBlock>{
-                    type: 'section',
-                    text: {
-                        type: 'mrkdwn',
-                        text: trunc(`<@${message.user}> ${MODE_WORD[mode].did.toLowerCase()} ${commas(items.map(item => `*${wss(item)}*`))}.`, MAX_TEXT_SIZE)
-                    }
-                },
-                ...(mode == 'Pool' ? [
-                    <SectionBlock>{
-                        type: 'section',
-                        block_id: `deck_message_block_${message.user}_${JSON.stringify(list)}`,
-                        text: {
-                            type: 'mrkdwn',
-                            text: ':left_speech_bubble: Original Results'
-                        },
-                        accessory: <MultiSelect>{
-                            type: 'multi_static_select',
-                            action_id: `deck_message_select_${mode}_${recount+1}_${JSON.stringify(items.map(item => list.indexOf(item)))}`,
-                            placeholder: {
-                                type: 'plain_text',
-                                emoji: true,
-                                text: MODE_WORD[mode].redo
-                            },
-                            options: items.map((item, index) => ({
-                                text: {
-                                    type: 'plain_text',
-                                    emoji: true,
-                                    text: `${ordinal(index+1)} \u2022 ${item}`
-                                },
-                                value: `${index}`
-                            }))
-                        }
-                    }
-                ] : [])
-            ]
-        });
-    }
 
     const re_action_id = /^deck_message_select_(\w+)_(\d+)_(\[[^\]]+\])$/,
         re_block_id = /^deck_message_block_(U\w+)_(\[[^\]]+\])$/;
@@ -264,89 +162,13 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
         else throw `Unsupported mode \`${mode}\` on redo.`;
     });
 
-    async function macro(store: Promise<MongoClient>, context: Context, user: string, name: string): Promise<string> {
-        const coll = (await store).db().collection('macros');
-        return (await coll.findOne(
-            { _id: user },
-            { projection: { _id: 0} }
-        ) || {})[name]
-        ?? (await coll.findOne(
-            { _id: context.botUserId },
-            { projection: { _id: 0} }
-        ) || {})[name]
-        ?? name;
-    }
-
-    type Script = {
-        event?: string;
-        moderator?: Option;
-        limit?: Value;
-        values?: Values;
-        options?: Options;
-        deal?: Deck;
-        rules?: Rules;
-        import?: string | string[];
-    }
-
-    type Values = { [key: string]: Value; }
-    type Value =
-        | number
-        | string
-        | { plus: Value[]; }
-        | { minus: Value[]; }
-        | { times: Value[]; }
-        | { max: Value[]; }
-        | { min: Value[]; }
-
-    type Options = { [key: string]: boolean; }
-    type Option =
-        | boolean
-        | string
-        | { and: Option[]; }
-        | { or: Option[]; }
-        | { not: Option; }
-
-    type Deck =
-        | string
-        | { choose: Value; from: Deck; }
-        | { choose: Value; grouping: Deck[]; }
-        | { repeat: Value; from: Deck; }
-        | { repeat: Value; grouping: Deck[]; }
-        | { duplicate: Value; of?: Value; from: Deck; }
-        | { cross: Deck; with: Deck; using?: string; }
-        | { zip: Deck; with: Deck; using?: string; }
-        | { if: Option; then: Deck; else?: Deck; }
-        | Deck[]
-
-    type Rules = Rule | Rule[];
-    type Rule = (
-        | ShowRule
-        | AnnounceRule
-    ) & Conditional
-    type ShowRule = { show: Matchers; to: Matchers; as?: string; }
-    type AnnounceRule = { announce: Matchers; as?: string; }
-    type Conditional = { if?: Option; }
-
-    type Matchers = Matcher | Matcher[];
-    type Matcher =
-        | string
-        | { is: string; }
-        | { isNot: string; }
-        | { startsWith: string; }
-        | { startsWithout: string; }
-        | { endsWith: string; }
-        | { endsWithout: string; }
-        | { includes: string; }
-        | { excludes: string; }
-        | { matches: string; }
-
     const re_script = /^[`\s]*(\{.+\})[`\s]*$/s,
         re_url = /^\s*<([^|]+)(?:\|[^|]+)?>\s*$/;
     app.message(re_script, nonthread, community, async ({ message, context, client }) => {
         try {
-            const suit = randomInt(0, 3),
-                script = <Script>JSON5.parse(context.matches[1]);
+            const suit = pluck(SUIT_EMOJIS);
 
+            const script = <Script>JSON5.parse(context.matches[1]);
             if (script.import) {
                 if (Array.isArray(script.import) && script.import.length > MAX_IMPORTS)
                     throw `Too many imports (limit of ${MAX_IMPORTS}) in script.`;
@@ -370,9 +192,49 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
             if (!script.deal)
                 throw `Unexpected deal \`${JSON.stringify(script.deal)}\` in script.`;
 
-            const items = build_deck(script.deal, script.values, script.options),
+            const items = build_deck(script.deal, script),
                 users = (await members(message.channel, context, client))
                     .filter(user => user != message.user || !validate(script.moderator, script.options));
+
+            const graph: ElementDefinition[] = [];
+            if (script.rules && enlist(script.rules).some(rule => 'graph' in rule)) {
+                enlist(script.rules).filter((rule): rule is GraphRule => 'graph' in rule && validate(rule.if ?? true, script.options)).forEach(rule => {
+                    enlist(rule.graph).forEach(node => {
+                        items.filter(it => matches(it, node, script)).forEach(which => {
+                            const edge = graph.find(node => node.data.id == which);
+                            if (edge === undefined)
+                                graph.push(<ElementDefinition>{
+                                    group: 'nodes',
+                                    data: {
+                                        id: which,
+                                        color: rule.color
+                                    }
+                                });
+                            else
+                                edge.data.color = rule.color;
+                        });
+                    });
+                });
+
+                enlist(script.rules).filter((rule): rule is ShowRule => 'show' in rule && validate(rule.if ?? true, script.options)).forEach(rule => {
+                    enlist(rule.to).forEach(to => {
+                        items.filter(it => matches(it, to, script)).forEach(yours => {
+                            enlist(rule.show).forEach(show => {
+                                items.filter(it => matches(it, show, script)).forEach(theirs => {
+                                    graph.push(<ElementDefinition>{
+                                        group: 'edges',
+                                        data: {
+                                            source: yours,
+                                            target: theirs,
+                                            arrow: !rule.as ? 'triangle' : 'triangle-tee'
+                                        }
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            }
 
             const dealt: {
                 [user: string]: string[]
@@ -410,24 +272,26 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                 }), '; '),
                 all_leftover = items.length == 0 ? '' : ` with *${items.length}* leftover${!validate(script.moderator, script.options) ? '' : ` for <@${message.user}> as the moderator`}`,
                 all_notification = `<@${message.user}> dealt items`,
-                all_summary = `<@${message.user}> dealt ${all_list} by direct message${all_leftover}.`,
-                all_blocks: Block[] = [<SectionBlock>{
-                    type: 'section',
-                    text: {
-                        type: 'mrkdwn',
-                        text: trunc(all_summary, MAX_TEXT_SIZE)
+                all_summary = `<@${message.user}> dealt ${all_list} by direct message${all_leftover} for ${script.event ? `the *${script.event}*` : 'this'} event.`,
+                all_blocks: Block[] = [
+                    <SectionBlock>{
+                        type: 'section',
+                        text: {
+                            type: 'mrkdwn',
+                            text: trunc(all_summary, MAX_TEXT_SIZE)
+                        }
                     }
-                }];
+                ];
 
             let announced: string[] = [];
             if (script.rules) {
                 enlist(script.rules).filter((rule): rule is AnnounceRule => 'announce' in rule && validate(rule.if ?? true, script.options)).forEach(rule => {
                     enlist(rule.announce).forEach(announce => {
                         Object.keys(dealt).forEach(who => {
-                            dealt[who].filter(it => matches(it, announce)).forEach(whose => {
+                            dealt[who].filter(it => matches(it, announce, script)).forEach(whose => {
                                 const text = trunc(`${!rule.as ? ':eye-in-speech-bubble:' : ':left_speech_bubble:'} You all see that <@${who}> was dealt ${!rule.as ? `*${whose}*` : `*${rule.as}* as an alias`}.`, MAX_TEXT_SIZE);
                                 if (!announced.includes(text))
-                                announced.push(text);
+                                    announced.push(text);
                             });
                         });
                     });
@@ -462,10 +326,10 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                 ts: string
             }).ts;
 
-            const permalink = ts ? (await client.chat.getPermalink({
+            const permalink = (await client.chat.getPermalink({
                 channel: message.channel,
                 message_ts: ts
-            })).permalink : undefined;
+            })).permalink;
 
             for (const user of Object.keys(dealt)) {
                 const per_list = commas(dealt[user].map(item => `*${item}*`)),
@@ -488,11 +352,11 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                 if (script.rules) {
                     enlist(script.rules).filter((rule): rule is ShowRule => 'show' in rule && validate(rule.if ?? true, script.options)).forEach(rule => {
                         enlist(rule.to).forEach(to => {
-                            dealt[user].filter(it => matches(it, to)).forEach(yours => {
+                            dealt[user].filter(it => matches(it, to, script)).forEach(yours => {
                                 enlist(rule.show).forEach(show => {
-                                    Object.keys(dealt).filter(them => them != user).forEach(them => {
-                                        dealt[them].filter(it => matches(it, show)).forEach(theirs => {
-                                            const text = trunc(`${!rule.as ? ':eye-in-speech-bubble:' : ':left_speech_bubble:'} Because you were dealt *${yours}* you see that <@${them}> was dealt ${!rule.as ? `*${theirs}*` : `*${rule.as}* as an alias`}.`, MAX_TEXT_SIZE);
+                                    Object.keys(dealt).forEach(them => {
+                                        dealt[them].filter(it => matches(it, show, script)).forEach(theirs => {
+                                            const text = trunc(`${!rule.as ? ':eye-in-speech-bubble:' : ':left_speech_bubble:'} Because you were dealt *${yours}* you see that ${them != user ? `<@${them}> was` : 'you were also'} dealt ${!rule.as ? `*${theirs}*` : `*${rule.as}* as an alias`}.`, MAX_TEXT_SIZE);
                                             if (!shown.includes(text))
                                                 shown.push(text);
                                         });
@@ -571,227 +435,564 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                     }]
                 });
             }
+
+            if (graph.length > 0) {
+                const title = `Graph: ${script.event ?? 'Event'}`,
+                    html = rulesGraph(title, graph);
+
+                const browser = await puppeteer.launch({
+                    headless: true,
+                    args: ['--no-sandbox']
+                });
+
+                const page = await browser.newPage();
+
+                await page.setViewport({
+                    width: 1440,
+                    height: 1440,
+                    deviceScaleFactor: 1
+                });
+
+                await page.setContent(html);
+
+                const shot = await page.screenshot({
+                    type: 'png'
+                });
+
+                await browser.close();
+
+                await client.files.upload({
+                    token: context.botToken,
+                    channels: message.channel,
+                    title: title,
+                    filename: 'graph.png',
+                    file: shot,
+                    initial_comment: `There is a rules graph available for ${script.event ? `the *${script.event}*` : 'this'} event.`,
+                });
+            }
         }
         catch (err) {
             await blame(err, message, context, client);
         }
     });
+};
 
-    async function members(channel: string, context: Context, client: WebClient) {
-        return shuffle((await client.conversations.members({
-            token: context.botToken,
-            channel: channel
-        }) as WebAPICallResult & {
-            members: string[]
-        }).members.filter(user =>
-            user != context.botUserId
-        ));
+function rulesGraph(title: string, graph: ElementDefinition[]) {
+    return `<html>
+    <head>
+        <title>${title}</title>
+
+        <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
+
+        <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+        <script src="https://unpkg.com/layout-base/layout-base.js"></script>
+        <script src="https://unpkg.com/avsdf-base/avsdf-base.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/cytoscape-avsdf@1.0.0/cytoscape-avsdf.min.js"></script>
+
+        <style>
+            #cy {
+                width: 100%;
+                height: 100%;
+                margin: auto;
+                display: block;
+            }
+        </style>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function(){
+                var cy = window.cy = cytoscape({
+                    container: document.getElementById('cy'),
+
+                    layout: {
+                        name: 'avsdf',
+                        nodeSeparation: 120,
+                        animate: false
+                    },
+
+                    elements: ${JSON.stringify(graph)},
+
+                    style: [
+                        {
+                            selector: 'node',
+                            style: {
+                                'label': 'data(id)',
+                                'text-valign': 'center',
+                                'color': 'white',
+                                'text-outline-width': 3,
+                                'text-outline-color': 'data(color)',
+                                'background-color': 'data(color)'
+                            }
+                        },
+                        {
+                            selector: 'edge',
+                            style: {
+                                'curve-style': 'bezier',
+                                'width': 3,
+                                'line-color': function(edge) {
+                                    return edge.source().data('color');
+                                },
+                                'arrow-scale': 1.5,
+                                'target-arrow-fill': 'hollow',
+                                'target-arrow-color': function(edge) {
+                                    return edge.source().data('color');
+                                },
+                                'target-arrow-shape': 'data(arrow)',
+                            }
+                        }
+                    ]
+                });
+            });
+        </script>
+    </head>
+
+    <body>
+        <div id="cy"></div>
+    </body>
+</html>`;
+}
+
+const SUIT_EMOJIS: ({
+    [suit: string]: string
+}) = {
+    'Spades': ':spades:',
+    'Hearts': ':hearts:',
+    'Clubs': ':clubs:',
+    'Diamonds': ':diamonds:',
+    'Stars': ':star:'
+};
+
+const MODE_WORD: ({
+    [mode: string]: {
+        did: string,
+        redo: string,
+        redid: string
     }
-
-    function build_deck(items: Deck, values?: Values, options?: Options): string[] {
-        return shuffle(build_subdeck(items, values, options));
-    }
-
-    function build_subdeck(items: Deck, values?: Values, options?: Options): string[] {
-        if (typeof items === 'string')
-            return [wss(items)];
-        else if ('choose' in items) {
-            if ('from' in items)
-                return choose(
-                    build_subdeck(items.from, values, options),
-                    evaluate(items.choose, values)
-                );
-            else if ('grouping' in items)
-                return build_subdeck(choose(
-                    items.grouping,
-                    evaluate(items.choose, values)
-                ), values, options);
-            else
-                throw `Unexpected choose \`${JSON.stringify(items)}\` in script.`;
-        }
-        else if ('repeat' in items) {
-            if ('from' in items)
-                return repeat(
-                    build_subdeck(items.from, values, options),
-                    evaluate(items.repeat, values)
-                );
-            else if ('grouping' in items)
-                return build_subdeck(repeat(
-                    items.grouping,
-                    evaluate(items.repeat, values)
-                ), values, options);
-            else
-                throw `Unexpected repeat \`${JSON.stringify(items)}\` in script.`;
-        }
-        else if ('duplicate' in items)
-            return repeat(
-                choose(
-                    build_subdeck(items.from, values, options),
-                    items.of ? evaluate(items.of, values) : 1
-                ),
-                evaluate(items.duplicate, values)
-            );
-        else if ('cross' in items)
-            return cross(
-                build_subdeck(items.cross, values, options),
-                build_subdeck(items.with, values, options),
-                items.using
-            );
-        else if ('zip' in items)
-            return zip(
-                build_subdeck(items.zip, values, options),
-                build_subdeck(items.with, values, options),
-                items.using
-            );
-        else if ('if' in items)
-            return validate(items.if, options)
-                ? build_subdeck(items.then, values, options)
-                : ( items.else ? build_subdeck(items.else, values, options) : [] );
-        else if (Array.isArray(items))
-            return items.map(
-                item => build_subdeck(item, values, options)
-            ).flat();
-        else
-            throw `Unexpected deck \'${JSON.stringify(items)}\` in script.`;
-    }
-
-    function enlist<T>(element: T | T[]): T[] {
-        if (element === undefined)
-            return [];
-        else if (Array.isArray(element))
-            return element.flat() as T[];
-        else
-            return [element];
-    }
-
-    function shuffle<T>(list: T[]): T[] {
-        const copy = [...list];
-        for (let i = copy.length - 1; i >= 1; i--) {
-            const j = randomInt(0, i);
-            [copy[i], copy[j]] = [copy[j], copy[i]];
-        }
-        return copy;
-    }
-
-    function choose<T>(list: T[], quantity: number): T[] {
-        if (quantity > list.length || quantity < 0)
-            throw `Unexpected choose quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
-
-        return shuffle(list).slice(list.length - quantity);
-    }
-
-    function repeat<T>(list: T[], quantity: number): T[] {
-        if (quantity < 0)
-            throw `Unexpected repeat quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
-
-        if (list.length == 0)
-            throw 'Unexpected empty list in script.';
-
-        const build = [];
-        for (let i = 1; i <= quantity; i++)
-            build.push(list[randomInt(0, list.length - 1)]);
-        return build;
-    }
-
-    function pluck(object: Record<string, unknown>): string {
-        return choose(Object.keys(object), 1)[0];
-    }
-
-    function cross<T>(list1: T[], list2: T[], delimiter?: T): string[] {
-        const build = [];
-        for (let i = 0; i < list1.length; i++)
-            for (let j = 0; j < list2.length; j++)
-                build.push(`${list1[i]}${delimiter ?? ' \u2022 '}${list2[j]}`);
-        return shuffle(build);
-    }
-
-    function zip<T>(list1: T[], list2: T[], delimiter?: T): string[] {
-        const build = [],
-            copy1 = shuffle(list1),
-            copy2 = shuffle(list2);
-        for (let i = 0; i < Math.min(list1.length, list2.length); i++)
-            build.push(wss(`${copy1[i]}${delimiter ?? ' \u2022 '}${copy2[i]}`));
-        return build;
-    }
-
-    function evaluate(it: Value | undefined, values?: Values): number {
-        if (it === undefined)
-            return 0;
-        if (typeof it === 'number')
-            return it;
-        else if (typeof it === 'string') {
-            if (values !== undefined && values[it] !== undefined)
-                return values[it] = evaluate(
-                    values[it],
-                    Object.assign({}, values, { [it]: undefined })
-                );
-            else if (values !== undefined && Object.keys(values).includes(it))
-                throw `Recursive value \`${JSON.stringify(it)}\` in script.`;
-            else
-                throw `Undefined value \`${JSON.stringify(it)}\` in script.`;
-        }
-        else if ('plus' in it)
-            return <number>it.plus.reduce((x, y) => evaluate(x, values) + evaluate(y, values));
-        else if ('minus' in it)
-            return <number>it.minus.reduce((x, y) => evaluate(x, values) - evaluate(y, values));
-        else if ('times' in it)
-            return <number>it.times.reduce((x, y) => evaluate(x, values) * evaluate(y, values));
-        else if ('max' in it)
-            return Math.max(...it.max.map(x => evaluate(x, values)));
-        else if ('min' in it)
-            return Math.min(...it.min.map(x => evaluate(x, values)));
-        else
-            throw `Unexpected value \'${JSON.stringify(it)}\` in script.`;
-    }
-
-    function validate(it: Option | undefined, options?: Options): boolean {
-        if (it === undefined)
-            return false;
-        if (typeof it === 'boolean')
-            return it;
-        else if (typeof it === 'string') {
-            if (options !== undefined && options[it] !== undefined)
-                return options[it] = validate(
-                    options[it],
-                    Object.assign({}, options, { [it]: undefined })
-                );
-            else if (options !== undefined && Object.keys(options).includes(it))
-                throw `Recursive option \`${JSON.stringify(it)}\` in script.`;
-            else
-                throw `Undefined option \`${JSON.stringify(it)}\` in script.`;
-        }
-        else if ('and' in it)
-            return it.and.every(opt => validate(opt, options));
-        else if ('or' in it)
-            return it.or.some(opt => validate(opt, options));
-        else if ('not' in it)
-            return !validate(it.not, options);
-        else
-            throw `Unexpected option \'${JSON.stringify(it)}\` in script.`;
-    }
-
-    function matches(it: string, matcher: Matcher): boolean {
-        if (typeof matcher === 'string')
-            return it == wss(matcher);
-        else if ('is' in matcher)
-            return it == wss(matcher.is);
-        if ('isNot' in matcher)
-            return it != wss(matcher.isNot);
-        else if ('startsWith' in matcher)
-            return it.startsWith(wss(matcher.startsWith));
-        else if ('startsWithout' in matcher)
-            return !it.startsWith(wss(matcher.startsWithout));
-        else if ('endsWith' in matcher)
-            return it.endsWith(wss(matcher.endsWith));
-        else if ('endsWithout' in matcher)
-            return !it.endsWith(wss(matcher.endsWithout));
-        else if ('includes' in matcher)
-            return it.includes(wss(matcher.includes));
-        else if ('excludes' in matcher)
-            return !it.includes(wss(matcher.excludes));
-        else if ('matches' in matcher)
-            return it.match(wss(matcher.matches)) != null;
-        else
-            throw `Unexpected matcher \'${JSON.stringify(matcher)}\` in script.`;
+}) = {
+    'Shuffle': {
+        did: 'Shuffled',
+        redo: 'Reshuffle',
+        redid: 'Reshuffled'
+    },
+    'Draw': {
+        did: 'Drew',
+        redo: 'Redraw',
+        redid: 'Redrew'
+    },
+    'Pool': {
+        did: 'Pooled',
+        redo: 'Repool',
+        redid: 'Repooled'
     }
 };
+
+const re_macro = /^[\w_][\w\d_]{2,14}$/;
+async function process(
+    mode: string,
+    expression: string,
+    fun: (list: string[]) => string[],
+    recount: number,
+    message: MessageEvent,
+    context: Context,
+    client: WebClient,
+    say: SayFn,
+    store: Promise<MongoClient>
+): Promise<void> {
+    const suit = pluck(SUIT_EMOJIS);
+
+    let list = <string[]>expression.split(',').map(it => it.trim());
+    if (list.length == 1) {
+        if (Number(list[0]) >= 1 && Number(list[0]) % 1 == 0)
+            list = Array(Number(list[0])).fill(1).map((v, i) => String(v + i));
+        else if (list[0] == '<!channel>')
+            list = (await members(message.channel, context, client)).map(user => `<@${user}>`);
+        else if (re_macro.test(list[0]))
+            list = (await macro(store, context, message.user, list[0])).split(',').map(it => it.trim());
+    }
+
+    const items = fun(list);
+
+    await say({
+        token: context.botToken,
+        channel: message.channel,
+        username: `${mode}: ${suit}`,
+        icon_emoji: SUIT_EMOJIS[suit],
+        text: `<@${message.user}> ${MODE_WORD[mode].did.toLowerCase()} ${list.length != 1 ? 'items' : 'an item'}`,
+        blocks: [
+            <SectionBlock>{
+                type: 'section',
+                text: {
+                    type: 'mrkdwn',
+                    text: trunc(`<@${message.user}> ${MODE_WORD[mode].did.toLowerCase()} ${commas(items.map(item => `*${wss(item)}*`))}.`, MAX_TEXT_SIZE)
+                }
+            },
+            ...(mode == 'Pool' ? [
+                <SectionBlock>{
+                    type: 'section',
+                    block_id: `deck_message_block_${message.user}_${JSON.stringify(list)}`,
+                    text: {
+                        type: 'mrkdwn',
+                        text: ':left_speech_bubble: Original Results'
+                    },
+                    accessory: <MultiSelect>{
+                        type: 'multi_static_select',
+                        action_id: `deck_message_select_${mode}_${recount+1}_${JSON.stringify(items.map(item => list.indexOf(item)))}`,
+                        placeholder: {
+                            type: 'plain_text',
+                            emoji: true,
+                            text: MODE_WORD[mode].redo
+                        },
+                        options: items.map((item, index) => ({
+                            text: {
+                                type: 'plain_text',
+                                emoji: true,
+                                text: `${ordinal(index+1)} \u2022 ${item}`
+                            },
+                            value: `${index}`
+                        }))
+                    }
+                }
+            ] : [])
+        ]
+    });
+}
+
+async function macro(store: Promise<MongoClient>, context: Context, user: string, name: string): Promise<string> {
+    const coll = (await store).db().collection('macros');
+    return (await coll.findOne(
+        { _id: user },
+        { projection: { _id: 0} }
+    ) || {})[name]
+    ?? (await coll.findOne(
+        { _id: context.botUserId },
+        { projection: { _id: 0} }
+    ) || {})[name]
+    ?? name;
+}
+
+type Script = {
+    event?: string;
+    moderator?: Option;
+    limit?: Value;
+    deal?: Deck;
+    rules?: Rules;
+    import?: string | string[];
+} & Defines;
+type Defines = {
+    sets?: Sets;
+    values?: Values;
+    options?: Options;
+}
+
+type Sets = { [name: string]: Set; }
+type Set =
+    | string[]
+    | string
+    // | { union: Set[]; }
+    // | { intersect: Set[]; }
+    // | { except: Set[]; }
+
+type Values = { [name: string]: Value; }
+type Value =
+    | number
+    | string
+    | { plus: Value[]; }
+    | { minus: Value[]; }
+    | { times: Value[]; }
+    | { max: Value[]; }
+    | { min: Value[]; }
+
+type Options = { [name: string]: Option; }
+type Option =
+    | boolean
+    | string
+    | { and: Option[]; }
+    | { or: Option[]; }
+    | { not: Option; }
+
+
+type Deck =
+    | string
+    | { choose: Value; from: Deck; }
+    | { choose: Value; grouping: Deck[]; }
+    | { repeat: Value; from: Deck; }
+    | { repeat: Value; grouping: Deck[]; }
+    | { duplicate: Value; of?: Value; from: Deck; }
+    | { cross: Deck; with: Deck; using?: string; }
+    | { zip: Deck; with: Deck; using?: string; }
+    | { set: Set; }
+    | { if: Option; then: Deck; else?: Deck; }
+    | Deck[]
+
+type Rules = Rule | Rule[];
+type Rule = (
+    | ShowRule
+    | AnnounceRule
+    | GraphRule
+) & Conditional
+type ShowRule = { show: Matchers; to: Matchers; as?: string; }
+type AnnounceRule = { announce: Matchers; as?: string; }
+type GraphRule = { graph: Matchers; color: string; }
+type Conditional = { if?: Option; }
+
+type Matchers = Matcher | Matcher[];
+type Matcher =
+    | string
+    | { is: string; }
+    | { isNot: string; }
+    | { startsWith: string; }
+    | { startsWithout: string; }
+    | { endsWith: string; }
+    | { endsWithout: string; }
+    | { includes: string; }
+    | { excludes: string; }
+    | { matches: string; }
+    | { set: string }
+
+async function members(channel: string, context: Context, client: WebClient) {
+    return shuffle((await client.conversations.members({
+        token: context.botToken,
+        channel: channel
+    }) as WebAPICallResult & {
+        members: string[]
+    }).members.filter(user =>
+        user != context.botUserId
+    ));
+}
+
+function build_deck(items: Deck, defines: Defines): string[] {
+    return shuffle(build_subdeck(items, defines));
+}
+
+function build_subdeck(items: Deck, defines: Defines): string[] {
+    if (typeof items === 'string')
+        return [wss(items)];
+    else if ('choose' in items) {
+        if ('from' in items)
+            return choose(
+                build_subdeck(items.from, defines),
+                evaluate(items.choose, defines.values)
+            );
+        else if ('grouping' in items)
+            return build_subdeck(choose(
+                items.grouping,
+                evaluate(items.choose, defines.values)
+            ), defines);
+        else
+            throw `Unexpected choose \`${JSON.stringify(items)}\` in script.`;
+    }
+    else if ('repeat' in items) {
+        if ('from' in items)
+            return repeat(
+                build_subdeck(items.from, defines),
+                evaluate(items.repeat, defines.values)
+            );
+        else if ('grouping' in items)
+            return build_subdeck(repeat(
+                items.grouping,
+                evaluate(items.repeat, defines.values)
+            ), defines);
+        else
+            throw `Unexpected repeat \`${JSON.stringify(items)}\` in script.`;
+    }
+    else if ('duplicate' in items)
+        return repeat(
+            choose(
+                build_subdeck(items.from, defines),
+                items.of ? evaluate(items.of, defines.values) : 1
+            ),
+            evaluate(items.duplicate, defines.values)
+        );
+    else if ('cross' in items)
+        return cross(
+            build_subdeck(items.cross, defines),
+            build_subdeck(items.with, defines),
+            items.using
+        );
+    else if ('zip' in items)
+        return zip(
+            build_subdeck(items.zip, defines),
+            build_subdeck(items.with, defines),
+            items.using
+        );
+    else if ('if' in items)
+        return validate(items.if, defines.options)
+            ? build_subdeck(items.then, defines)
+            : ( items.else ? build_subdeck(items.else, defines) : [] );
+    else if ('set' in items) {
+        return construct(items.set, defines.sets);
+    }
+    else if (Array.isArray(items))
+        return items.map(
+            item => build_subdeck(item, defines)
+        ).flat();
+    else
+        throw `Unexpected deck \'${JSON.stringify(items)}\` in script.`;
+}
+
+function enlist<T>(element: T | T[]): T[] {
+    if (element === undefined)
+        return [];
+    else if (Array.isArray(element))
+        return element.flat() as T[];
+    else
+        return [element];
+}
+
+function shuffle<T>(list: T[]): T[] {
+    const copy = [...list];
+    for (let i = copy.length - 1; i >= 1; i--) {
+        const j = randomInt(0, i);
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+}
+
+function choose<T>(list: T[], quantity: number): T[] {
+    if (quantity > list.length || quantity < 0)
+        throw `Unexpected choose quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
+
+    return shuffle(list).slice(list.length - quantity);
+}
+
+function repeat<T>(list: T[], quantity: number): T[] {
+    if (quantity < 0)
+        throw `Unexpected repeat quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
+
+    if (list.length == 0)
+        throw 'Unexpected empty list in script.';
+
+    const build = [];
+    for (let i = 1; i <= quantity; i++)
+        build.push(list[randomInt(0, list.length - 1)]);
+    return build;
+}
+
+function pluck(object: Record<string, unknown>): string {
+    return choose(Object.keys(object), 1)[0];
+}
+
+function cross<T>(list1: T[], list2: T[], delimiter?: T): string[] {
+    const build = [];
+    for (let i = 0; i < list1.length; i++)
+        for (let j = 0; j < list2.length; j++)
+            build.push(`${list1[i]}${delimiter ?? ' \u2022 '}${list2[j]}`);
+    return shuffle(build);
+}
+
+function zip<T>(list1: T[], list2: T[], delimiter?: T): string[] {
+    const build = [],
+        copy1 = shuffle(list1),
+        copy2 = shuffle(list2);
+    for (let i = 0; i < Math.min(list1.length, list2.length); i++)
+        build.push(wss(`${copy1[i]}${delimiter ?? ' \u2022 '}${copy2[i]}`));
+    return build;
+}
+
+function evaluate(it: Value | undefined, values?: Values): number {
+    if (it === undefined)
+        return 0;
+    if (typeof it === 'number')
+        return it;
+    else if (typeof it === 'string') {
+        if (values !== undefined && values[it] !== undefined)
+            return values[it] = evaluate(
+                values[it],
+                Object.assign({}, values, { [it]: undefined })
+            );
+        else if (values !== undefined && Object.keys(values).includes(it))
+            throw `Recursive value \`${JSON.stringify(it)}\` in script.`;
+        else
+            throw `Undefined value \`${JSON.stringify(it)}\` in script.`;
+    }
+    else if ('plus' in it)
+        return <number>it.plus.reduce((x, y) => evaluate(x, values) + evaluate(y, values));
+    else if ('minus' in it)
+        return <number>it.minus.reduce((x, y) => evaluate(x, values) - evaluate(y, values));
+    else if ('times' in it)
+        return <number>it.times.reduce((x, y) => evaluate(x, values) * evaluate(y, values));
+    else if ('max' in it)
+        return Math.max(...it.max.map(x => evaluate(x, values)));
+    else if ('min' in it)
+        return Math.min(...it.min.map(x => evaluate(x, values)));
+    else
+        throw `Unexpected value \'${JSON.stringify(it)}\` in script.`;
+}
+
+function validate(it: Option | undefined, options?: Options): boolean {
+    if (it === undefined)
+        return false;
+    if (typeof it === 'boolean')
+        return it;
+    else if (typeof it === 'string') {
+        if (options !== undefined && options[it] !== undefined)
+            return options[it] = validate(
+                options[it],
+                Object.assign({}, options, { [it]: undefined })
+            );
+        else if (options !== undefined && Object.keys(options).includes(it))
+            throw `Recursive option \`${JSON.stringify(it)}\` in script.`;
+        else
+            throw `Undefined option \`${JSON.stringify(it)}\` in script.`;
+    }
+    else if ('and' in it)
+        return it.and.every(opt => validate(opt, options));
+    else if ('or' in it)
+        return it.or.some(opt => validate(opt, options));
+    else if ('not' in it)
+        return !validate(it.not, options);
+    else
+        throw `Unexpected option \'${JSON.stringify(it)}\` in script.`;
+}
+
+function construct(it: Set | undefined, sets?: Sets): string[] {
+    if (it === undefined)
+        return [];
+    if (Array.isArray(it))
+        return it;
+    else if (typeof it === 'string') {
+        if (sets !== undefined && sets[it] !== undefined)
+            return sets[it] = construct(
+                sets[it],
+                Object.assign({}, sets, { [it]: undefined })
+            );
+        else if (sets !== undefined && Object.keys(sets).includes(it))
+            throw `Recursive set \`${JSON.stringify(it)}\` in script.`;
+        else
+            throw `Undefined set \`${JSON.stringify(it)}\` in script.`;
+    }
+    // else if ('union' in it)
+    //     return <string[]>it.union.reduce((x, y) => [...construct(x, sets), ...construct(y, sets)].filter((item, index, self) => self.indexOf(item) === index));
+    // else if ('intersect' in it)
+    //     return <string[]>it.intersect.reduce((x, y) => construct(x, sets).filter(item => construct(y, sets).includes(item)));
+    // else if ('except' in it)
+    //     return <string[]>it.except.reduce((x, y) => construct(x, sets).filter(item => !construct(y, sets).includes(item)));
+    else
+        throw `Unexpected set \'${JSON.stringify(it)}\` in script.`;
+}
+
+function matches(it: string, matcher: Matcher, defines: Defines): boolean {
+    if (typeof matcher === 'string')
+        return it == wss(matcher);
+    else if ('is' in matcher)
+        return it == wss(matcher.is);
+    if ('isNot' in matcher)
+        return it != wss(matcher.isNot);
+    else if ('startsWith' in matcher)
+        return it.startsWith(wss(matcher.startsWith));
+    else if ('startsWithout' in matcher)
+        return !it.startsWith(wss(matcher.startsWithout));
+    else if ('endsWith' in matcher)
+        return it.endsWith(wss(matcher.endsWith));
+    else if ('endsWithout' in matcher)
+        return !it.endsWith(wss(matcher.endsWithout));
+    else if ('includes' in matcher)
+        return it.includes(wss(matcher.includes));
+    else if ('excludes' in matcher)
+        return !it.includes(wss(matcher.excludes));
+    else if ('matches' in matcher)
+        return it.match(wss(matcher.matches)) != null;
+    else if ('set' in matcher)
+        return construct(matcher.set, defines.sets).includes(it);
+    else
+        throw `Unexpected matcher \'${JSON.stringify(matcher)}\` in script.`;
+}

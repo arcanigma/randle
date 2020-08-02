@@ -1,0 +1,33 @@
+{
+    "name": "Randle",
+    "description": "Dice, cards, and polling bot for Slack.",
+    "repository": "github:ron-reaser/randle",
+    "formation": {
+        "web": { "quantity": 1 }
+    },
+    "stack": "heroku-18",
+    "image": "heroku/nodejs",
+    "buildpacks": [
+        { "url": "heroku/nodejs" },
+        { "url": "https://github.com/jontewks/puppeteer-heroku-buildpack" }
+    ],
+    "env": {
+        "SLACK_BOT_TOKEN": {
+            "description": "Slack Bot Token"
+        },
+        "SLACK_SIGNING_SECRET": {
+            "description": "Slack Signing Secret"
+        },
+        "SLACK_CLIENT_ID": {
+            "description": "Slack Client ID",
+            "required": false
+        },
+        "SLACK_CLIENT_SECRET": {
+            "description": "Slack Client Secret",
+            "required": false
+        },
+        "MONGODB_URI": {
+            "description": "MongoDB URI"
+        }
+    }
+}
