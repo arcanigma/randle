@@ -51,9 +51,10 @@ export const events = (app: App): void => {
 
             const graph: ElementDefinition[] = [];
             if (script.rules && listify(script.rules).some(rule => 'graph' in rule)) {
+                const unique = items.filter((item, index) => items.indexOf(item) === index);
                 listify(script.rules).filter((rule): rule is GraphRule => 'graph' in rule && validate(rule.if ?? true, script.options)).forEach(rule => {
                     listify(rule.graph).forEach(node => {
-                        items.filter(it => matches(it, node, script)).forEach(which => {
+                        unique.filter(it => matches(it, node, script)).forEach(which => {
                             const edge = graph.find(node => node.data.id == which);
                             if (edge === undefined)
                                 graph.push(<ElementDefinition>{
@@ -71,9 +72,9 @@ export const events = (app: App): void => {
 
                 listify(script.rules).filter((rule): rule is ShowRule => 'show' in rule && validate(rule.if ?? true, script.options)).forEach(rule => {
                     listify(rule.to).forEach(to => {
-                        items.filter(it => matches(it, to, script)).forEach(yours => {
+                        unique.filter(it => matches(it, to, script)).forEach(yours => {
                             listify(rule.show).forEach(show => {
-                                items.filter(it => matches(it, show, script)).forEach(theirs => {
+                                unique.filter(it => matches(it, show, script)).forEach(theirs => {
                                     graph.push(<ElementDefinition>{
                                         group: 'edges',
                                         data: {
