@@ -290,12 +290,13 @@ export const events = (app: App): void => {
                 });
             }
 
-            await uploadGraphFile(
-                `Graph: ${script.event ?? 'Event'}`,
-                graph,
-                script,
-                message, context, client
-            );
+            if (graph.length > 0)
+                await uploadGraphFile(
+                    `Graph: ${script.event ?? 'Event'}`,
+                    graph,
+                    script,
+                    message, context, client
+                );
         }
         catch (err) {
             await blame(err, message, context, client);
