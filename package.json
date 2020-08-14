@@ -38,10 +38,10 @@
     },
     "license": "MIT",
     "author": {
-        "name": "Ron Reaser",
-        "email": "ron@reaser.org",
-        "url": "https://github.com/ron-reaser"
+        "name": "Arcanigma Foundation",
+        "email": "randle@arcanigma.org",
+        "url": "https://github.com/arcanigma"
     },
-    "repository": "github:ron-reaser/randle",
+    "repository": "github:arcanigma/randle",
     "private": true
 }

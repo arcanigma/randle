@@ -1,7 +1,7 @@
 {
     "name": "Randle",
     "description": "Dice, cards, and polling bot for Slack.",
-    "repository": "github:ron-reaser/randle",
+    "repository": "github:arcanigma/randle",
     "formation": {
         "web": { "quantity": 1 }
     },
