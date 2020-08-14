@@ -20,7 +20,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
     const re_roll = /^!?roll\s+(.+)/i,
           re_parens = /(?:\([^'()][^()]*\)|\[[^'[\]][^[\]]*\])/g;
     const listen_roll: Middleware<SlackEventMiddlewareArgs<'message'>> = async ({ message, context, next }) => {
-        if (message.text) {
+        if (message.text && !message.subtype) {
             let matches;
             if ((matches = wss(message.text).match(re_roll))) {
                 context.clauses = [{
