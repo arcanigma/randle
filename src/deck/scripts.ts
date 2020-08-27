@@ -9,7 +9,7 @@ import { community, nonthread } from '../library/listeners';
 import { blame } from '../library/messages';
 import { AnnounceRule, GraphRule, Script, ShowRule, SUIT_EMOJIS } from './deck';
 import { uploadGraphFile } from './graphing';
-import { getMembers } from './retrieving';
+import { getMembers } from '../library/lookup';
 import { deckOf, evaluate, listify, matches, pluck, shuffle, validate } from './solving';
 
 export const MAX_IMPORTS = 5;

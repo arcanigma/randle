@@ -6,8 +6,9 @@ import { MAX_TEXT_SIZE } from '../app';
 import { commas, trunc, wss } from '../library/factory';
 import { MODE_WORD } from './commands';
 import { SUIT_EMOJIS } from './deck';
-import { getMacro, getMembers } from './retrieving';
+import { getMembers } from '../library/lookup';
 import { pluck } from './solving';
+import { getMacro } from '../macros/macros';
 
 // TODO refactor to support initial posts
 

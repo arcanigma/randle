@@ -5,7 +5,7 @@ const CHANNEL = 'channel',
       DIRECT = 'im',
       MULTI_DIRECT = 'mpim';
 
-export const debug: Middleware<SlackEventMiddlewareArgs<'message'>> = async ({ message, context, next }) => {
+export const log: Middleware<SlackEventMiddlewareArgs<'message'>> = async ({ message, context, next }) => {
     console.log({
         message: message,
         context: context

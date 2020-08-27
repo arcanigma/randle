@@ -58,7 +58,7 @@ export async function announce(
             open: 'opened',
             reopen: 'reopened',
             reannounce: 'reannounced'
-        }[mode]} the poll *${poll.prompt}*`;
+        }[mode]} the poll *${poll.prompt}*`; // TODO remove mrkdwn in fallback notification
 
         blocks.push(<ActionsBlock>{
             type: 'actions',

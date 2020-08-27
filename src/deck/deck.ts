@@ -29,7 +29,7 @@ export type Defines = {
 
 export type Sets = { [name: string]: Set; }
 export type Set =
-    | string[]
+    | string[] // TODO support nested Deck
     | string
 // | { union: Set[]; }
 // | { intersect: Set[]; }
