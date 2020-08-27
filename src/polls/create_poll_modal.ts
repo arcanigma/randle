@@ -215,8 +215,8 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
 
         if ([...new Set(choices)].length < choices.length)
             errors.choices = "You can't repeat any choices.";
-        else if (choices.length < 2 || choices.length > 10)
-            errors.choices = 'You must list from 2 to 10 choices.';
+        else if (choices.length < 1 || choices.length > 10)
+            errors.choices = 'You must list from 1 to 10 choices.';
 
         if (choices.some(choice => choice.length > 30))
             errors.choices = "You can't list a choice longer than 30 characters.";
