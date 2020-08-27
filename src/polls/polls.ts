@@ -58,7 +58,7 @@ export async function announce(
             open: 'opened',
             reopen: 'reopened',
             reannounce: 'reannounced'
-        }[mode]} the poll *${poll.prompt}*`; // TODO remove mrkdwn in fallback notification
+        }[mode]} the poll *${poll.prompt}*`;
 
         blocks.push(<ActionsBlock>{
             type: 'actions',
@@ -169,7 +169,7 @@ export async function announce(
         channel: poll.audience,
         username: `Poll: ${poll.prompt.replace(re_emoji, '')}`,
         icon_emoji: ':ballot_box_with_ballot:',
-        text: summary,
+        text: summary.replace(/\*/g, ''),
         blocks: blocks
     };
 
