@@ -200,11 +200,11 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
     app.view('create_poll_modal', async ({ ack, body, view, context, client }) => {
         const host = body.user.id,
             data = view.state.values,
-            audience = data.audience.input.selected_channel,
-            members = data.members.input.selected_users,
-            prompt = data.prompt.input.value.replace(re_lines, ' ').replace(re_mrkdwn, ''),
-            choices = data.choices.input.value.trim().split(re_lines).map((choice: string) => choice.trim().replace(re_mrkdwn, '')).filter(Boolean),
-            setup = (data.setup.inputs.selected_options ?? []).map((checkbox: { value: string}) => checkbox.value);
+            audience: string = data.audience.input.selected_channel,
+            members: string[] = data.members.input.selected_users,
+            prompt: string = data.prompt.input.value.replace(re_lines, ' ').replace(re_mrkdwn, ''),
+            choices: string[] = data.choices.input.value.trim().split(re_lines).map((choice: string) => choice.trim().replace(re_mrkdwn, '')).filter(Boolean),
+            setup: PollSetupOptions[] = (data.setup.inputs.selected_options ?? []).map((checkbox: { value: string}) => checkbox.value);
 
         const errors: { [blockId: string]: string } = {};
 
@@ -217,6 +217,9 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
             errors.choices = "You can't repeat any choices.";
         else if (choices.length < 2 || choices.length > 10)
             errors.choices = 'You must list from 2 to 10 choices.';
+
+        if (choices.some(choice => choice.length > 30))
+            errors.choices = "You can't list a choice longer than 30 characters.";
 
         if (size(errors) > 0)
             return await ack({
