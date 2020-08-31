@@ -1,15 +1,16 @@
-import { App } from '@slack/bolt';
-import { Block, ContextBlock, MrkdwnElement, SectionBlock, WebAPICallResult } from '@slack/web-api';
+import { App, BlockAction, MultiStaticSelectAction } from '@slack/bolt';
+import { Block, ContextBlock, MrkdwnElement, MultiSelect, SectionBlock, WebAPICallResult } from '@slack/web-api';
 import { ElementDefinition } from 'cytoscape';
 import got from 'got';
 import JSON5 from 'json5';
+import ordinal from 'ordinal';
 import { MAX_CONTEXT_ELEMENTS, MAX_TEXT_SIZE } from '../app';
 import { commas, names, trunc } from '../library/factory';
 import { community, nonthread } from '../library/listeners';
+import { getMembers } from '../library/lookup';
 import { blame } from '../library/messages';
 import { AnnounceRule, GraphRule, Script, ShowRule, SUIT_EMOJIS } from './deck';
 import { uploadGraphFile } from './graphing';
-import { getMembers } from '../library/lookup';
 import { deckOf, evaluate, listify, matches, pluck, shuffle, validate } from './solving';
 
 export const MAX_IMPORTS = 5;
@@ -188,17 +189,35 @@ export const events = (app: App): void => {
             for (const user of Object.keys(dealt)) {
                 const per_list = commas(dealt[user].map(item => `*${item}*`)),
                     per_venue = script.event ? `for the *${script.event}* event` : `from the <#${message.channel}> channel`,
+                    per_when = `<!date^${parseInt(message.ts)}^{date_short_pretty} at {time}^${permalink}|there>`,
                     per_who = message.user != user ? `<@${message.user}>${(!validate(script.moderator, script.options) ? '' : ' as the moderator')}` : 'You',
                     per_whom = message.user != user ? (validate(script.moderator, script.options) ? `<@${user}>` : 'you') : 'yourself',
                     per_notification = `${per_who} dealt ${per_whom} ${dealt[user].length != 1 ? 'items' : 'an item'}`,
-                    per_summary = `${per_who} dealt ${per_whom} ${per_list} ${per_venue} <!date^${parseInt(message.ts)}^{date_short_pretty} at {time}^${permalink}|there>.`,
+                    per_summary = `${per_who} dealt ${per_whom} ${per_list} ${per_venue} ${per_when}.`,
                     per_blocks: Block[] = [];
 
                 per_blocks.push(<SectionBlock>{
                     type: 'section',
+                    block_id: `script_message_block_${message.user}_${message.ts}_${JSON.stringify(permalink)}`,
                     text: {
                         type: 'mrkdwn',
                         text: trunc(per_summary, MAX_TEXT_SIZE)
+                    },
+                    accessory: <MultiSelect>{
+                        type: 'multi_static_select',
+                        action_id: `script_message_select_${message.channel}_${JSON.stringify(script.event)}_${suit}`,
+                        placeholder: {
+                            type: 'plain_text',
+                            text: 'Reveal'
+                        },
+                        options: dealt[user].map((item, index) => ({
+                            text: {
+                                type: 'plain_text',
+                                emoji: true,
+                                text: `${ordinal(index+1)} \u2022 ${item}`
+                            },
+                            value: JSON.stringify(item)
+                        }))
                     }
                 });
 
@@ -301,5 +320,57 @@ export const events = (app: App): void => {
         catch (err) {
             await blame(err, message, context, client);
         }
+    });
+
+    const re_action_id = /^script_message_select_(C\w+)_("[^"]+")_(\w+)$/,
+        re_block_id = /^script_message_block_(U\w+)_([\d]+\.[\d]+)_("[^"]+")$/;
+    app.action<BlockAction<MultiStaticSelectAction>>(re_action_id, async ({ ack, body, action, context, client, respond }) => {
+        await ack();
+
+        const user = body.user.id,
+            revealed = action.selected_options
+                .map(it => <string>JSON.parse(it.value)),
+            [, channel, json_event, suit ] = action.action_id.match(re_action_id) ?? [],
+            [, whom, timestamp, json_permalink ] = action.block_id.match(re_block_id) ?? [],
+            event = <string[]>JSON.parse(json_event),
+            permalink = <string[]>JSON.parse(json_permalink);
+
+        if (user != whom)
+            return await respond({
+                replace_original: false,
+                response_type: 'ephemeral',
+                text: `These items belong to <@${whom}>.`
+            });
+
+        if (revealed.length == 0)
+            return await respond({
+                replace_original: false,
+                response_type: 'ephemeral',
+                text: 'You have to select 1 or more items to reveal.'
+            });
+
+        const all_list = commas(revealed.map(item => `*${item}*`)),
+            all_notification = `<@${user}> revealed ${revealed.length != 1 ? 'items' : 'an item'}`,
+            all_venue = `for ${event ? `the *${event}*` : 'this'} event`,
+            all_when = `<!date^${parseInt(timestamp)}^{date_short_pretty} at {time}^${permalink}|here>`,
+            all_summary = `<@${user}> revealed that they were dealt ${all_list} ${all_venue} ${all_when}.`,
+            all_blocks: Block[] = [
+                <SectionBlock>{
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: trunc(all_summary, MAX_TEXT_SIZE)
+                    }
+                }
+            ];
+
+        await client.chat.postMessage({
+            token: context.botToken,
+            channel: channel,
+            username: `Deal: ${suit}`,
+            icon_emoji: SUIT_EMOJIS[suit],
+            text: all_notification,
+            blocks: all_blocks
+        });
     });
 };

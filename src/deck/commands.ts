@@ -129,7 +129,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
 
             const message = body.message!;
 
-            respond({
+            await respond({
                 replace_original: true,
                 text: message.text!,
                 blocks: [
@@ -168,7 +168,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                 ]
             });
 
-            say({
+            await say({
                 token: context.botToken,
                 channel: body.channel!.id,
                 thread_ts: body.message!.ts,
