@@ -33,7 +33,10 @@ export const events = (app: App): void => {
                         const match = url.match(re_url);
                         if (match)
                             url = match[1];
-                        imports.push(await got.get(url).json());
+
+                        const raw = await got.get(url).text(),
+                            iscript = <Script>JSON5.parse(raw);
+                        imports.push(iscript);
                     }
                     Object.assign(script, ...imports);
                     delete script.import;
