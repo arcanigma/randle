@@ -66,7 +66,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
         }
     });
 
-    const re_pool = /^!?pool\s+(?:([1-9][0-9]*)\s+(?:from|of)\s+)?(.+)/is;
+    const re_pool = /^!?pool\s+(?:([1-9][0-9]*)\s+(?:(?:from|of|in)\s+)?)?(.+)/is;
     app.message(re_pool, nonthread, anywhere, async ({ message, context, client, say }) => {
         try {
             await postDeckMessage(
