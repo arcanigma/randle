@@ -4,11 +4,11 @@ import { MongoClient } from 'mongodb';
 import ordinal from 'ordinal';
 import { MAX_TEXT_SIZE } from '../app';
 import { commas, trunc, wss } from '../library/factory';
+import { getMembers } from '../library/lookup';
+import { getMacro } from '../macros/macros';
 import { MODE_WORD } from './commands';
 import { SUIT_EMOJIS } from './deck';
-import { getMembers } from '../library/lookup';
 import { pluck } from './solving';
-import { getMacro } from '../macros/macros';
 
 // TODO refactor to support initial posts
 

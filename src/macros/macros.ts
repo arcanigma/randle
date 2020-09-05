@@ -4,6 +4,8 @@ import * as edit_macro_button from './edit_macro_button';
 import * as edit_macro_modal from './edit_macro_modal';
 
 export async function getMacro(store: Promise<MongoClient>, context: Context, user: string, name: string): Promise<string> {
+    name = name.toLowerCase();
+
     const coll = (await store).db().collection('macros');
     return (await coll.findOne(
         { _id: user },
