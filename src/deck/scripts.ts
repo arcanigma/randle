@@ -217,9 +217,9 @@ export const events = (app: App): void => {
                             text: {
                                 type: 'plain_text',
                                 emoji: true,
-                                text: `${ordinal(index+1)} \u2022 ${item}`
+                                text: trunc(`${ordinal(index+1)} \u2022 ${item}`, 75)
                             },
-                            value: JSON.stringify(item)
+                            value: trunc(item, 75)
                         }))
                     }
                 });
@@ -332,7 +332,7 @@ export const events = (app: App): void => {
 
         const user = body.user.id,
             revealed = action.selected_options
-                .map(it => <string>JSON.parse(it.value)),
+                .map(it => it.value),
             [, channel, json_event, suit ] = action.action_id.match(re_action_id) ?? [],
             [, whom, timestamp, json_permalink ] = action.block_id.match(re_block_id) ?? [],
             event = <string[]>JSON.parse(json_event),

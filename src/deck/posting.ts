@@ -72,7 +72,7 @@ export async function postDeckMessage(
                             text: {
                                 type: 'plain_text',
                                 emoji: true,
-                                text: `${ordinal(index+1)} \u2022 ${item}`
+                                text: trunc(`${ordinal(index+1)} \u2022 ${item}`, 75)
                             },
                             value: `${index}`
                         }))

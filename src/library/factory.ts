@@ -22,7 +22,7 @@ export function trunc(text: string, limit: number): string {
     if (text.length <= limit)
         return text;
     else
-        return text.substring(0, limit-2) + '...';
+        return text.substring(0, limit-3) + '...';
 }
 
 const re_wss = /\s+/g;
