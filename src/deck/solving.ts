@@ -236,6 +236,8 @@ export function matches(it: string, matcher: Matcher, defines: Defines): boolean
         return it.match(wss(matcher.matches)) != null;
     else if ('set' in matcher)
         return construct(matcher.set, defines.sets).includes(it);
+    else if ('all' in matcher && matcher.all === true)
+        return true;
     else
         throw `Unexpected matcher \'${JSON.stringify(matcher)}\` in script.`;
 }

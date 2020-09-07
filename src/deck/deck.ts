@@ -90,6 +90,7 @@ export type Matcher =
     | { excludes: string; }
     | { matches: string; }
     | { set: string }
+    | { all: true }
 
 export const events = (app: App, store: Promise<MongoClient>): void => {
     commands.events(app, store);
