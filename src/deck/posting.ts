@@ -24,16 +24,17 @@ export async function postDeckMessage(
     say: SayFn,
     store: Promise<MongoClient>
 ): Promise<void> {
-    const suit = pluck(SUIT_EMOJIS);
+    const user = message.user,
+        suit = pluck(SUIT_EMOJIS);
 
     let list = <string[]>expression.split(',').map(it => it.trim());
     if (list.length == 1) {
         if (Number(list[0]) >= 1 && Number(list[0]) % 1 == 0)
             list = Array(Number(list[0])).fill(1).map((v, i) => String(v + i));
         else if (list[0] == '<!channel>')
-            list = (await getMembers(message.channel, context, client)).map(user => `<@${user}>`);
+            list = (await getMembers(message.channel, context, client)).map(them => `<@${them}>`);
         else if (re_macro.test(list[0]))
-            list = (await getMacro(store, context, message.user, list[0])).split(',').map(it => it.trim());
+            list = (await getMacro(store, context, user, list[0])).split(',').map(it => it.trim());
     }
 
     const items = fun(list);
@@ -43,19 +44,19 @@ export async function postDeckMessage(
         channel: message.channel,
         username: `${mode}: ${suit}`,
         icon_emoji: SUIT_EMOJIS[suit],
-        text: `<@${message.user}> ${MODE_WORD[mode].did.toLowerCase()} ${list.length != 1 ? 'items' : 'an item'}`,
+        text: `<@${user}> ${MODE_WORD[mode].did.toLowerCase()} ${list.length != 1 ? 'items' : 'an item'}`,
         blocks: [
             <SectionBlock>{
                 type: 'section',
                 text: {
                     type: 'mrkdwn',
-                    text: trunc(`<@${message.user}> ${MODE_WORD[mode].did.toLowerCase()} ${commas(items.map(item => `*${wss(item)}*`))}.`, MAX_TEXT_SIZE)
+                    text: trunc(`<@${user}> ${MODE_WORD[mode].did.toLowerCase()} ${commas(items.map(item => `*${wss(item)}*`))}.`, MAX_TEXT_SIZE)
                 }
             },
             ...(mode == 'Pool' ? [
                 <SectionBlock>{
                     type: 'section',
-                    block_id: `deck_message_block_${message.user}_${JSON.stringify(list)}`,
+                    block_id: `deck_message_block_${user}_${JSON.stringify(list)}`,
                     text: {
                         type: 'mrkdwn',
                         text: ':left_speech_bubble: Original Results'

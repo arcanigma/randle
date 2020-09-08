@@ -201,7 +201,7 @@ export const events = (app: App): void => {
 
                 per_blocks.push(<SectionBlock>{
                     type: 'section',
-                    block_id: `script_message_block_${message.user}_${message.ts}_${JSON.stringify(permalink)}`,
+                    block_id: `script_message_block_${user}_${message.ts}_${JSON.stringify(permalink)}`,
                     text: {
                         type: 'mrkdwn',
                         text: trunc(per_summary, MAX_TEXT_SIZE)
