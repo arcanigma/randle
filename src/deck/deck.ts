@@ -17,27 +17,31 @@ export type Script = {
     event?: string;
     moderator?: Option;
     limit?: Value;
-    deal?: Deck;
+    deal?: Items;
     rules?: Rules;
     import?: string | string[];
 } & Defines;
 
-export type Defines = {
-    sets?: Sets;
-    values?: Values;
-    options?: Options;
+export type Defines = { // TODO unify these types?
+    sets?: SetDefines;
+    values?: ValueDefines;
+    options?: OptionDefines;
 }
 
-export type Sets = { [name: string]: Set; }
+export type SetDefines = { [name: string]: Set; }
+
+export type ValueDefines = { [name: string]: Value; }
+
+export type OptionDefines = { [name: string]: Option; }
+
 export type Set =
     | string[]
     | string
     | { union: Set[]; }
     | { intersect: Set[]; }
     | { except: Set[]; }
-    // TODO support nested Deck
+    // TODO support nested Items
 
-export type Values = { [name: string]: Value; }
 export type Value =
     | number
     | string
@@ -47,7 +51,6 @@ export type Value =
     | { max: Value[]; }
     | { min: Value[]; }
 
-export type Options = { [name: string]: Option; }
 export type Option =
     | boolean
     | string
@@ -55,45 +58,44 @@ export type Option =
     | { or: Option[]; }
     | { not: Option; }
 
-export type Deck =
+export type Items =
     | string
-    | { choose: Value; from: Deck; }
-    | { choose: Value; grouping: Deck[]; }
-    | { repeat: Value; from: Deck; }
-    | { repeat: Value; grouping: Deck[]; }
-    | { duplicate: Value; of?: Value; from: Deck; }
-    | { cross: Deck; with: Deck; using?: string; }
-    | { zip: Deck; with: Deck; using?: string; }
-    | { if: Option; then: Deck; else?: Deck; }
+    | { choose: Value; from: Items; }
+    | { choose: Value; grouping: Items[]; }
+    | { repeat: Value; from: Items; }
+    | { repeat: Value; grouping: Items[]; }
+    | { duplicate: Value; of?: Value; from: Items; }
+    | { cross: Items; with: Items; using?: string; }
+    | { zip: Items; with: Items; using?: string; }
+    | { if: Option; then: Items; else?: Items; }
     | { set: Set; }
-    | Deck[]
+    | Items[]
 
-export type Rules = Rule | Rule[];
-export type Rule = (
+export type Rules =
     | ShowRule
     | AnnounceRule
     | GraphRule
-) & Conditional
-
-export type Conditional = { if?: Option; } // TODO verify in use for announce, graph
+    | Rules[]
 
 export type ShowRule = {
-    show: Matchers;
-    to: Matchers;
+    show: Matcher;
+    to: Matcher;
     as?: string;
     loopless?: Option; // TODO all-encompassing loopless/no-self option
-}
+} & Conditional
+
 export type AnnounceRule = {
-    announce: Matchers;
+    announce: Matcher;
     as?: string;
-}
+} & Conditional
 
 export type GraphRule = {
-    graph: Matchers;
+    graph: Matcher;
     color: string;
-}
+} & Conditional
 
-export type Matchers = Matcher | Matcher[];
+export type Conditional = { if?: Option; }
+
 export type Matcher =
     | string
     | { is: string; }
@@ -107,6 +109,7 @@ export type Matcher =
     | { matches: string; }
     | { all: true }
     | { set: Set; }
+    | Matcher[]
 
 export const events = (app: App, store: Promise<MongoClient>): void => {
     commands.events(app, store);

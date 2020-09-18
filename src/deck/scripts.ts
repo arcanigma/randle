@@ -9,9 +9,9 @@ import { commas, names, trunc } from '../library/factory';
 import { community, nonthread } from '../library/listeners';
 import { getMembers } from '../library/lookup';
 import { blame } from '../library/messages';
-import { AnnounceRule, GraphRule, Script, ShowRule, SUIT_EMOJIS } from './deck';
+import { AnnounceRule, GraphRule, Items, Rules, Script, ShowRule, SUIT_EMOJIS } from './deck';
 import { uploadGraphFile } from './graphing';
-import { deckOf, evaluate, listify, matches, pluck, shuffle, validate } from './solving';
+import { build, evaluate, listify, matches, pluck, shuffle, validate } from './solving';
 
 export const MAX_IMPORTS = 5;
 
@@ -27,29 +27,64 @@ export const events = (app: App): void => {
                 if (Array.isArray(script.import) && script.import.length > MAX_IMPORTS)
                     throw `Too many imports (limit of ${MAX_IMPORTS}) in script.`;
 
-                try {
-                    const imports = [];
-                    for (let url of listify(script.import)) {
-                        const match = url.match(re_url);
-                        if (match)
-                            url = match[1];
+                for (let url of listify(script.import)) {
+                    const match = url.match(re_url);
+                    if (match)
+                        url = match[1];
 
-                        const raw = await got.get(url).text(),
-                            iscript = <Script>JSON5.parse(raw);
-                        imports.push(iscript);
+                    let raw;
+                    try {
+                        raw = await got.get(url).text();
                     }
-                    Object.assign(script, ...imports);
-                    delete script.import;
+                    catch (err) {
+                        throw `Web error \`${err.message}\` for \`${url}\` import.`;
+                    }
+
+                    let iscript;
+                    try {
+                        iscript = <Script>JSON5.parse(raw);
+                    }
+                    catch (err) {
+                        throw `Parse error \`${err.message}\` for \`${url}\` import.`;
+                    }
+
+                    if ('import' in iscript)
+                        throw `Forbidden nested import \`${JSON.stringify(iscript.import)}\` in \`${url}\` import.`;
+
+                    if ('event' in iscript)
+                        script.event = script.event !== undefined
+                            ? `${script.event} \u2022 ${iscript.event}`
+                            : iscript.event;
+
+                    if ('moderator' in iscript)
+                        script.moderator = iscript.moderator;
+
+                    if ('limit' in iscript)
+                        script.limit = script.limit;
+
+                    if ('deal' in iscript)
+                        script.deal = <Items> listify([script.deal, iscript.deal]);
+
+                    if ('rules' in iscript)
+                        script.rules = <Rules> listify([script.rules, iscript.rules]);
+
+                    if ('sets' in iscript)
+                        script.sets = Object.assign(script.sets ?? {}, iscript.sets);
+
+                    if ('values' in iscript)
+                        script.values = Object.assign(script.values ?? {}, iscript.values);
+
+                    if ('options' in iscript)
+                        script.options = Object.assign(script.options ?? {}, iscript.options);
                 }
-                catch (err) {
-                    throw `Web error \`${err.message}\` for \`${JSON.stringify(script.import)}\` URL.`;
-                }
+
+                delete script.import;
             }
 
             if (!script.deal)
                 throw `Unexpected deal \`${JSON.stringify(script.deal)}\` in script.`;
 
-            const items = deckOf(script.deal, script),
+            const items = shuffle(build(script.deal, script)),
                 users = (await getMembers(message.channel, context, client))
                     .filter(user => user != message.user || !validate(script.moderator, script.options));
 

@@ -1,22 +1,22 @@
 import randomInt from 'php-random-int';
 import { wss } from '../library/factory';
-import { Deck, Defines, Matcher, Option, Options, Set, Sets, Value, Values } from './deck.js';
+import { Defines, Items, Matcher, Option, OptionDefines, Set, SetDefines, Value, ValueDefines } from './deck.js';
 
-export function deckOf(items: Deck, defines: Defines): string[] {
-    return shuffle(subdeckOf(items, defines));
-}
-
-export function subdeckOf(items: Deck, defines: Defines): string[] {
-    if (typeof items === 'string')
+export function build(items: Items, defines: Defines): string[] {
+    if (Array.isArray(items))
+        return items.map(
+            item => build(item, defines)
+        ).flat();
+    else if (typeof items === 'string')
         return [wss(items)];
     else if ('choose' in items) {
         if ('from' in items)
             return choose(
-                subdeckOf(items.from, defines),
+                build(items.from, defines),
                 evaluate(items.choose, defines.values)
             );
         else if ('grouping' in items)
-            return subdeckOf(choose(
+            return build(choose(
                 items.grouping,
                 evaluate(items.choose, defines.values)
             ), defines);
@@ -26,11 +26,11 @@ export function subdeckOf(items: Deck, defines: Defines): string[] {
     else if ('repeat' in items) {
         if ('from' in items)
             return repeat(
-                subdeckOf(items.from, defines),
+                build(items.from, defines),
                 evaluate(items.repeat, defines.values)
             );
         else if ('grouping' in items)
-            return subdeckOf(repeat(
+            return build(repeat(
                 items.grouping,
                 evaluate(items.repeat, defines.values)
             ), defines);
@@ -40,45 +40,40 @@ export function subdeckOf(items: Deck, defines: Defines): string[] {
     else if ('duplicate' in items)
         return repeat(
             choose(
-                subdeckOf(items.from, defines),
+                build(items.from, defines),
                 items.of ? evaluate(items.of, defines.values) : 1
             ),
             evaluate(items.duplicate, defines.values)
         );
     else if ('cross' in items)
         return cross(
-            subdeckOf(items.cross, defines),
-            subdeckOf(items.with, defines),
+            build(items.cross, defines),
+            build(items.with, defines),
             items.using
         );
     else if ('zip' in items)
         return zip(
-            subdeckOf(items.zip, defines),
-            subdeckOf(items.with, defines),
+            build(items.zip, defines),
+            build(items.with, defines),
             items.using
         );
     else if ('if' in items)
         return validate(items.if, defines.options)
-            ? subdeckOf(items.then, defines)
-            : ( items.else ? subdeckOf(items.else, defines) : [] );
-    else if ('set' in items) {
+            ? build(items.then, defines)
+            : ( items.else ? build(items.else, defines) : [] );
+    else if ('set' in items)
         return construct(items.set, defines.sets);
-    }
-    else if (Array.isArray(items))
-        return items.map(
-            item => subdeckOf(item, defines)
-        ).flat();
     else
         throw `Unexpected deck \'${JSON.stringify(items)}\` in script.`;
 }
 
 export function listify<T>(element: T | T[]): T[] {
-    if (element === undefined)
-        return [];
-    else if (Array.isArray(element))
-        return element.flat() as T[];
-    else
+    if (Array.isArray(element))
+        return element.flat().filter(it => it !== undefined) as T[];
+    else if (element !== undefined)
         return [element];
+    else
+        return [];
 }
 
 export function shuffle<T>(list: T[]): T[] {
@@ -131,7 +126,7 @@ export function zip<T>(list1: T[], list2: T[], delimiter?: T): string[] {
     return build;
 }
 
-export function evaluate(it: Value | undefined, values?: Values): number {
+export function evaluate(it: Value | undefined, values?: ValueDefines): number {
     if (it === undefined)
         return 0;
     if (typeof it === 'number')
@@ -161,7 +156,7 @@ export function evaluate(it: Value | undefined, values?: Values): number {
         throw `Unexpected value \'${JSON.stringify(it)}\` in script.`;
 }
 
-export function validate(it: Option | undefined, options?: Options): boolean {
+export function validate(it: Option | undefined, options?: OptionDefines): boolean {
     if (it === undefined)
         return false;
     if (typeof it === 'boolean')
@@ -187,11 +182,11 @@ export function validate(it: Option | undefined, options?: Options): boolean {
         throw `Unexpected option \'${JSON.stringify(it)}\` in script.`;
 }
 
-export function construct(it: Set | undefined, sets?: Sets): string[] {
-    if (it === undefined)
-        return [];
-    else if (Array.isArray(it))
+export function construct(it: Set | undefined, sets?: SetDefines): string[] {
+    if (Array.isArray(it))
         return it;
+    else if (it === undefined)
+        return [];
     else if (typeof it === 'string') {
         if (sets !== undefined && sets[it] !== undefined)
             return sets[it] = construct(
@@ -214,7 +209,9 @@ export function construct(it: Set | undefined, sets?: Sets): string[] {
 }
 
 export function matches(it: string, matcher: Matcher, defines: Defines): boolean {
-    if (typeof matcher === 'string')
+    if (Array.isArray(matcher))
+        return matcher.some(m => matches(it, m, defines));
+    else if (typeof matcher === 'string')
         return it == wss(matcher);
     else if ('is' in matcher)
         return it == wss(matcher.is);

@@ -1,11 +1,12 @@
 
-export function commas(list: string[], separator=', ', conjunction='and'): string {
-    if (list.length == 1)
-        return list[0];
-    else if (list.length == 2)
-        return `${list[0]} ${conjunction} ${list[1]}`;
-    else if (list.length >= 3)
-        return `${list.slice(0, -1).join(separator)}, ${conjunction} ${list.slice(-1)}`;
+export function commas(list: (string | undefined)[], separator=', ', conjunction='and'): string {
+    const flist = list.filter(it => it !== undefined) as string[];
+    if (flist.length == 1)
+        return flist[0];
+    else if (flist.length == 2)
+        return `${flist[0]} ${conjunction} ${flist[1]}`;
+    else if (flist.length >= 3)
+        return `${flist.slice(0, -1).join(separator)}, ${conjunction} ${flist.slice(-1)}`;
     else
         return '';
 }
