@@ -9,7 +9,7 @@ import { commas, names, trunc } from '../library/factory';
 import { community, nonthread } from '../library/listeners';
 import { getMembers } from '../library/lookup';
 import { blame } from '../library/messages';
-import { AnnounceRule, GraphRule, Items, Rules, Script, ShowRule, SUIT_EMOJIS } from './deck';
+import { AnnounceRule, ExplainRule, GraphRule, Items, Rules, Script, ShowRule, SUIT_EMOJIS } from './deck';
 import { uploadGraphFile } from './graphing';
 import { build, evaluate, listify, matches, pluck, shuffle, validate } from './solving';
 
@@ -176,32 +176,37 @@ export const events = (app: App): void => {
                     }
                 ];
 
-            let announced: string[] = [];
+            let publish: string[] = [];
             if (script.rules) {
                 listify(script.rules).filter((rule): rule is AnnounceRule => 'announce' in rule && validate(rule.if ?? true, script.options)).forEach(rule => {
                     listify(rule.announce).forEach(announce => {
                         Object.keys(dealt).forEach(who => {
                             dealt[who].filter(it => matches(it, announce, script)).forEach(whose => {
-                                const text = trunc(`${!rule.as ? ':eye-in-speech-bubble:' : ':left_speech_bubble:'} You all see that <@${who}> was dealt ${!rule.as ? `*${whose}*` : `*${rule.as}* as an alias`}.`, MAX_TEXT_SIZE);
-                                if (!announced.includes(text))
-                                    announced.push(text);
+                                const text = trunc(`:${!rule.as ? 'eye-in-speech-bubble' : 'left_speech_bubble'}: You all see that <@${who}> was dealt ${!rule.as ? `*${whose}*` : `*${rule.as}* as an alias`}.`, MAX_TEXT_SIZE);
+                                if (!publish.includes(text))
+                                    publish.push(text);
                             });
                         });
                     });
                 });
-            }
-            if (announced.length > 0) {
-                announced = shuffle(announced);
 
-                if (announced.length > MAX_CONTEXT_ELEMENTS)
-                    announced = [
-                        ...announced.slice(0, MAX_CONTEXT_ELEMENTS - 1),
+                publish = shuffle(publish);
+
+                listify(script.rules).filter((rule): rule is ExplainRule => 'explain' in rule && validate(rule.if ?? true, script.options)).forEach(rule => {
+                    const text = trunc(`:${!rule.emoji ? 'information_source' : rule.emoji}: ${rule.explain}.`, MAX_TEXT_SIZE);
+                    publish.push(text);
+                });
+            }
+            if (publish.length > 0) {
+                if (publish.length > MAX_CONTEXT_ELEMENTS)
+                    publish = [
+                        ...publish.slice(0, MAX_CONTEXT_ELEMENTS - 1),
                         trunc(`:warning: Too many context elements to show (limit of ${MAX_CONTEXT_ELEMENTS}).`, MAX_TEXT_SIZE)
                     ];
 
                 all_blocks.push(<ContextBlock>{
                     type: 'context',
-                    elements: announced.map(text => (<MrkdwnElement>{
+                    elements: publish.map(text => (<MrkdwnElement>{
                         type: 'mrkdwn',
                         text: text
                     }))
@@ -267,7 +272,7 @@ export const events = (app: App): void => {
                                 listify(rule.show).forEach(show => {
                                     Object.keys(dealt).forEach(them => {
                                         dealt[them].filter(it => matches(it, show, script) && (!rule.loopless || it != yours)).forEach(theirs => {
-                                            const text = trunc(`${!rule.as ? ':eye-in-speech-bubble:' : ':left_speech_bubble:'} Because you were dealt *${yours}* you see that ${them != user ? `<@${them}> was` : 'you were also'} dealt ${!rule.as ? `*${theirs}*` : `*${rule.as}* as an alias`}.`, MAX_TEXT_SIZE);
+                                            const text = trunc(`:${!rule.as ? 'eye-in-speech-bubble' : 'left_speech_bubble'}: Because you were dealt *${yours}* you see that ${them != user ? `<@${them}> was` : 'you were also'} dealt ${!rule.as ? `*${theirs}*` : `*${rule.as}* as an alias`}.`, MAX_TEXT_SIZE);
                                             if (!shown.includes(text))
                                                 shown.push(text);
                                         });

@@ -75,6 +75,7 @@ export type Rules =
     | ShowRule
     | AnnounceRule
     | GraphRule
+    | ExplainRule
     | Rules[]
 
 export type ShowRule = {
@@ -92,6 +93,11 @@ export type AnnounceRule = {
 export type GraphRule = {
     graph: Matcher;
     color: string;
+} & Conditional
+
+export type ExplainRule = {
+    explain: string;
+    emoji?: string;
 } & Conditional
 
 export type Conditional = { if?: Option; }
