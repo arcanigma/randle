@@ -11,7 +11,7 @@ import { getMembers } from '../library/lookup';
 import { blame } from '../library/messages';
 import { AnnounceRule, ExplainRule, GraphRule, Items, Rules, Script, ShowRule, SUIT_EMOJIS } from './deck';
 import { uploadGraphFile } from './graphing';
-import { build, evaluate, listify, matches, pluck, shuffle, validate } from './solving';
+import { build, enable, evaluate, listify, matches, pluck, shuffle, validate } from './solving';
 
 export const MAX_IMPORTS = 5;
 
@@ -85,15 +85,15 @@ export const events = (app: App): void => {
                 throw `Unexpected deal \`${JSON.stringify(script.deal)}\` in script.`;
 
             const items = shuffle(build(script.deal, script)),
+                draft = items.filter((item, index) => items.indexOf(item) === index),
                 users = (await getMembers(message.channel, context, client))
                     .filter(user => user != message.user || !validate(script.moderator, script.options));
 
             const graph: ElementDefinition[] = [];
             if (script.rules && listify(script.rules).some(rule => 'graph' in rule)) {
-                const unique = items.filter((item, index) => items.indexOf(item) === index);
-                listify(script.rules).filter((rule): rule is GraphRule => 'graph' in rule && validate(rule.if ?? true, script.options)).forEach(rule => {
+                listify(script.rules).filter((rule): rule is GraphRule => 'graph' in rule && enable(rule, draft, script.options)).forEach(rule => {
                     listify(rule.graph).forEach(node => {
-                        unique.filter(it => matches(it, node, script)).forEach(which => {
+                        draft.filter(it => matches(it, node, script)).forEach(which => {
                             const edge = graph.find(node => node.data.id == which);
                             if (edge === undefined)
                                 graph.push(<ElementDefinition>{
@@ -109,11 +109,11 @@ export const events = (app: App): void => {
                     });
                 });
 
-                listify(script.rules).filter((rule): rule is ShowRule => 'show' in rule && validate(rule.if ?? true, script.options)).forEach(rule => {
+                listify(script.rules).filter((rule): rule is ShowRule => 'show' in rule && enable(rule, draft, script.options)).forEach(rule => {
                     listify(rule.to).forEach(to => {
-                        unique.filter(it => matches(it, to, script)).forEach(yours => {
+                        draft.filter(it => matches(it, to, script)).forEach(yours => {
                             listify(rule.show).forEach(show => {
-                                unique.filter(it => matches(it, show, script) && (!rule.loopless || it != yours)).forEach(theirs => {
+                                draft.filter(it => matches(it, show, script) && (!rule.loopless || it != yours)).forEach(theirs => {
                                     graph.push(<ElementDefinition>{
                                         group: 'edges',
                                         data: {
@@ -178,7 +178,7 @@ export const events = (app: App): void => {
 
             let publish: string[] = [];
             if (script.rules) {
-                listify(script.rules).filter((rule): rule is AnnounceRule => 'announce' in rule && validate(rule.if ?? true, script.options)).forEach(rule => {
+                listify(script.rules).filter((rule): rule is AnnounceRule => 'announce' in rule && enable(rule, draft, script.options)).forEach(rule => {
                     listify(rule.announce).forEach(announce => {
                         Object.keys(dealt).forEach(who => {
                             dealt[who].filter(it => matches(it, announce, script)).forEach(whose => {
@@ -192,7 +192,7 @@ export const events = (app: App): void => {
 
                 publish = shuffle(publish);
 
-                listify(script.rules).filter((rule): rule is ExplainRule => 'explain' in rule && validate(rule.if ?? true, script.options)).forEach(rule => {
+                listify(script.rules).filter((rule): rule is ExplainRule => 'explain' in rule && enable(rule, draft, script.options)).forEach(rule => {
                     const text = trunc(`:${!rule.emoji ? 'information_source' : rule.emoji}: ${rule.explain}.`, MAX_TEXT_SIZE);
                     publish.push(text);
                 });
@@ -266,7 +266,7 @@ export const events = (app: App): void => {
 
                 let shown: string[] = [];
                 if (script.rules) {
-                    listify(script.rules).filter((rule): rule is ShowRule => 'show' in rule && validate(rule.if ?? true, script.options)).forEach(rule => {
+                    listify(script.rules).filter((rule): rule is ShowRule => 'show' in rule && enable(rule, draft, script.options)).forEach(rule => {
                         listify(rule.to).forEach(to => {
                             dealt[user].filter(it => matches(it, to, script)).forEach(yours => {
                                 listify(rule.show).forEach(show => {

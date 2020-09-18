@@ -100,7 +100,11 @@ export type ExplainRule = {
     emoji?: string;
 } & Conditional
 
-export type Conditional = { if?: Option; }
+export type Conditional = {
+    if?: Option;
+    ifIncluded?: string | string[];
+    ifExcluded?: string | string[];
+}
 
 export type Matcher =
     | string

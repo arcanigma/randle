@@ -1,6 +1,6 @@
 import randomInt from 'php-random-int';
 import { wss } from '../library/factory';
-import { Defines, Items, Matcher, Option, OptionDefines, Set, SetDefines, Value, ValueDefines } from './deck.js';
+import { Defines, Items, Matcher, Option, OptionDefines, Rules, Set, SetDefines, Value, ValueDefines } from './deck.js';
 
 export function build(items: Items, defines: Defines): string[] {
     if (Array.isArray(items))
@@ -180,6 +180,22 @@ export function validate(it: Option | undefined, options?: OptionDefines): boole
         return !validate(it.not, options);
     else
         throw `Unexpected option \'${JSON.stringify(it)}\` in script.`;
+}
+
+export function enable(rule: Rules, items: string[], options?: OptionDefines): boolean {
+    if ('if' in rule && rule.if !== undefined)
+        if (!validate(rule.if, options))
+            return false;
+
+    if ('ifIncluded' in rule && rule.ifIncluded !== undefined)
+        if (!listify(rule.ifIncluded).every(it => items.includes(it)))
+            return false;
+
+    if ('ifExcluded' in rule && rule.ifExcluded !== undefined)
+        if (listify(rule.ifExcluded).every(it => items.includes(it)))
+           return false;
+
+    return true;
 }
 
 export function construct(it: Set | undefined, sets?: SetDefines): string[] {
