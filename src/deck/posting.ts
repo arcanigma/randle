@@ -11,6 +11,7 @@ import { SUIT_EMOJIS } from './deck';
 import { pluck } from './solving';
 
 // TODO refactor to support initial posts
+// TODO refactor back into scripts
 
 const re_macro = /^[\w_][\w\d_]{2,14}$/;
 export async function postDeckMessage(

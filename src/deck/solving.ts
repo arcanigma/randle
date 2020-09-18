@@ -190,7 +190,7 @@ export function validate(it: Option | undefined, options?: Options): boolean {
 export function construct(it: Set | undefined, sets?: Sets): string[] {
     if (it === undefined)
         return [];
-    if (Array.isArray(it))
+    else if (Array.isArray(it))
         return it;
     else if (typeof it === 'string') {
         if (sets !== undefined && sets[it] !== undefined)
@@ -203,12 +203,12 @@ export function construct(it: Set | undefined, sets?: Sets): string[] {
         else
             throw `Undefined set \`${JSON.stringify(it)}\` in script.`;
     }
-    // else if ('union' in it)
-    //     return <string[]>it.union.reduce((x, y) => [...construct(x, sets), ...construct(y, sets)].filter((item, index, self) => self.indexOf(item) === index));
-    // else if ('intersect' in it)
-    //     return <string[]>it.intersect.reduce((x, y) => construct(x, sets).filter(item => construct(y, sets).includes(item)));
-    // else if ('except' in it)
-    //     return <string[]>it.except.reduce((x, y) => construct(x, sets).filter(item => !construct(y, sets).includes(item)));
+    else if ('union' in it)
+        return <string[]>it.union.reduce((x, y) => [...construct(x, sets), ...construct(y, sets)].filter((item, index, self) => self.indexOf(item) === index));
+    else if ('intersect' in it)
+        return <string[]>it.intersect.reduce((x, y) => construct(x, sets).filter(item => construct(y, sets).includes(item)));
+    else if ('except' in it)
+        return <string[]>it.except.reduce((x, y) => construct(x, sets).filter(item => !construct(y, sets).includes(item)));
     else
         throw `Unexpected set \'${JSON.stringify(it)}\` in script.`;
 }
@@ -234,10 +234,10 @@ export function matches(it: string, matcher: Matcher, defines: Defines): boolean
         return !it.includes(wss(matcher.excludes));
     else if ('matches' in matcher)
         return it.match(wss(matcher.matches)) != null;
-    else if ('set' in matcher)
-        return construct(matcher.set, defines.sets).includes(it);
     else if ('all' in matcher && matcher.all === true)
         return true;
+    else if ('set' in matcher)
+        return construct(matcher.set, defines.sets).includes(it);
     else
         throw `Unexpected matcher \'${JSON.stringify(matcher)}\` in script.`;
 }
