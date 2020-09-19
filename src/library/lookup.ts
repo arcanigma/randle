@@ -1,21 +1,21 @@
 import { Context } from '@slack/bolt';
 import { WebAPICallResult, WebClient } from '@slack/web-api';
 
-export async function getMembers(channel: string, context: Context, client: WebClient): Promise<string[]> {
+export async function getMembers (channel: string, context: Context, client: WebClient): Promise<string[]> {
     const members = (await client.conversations.members({
-        token: context.botToken,
+        token: <string> context.botToken,
         channel: channel
     }) as WebAPICallResult & {
-        members: string[]
+        members: string[];
     }).members;
 
     const filtered = [];
     for (const member of members) {
         const is_bot = (await client.users.info({
-            token: context.botToken,
+            token: <string> context.botToken,
             user: member
         }) as WebAPICallResult & {
-            user: {is_bot: boolean}
+            user: {is_bot: boolean};
         }).user.is_bot;
 
         if (!is_bot)

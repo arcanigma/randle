@@ -30,19 +30,19 @@ export enum PollFilterOptions {
 export const view = async (user: string, store: Promise<MongoClient>, options?: HomeOptions): Promise<View> => ({
     type: 'home',
     blocks: [
-        ...await polls.blocks(user, store, options ?? { polls: { filter: PollFilterOptions.Open }}),
+        ...await polls.blocks(user, store, options ?? { polls: { filter: PollFilterOptions.Open } }),
         { type: 'divider' },
         ...await macros.blocks(user, store),
         { type: 'divider' }
     ].slice(0, MAX_VIEW_BLOCKS)
 });
 
-export const events = (app: App, store: Promise<MongoClient>): void => {
+export const register = ({ app, store }: { app: App; store: Promise<MongoClient> }): void => {
     app.event('app_home_opened', async ({ event, context, client }) => {
         const user = event.user;
 
         await client.views.publish({
-            token: context.botToken,
+            token: <string> context.botToken,
             user_id: user,
             view: await view(user, store)
         });

@@ -178,12 +178,15 @@ export const blocks = (user: string, poll: Poll, options: HomeOptions): Block[] 
     return blocks;
 };
 
-export const events = (app: App, store: Promise<MongoClient>, timers: Record<string, NodeJS.Timeout>): void => {
+export const register = ({ app, store, timers }: { app: App; store: Promise<MongoClient>; timers: Record<string, NodeJS.Timeout> }): void => {
     app.action<BlockAction<StaticSelectAction>>('poll_overflow_button', async ({ ack, body, action, context, client }) => {
         await ack();
 
         const user = body.user.id,
-            data = JSON.parse(action.selected_option.value);
+            data = JSON.parse(action.selected_option.value) as {
+                poll: string;
+                admin: string;
+            };
 
         if (timers[data.poll]) {
             clearTimeout(timers[data.poll]);
@@ -194,7 +197,7 @@ export const events = (app: App, store: Promise<MongoClient>, timers: Record<str
 
         let filter;
         if (data.admin == 'close' || data.admin == 'abort') {
-            const poll: Poll = (await coll.findOneAndUpdate(
+            const poll = <Poll> (await coll.findOneAndUpdate(
                 {
                     _id: new ObjectID(data.poll),
                     host: user
@@ -202,7 +205,7 @@ export const events = (app: App, store: Promise<MongoClient>, timers: Record<str
                 { $set: { closed: new Date() } }
             )).value;
 
-            await announce(data.admin, poll, context, body, client, store);
+            await announce({ mode: data.admin, poll, context, body, client, store });
 
             filter = PollFilterOptions.Closed;
         }
@@ -212,12 +215,12 @@ export const events = (app: App, store: Promise<MongoClient>, timers: Record<str
                 host: user
             }));
 
-            await announce('reannounce', poll, context, body, client, store);
+            await announce({ mode: 'reannounce', poll, context, body, client, store });
 
             filter = PollFilterOptions.Open;
         }
         else if (data.admin == 'reopen') {
-            const poll: Poll = (await coll.findOneAndUpdate(
+            const poll = <Poll> (await coll.findOneAndUpdate(
                 {
                     _id: new ObjectID(data.poll),
                     host: user
@@ -228,7 +231,7 @@ export const events = (app: App, store: Promise<MongoClient>, timers: Record<str
                 }
             )).value;
 
-            await announce('reopen', poll, context, body, client, store);
+            await announce({ mode: 'reopen', poll, context, body, client, store });
 
             filter = PollFilterOptions.Open;
         }
@@ -242,11 +245,11 @@ export const events = (app: App, store: Promise<MongoClient>, timers: Record<str
             filter = PollFilterOptions.Closed;
         }
         else {
-            throw `Unsupported poll administration option \`${data.admin}\`.`;
+            throw `Unsupported poll administration option \`${JSON.stringify(data.admin)}\`.`;
         }
 
         await client.views.publish({
-            token: context.botToken,
+            token: <string> context.botToken,
             user_id: user,
             view: await home.view(user, store, { polls: { filter } })
         });
@@ -256,10 +259,13 @@ export const events = (app: App, store: Promise<MongoClient>, timers: Record<str
         await ack();
 
         const user = body.user.id,
-            data = JSON.parse(action.value);
+            data = JSON.parse(action.value) as {
+                poll: string;
+                choice: number;
+            };
 
         const coll = (await store).db().collection('polls');
-        const poll: Poll = (await coll.findOneAndUpdate(
+        const poll = <Poll> (await coll.findOneAndUpdate(
             {
                 _id: new ObjectID(data.poll),
                 members: { $in: [user] },
@@ -273,7 +279,7 @@ export const events = (app: App, store: Promise<MongoClient>, timers: Record<str
 
         if (poll) {
             if (poll.setup.includes(PollSetupOptions.Participation))
-                await announce('participate', poll, context, body, client, store);
+                await announce({ mode: 'participate', poll, context, body, client, store });
 
             if (poll.setup.includes(PollSetupOptions.Autoclose)) {
                 if (timers[data.poll]) {
@@ -296,13 +302,13 @@ export const events = (app: App, store: Promise<MongoClient>, timers: Record<str
                                     { $set: { closed: new Date() } }
                                 );
 
-                                await announce('autoclose', poll, context, body, client, store);
+                                await announce({ mode: 'autoclose', poll, context, body, client, store });
                             }
                         })();
                     }, AUTOCLOSE_GRACE * 1000);
 
                     await client.views.open({
-                        token: context.botToken,
+                        token: <string> context.botToken,
                         trigger_id: body.trigger_id,
                         view: information_modal.view({
                             title: 'Warning',
@@ -313,14 +319,14 @@ export const events = (app: App, store: Promise<MongoClient>, timers: Record<str
             }
 
             await client.views.publish({
-                token: context.botToken,
+                token: <string> context.botToken,
                 user_id: user,
                 view: await home.view(user, store)
             });
         }
         else {
             await client.views.open({
-                token: context.botToken,
+                token: <string> context.botToken,
                 trigger_id: body.trigger_id,
                 view: information_modal.view({
                     title: 'Error',

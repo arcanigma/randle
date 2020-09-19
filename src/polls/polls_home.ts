@@ -64,7 +64,7 @@ export const blocks = async (user: string, store: Promise<MongoClient>, options:
     ]);
 
     const coll = (await store).db().collection('polls');
-    const polls: Cursor<Poll> = coll.find({
+    const polls = <Cursor<Poll>> coll.find({
         ...options.polls.filter != PollFilterOptions.All ? {
             closed: { $exists: options.polls.filter == PollFilterOptions.Closed }
         } : {},
@@ -108,7 +108,7 @@ export const blocks = async (user: string, store: Promise<MongoClient>, options:
     return blocks;
 };
 
-export const events = (app: App, store: Promise<MongoClient>):void => {
+export const register = ({ app, store }: { app: App; store: Promise<MongoClient> }): void => {
     app.action<BlockAction<StaticSelectAction>>('filter_polls_select', async ({ ack, body, action, context, client }) => {
         await ack();
 
@@ -122,7 +122,7 @@ export const events = (app: App, store: Promise<MongoClient>):void => {
         };
 
         await client.views.publish({
-            token: context.botToken,
+            token: <string> context.botToken,
             user_id: user,
             view: await home.view(user, store, options)
         });

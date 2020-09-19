@@ -4,7 +4,7 @@ import * as commands from './commands';
 import * as scripts from './scripts';
 
 export const SUIT_EMOJIS: ({
-    [suit: string]: string
+    [suit: string]: string;
 }) = {
     'Spades': ':spades:',
     'Hearts': ':hearts:',
@@ -28,46 +28,46 @@ export type Defines = {
     options?: OptionDefines;
 }
 
-export type SetDefines = { [name: string]: Set; }
+export type SetDefines = { [name: string]: Set }
 
-export type ValueDefines = { [name: string]: Value; }
+export type ValueDefines = { [name: string]: Value }
 
-export type OptionDefines = { [name: string]: Option; }
+export type OptionDefines = { [name: string]: Option }
 
 export type Set =
     | string[]
     | string
-    | { union: Set[]; }
-    | { intersect: Set[]; }
-    | { except: Set[]; }
+    | { union: Set[] }
+    | { intersect: Set[] }
+    | { except: Set[] }
 
 export type Value =
     | number
     | string
-    | { plus: Value[]; }
-    | { minus: Value[]; }
-    | { times: Value[]; }
-    | { max: Value[]; }
-    | { min: Value[]; }
+    | { plus: Value[] }
+    | { minus: Value[] }
+    | { times: Value[] }
+    | { max: Value[] }
+    | { min: Value[] }
 
 export type Option =
     | boolean
     | string
-    | { and: Option[]; }
-    | { or: Option[]; }
-    | { not: Option; }
+    | { and: Option[] }
+    | { or: Option[] }
+    | { not: Option }
 
 export type Items =
     | string
-    | { choose: Value; from: Items; }
-    | { choose: Value; grouping: Items[]; }
-    | { repeat: Value; from: Items; }
-    | { repeat: Value; grouping: Items[]; }
-    | { duplicate: Value; of?: Value; from: Items; }
-    | { cross: Items; with: Items; using?: string; }
-    | { zip: Items; with: Items; using?: string; }
-    | { if: Option; then: Items; else?: Items; }
-    | { set: Set; union?: Set, intersect?: Set, except?: Set }
+    | { choose: Value; from: Items }
+    | { choose: Value; grouping: Items[] }
+    | { repeat: Value; from: Items }
+    | { repeat: Value; grouping: Items[] }
+    | { duplicate: Value; of?: Value; from: Items }
+    | { cross: Items; with: Items; using?: string }
+    | { zip: Items; with: Items; using?: string }
+    | { if: Option; then: Items; else?: Items }
+    | { set: Set; union?: Set; intersect?: Set; except?: Set }
     | Items[]
 
 export type Rules =
@@ -107,20 +107,21 @@ export type Conditional = {
 
 export type Matcher =
     | string
-    | { is: string; }
-    | { isNot: string; }
-    | { startsWith: string; }
-    | { startsWithout: string; }
-    | { endsWith: string; }
-    | { endsWithout: string; }
-    | { includes: string; }
-    | { excludes: string; }
-    | { matches: string; }
+    | { is: string }
+    | { isNot: string }
+    | { startsWith: string }
+    | { startsWithout: string }
+    | { endsWith: string }
+    | { endsWithout: string }
+    | { includes: string }
+    | { excludes: string }
+    | { matches: string }
     | { all: true }
-    | { set: Set; union?: Set, intersect?: Set, except?: Set }
+    | { set: Set; union?: Set; intersect?: Set; except?: Set }
     | Matcher[]
 
-export const events = (app: App, store: Promise<MongoClient>): void => {
-    commands.events(app, store);
-    scripts.events(app);
+export const register = ({ app, store }: { app: App; store: Promise<MongoClient> }): void => {
+    [ commands, scripts ].forEach(it => {
+        it.register({ app, store });
+    });
 };

@@ -1,6 +1,6 @@
-import { App, Context } from '@slack/bolt';
+import { App, ButtonAction, ChannelsSelectAction, CheckboxesAction, Context, MultiUsersSelectAction } from '@slack/bolt';
 import { InputBlock, View, WebAPICallResult, WebClient } from '@slack/web-api';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import { size } from '../library/factory';
 import { announce, Poll, PollSetupOptions } from './polls';
 
@@ -62,10 +62,10 @@ export const view = async (channel: string | undefined, context: Context, client
                     text: 'Select users'
                 },
                 initial_users: channel ? ((await client.conversations.members({
-                    token: context.botToken,
+                    token: <string> context.botToken,
                     channel: channel
                 }) as WebAPICallResult & {
-                    members: string[]
+                    members: string[];
                 }).members.filter(user => user != context.botUserId)) : []
             }
         },
@@ -194,17 +194,20 @@ export const view = async (channel: string | undefined, context: Context, client
     ]
 });
 
-export const events = (app: App, store: Promise<MongoClient>): void => {
+type Input<T> = { input: T }
+type Inputs<T> = { inputs: T }
+
+export const register = ({ app, store }: { app: App; store: Promise<MongoClient> }): void => {
     const re_lines = /\r\n|\r|\n/,
         re_mrkdwn = /([*_~`<>])/g;
     app.view('create_poll_modal', async ({ ack, body, view, context, client }) => {
         const host = body.user.id,
             data = view.state.values,
-            audience: string = data.audience.input.selected_channel,
-            members: string[] = data.members.input.selected_users,
-            prompt: string = data.prompt.input.value.replace(re_lines, ' ').replace(re_mrkdwn, ''),
-            choices: string[] = data.choices.input.value.trim().split(re_lines).map((choice: string) => choice.trim().replace(re_mrkdwn, '')).filter(Boolean),
-            setup: PollSetupOptions[] = (data.setup.inputs.selected_options ?? []).map((checkbox: { value: string}) => checkbox.value);
+            audience = (<Input<ChannelsSelectAction>> data.audience).input.selected_channel,
+            members = (<Input<MultiUsersSelectAction>> data.members).input.selected_users,
+            prompt = (<Input<ButtonAction>> data.prompt).input.value.replace(re_lines, ' ').replace(re_mrkdwn, ''),
+            choices = (<Input<ButtonAction>> data.choices).input.value.trim().split(re_lines).map((choice: string) => choice.trim().replace(re_mrkdwn, '')).filter(Boolean),
+            setup = ((<Inputs<CheckboxesAction>> data.setup).inputs.selected_options ?? []).map(checkbox => <PollSetupOptions> checkbox.value);
 
         const errors: { [blockId: string]: string } = {};
 
@@ -242,8 +245,8 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
         };
 
         const coll = (await store).db().collection('polls');
-        poll._id = (await coll.insertOne(poll)).insertedId;
+        poll._id = <ObjectId> (await coll.insertOne(poll)).insertedId;
 
-        await announce('open', poll, context, body, client, store);
+        await announce({ mode: 'open', poll, context, body, client, store });
     });
 };

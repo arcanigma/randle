@@ -4,13 +4,8 @@ import { ElementDefinition } from 'cytoscape';
 import puppeteer from 'puppeteer';
 import { Script } from './deck';
 
-export async function uploadGraphFile(
-    title: string,
-    elements: ElementDefinition[],
-    script: Script,
-    message: MessageEvent,
-    context: Context,
-    client: WebClient,
+export async function uploadGraphFile ({ title, elements, script, message, context, client }:
+    { title: string; elements: ElementDefinition[]; script: Script; message: MessageEvent; context: Context; client: WebClient }
 ): Promise<void> {
     if (elements.length == 0)
         throw 'Unexected 0 graph elements.';
@@ -39,7 +34,7 @@ export async function uploadGraphFile(
     await browser.close();
 
     await client.files.upload({
-        token: context.botToken,
+        token: <string> context.botToken,
         channels: message.channel,
         title: title,
         filename: 'graph.png',
@@ -48,7 +43,7 @@ export async function uploadGraphFile(
     });
 }
 
-function graphToHtml(title: string, graph: ElementDefinition[]): string {
+function graphToHtml (title: string, graph: ElementDefinition[]): string {
     return `<html>
     <head>
         <title>${title}</title>

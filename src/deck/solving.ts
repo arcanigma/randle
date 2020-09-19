@@ -2,7 +2,7 @@ import randomInt from 'php-random-int';
 import { wss } from '../library/factory';
 import { Defines, Items, Matcher, Option, OptionDefines, Rules, Set, SetDefines, Value, ValueDefines } from './deck.js';
 
-export function build(items: Items, defines: Defines): string[] {
+export function build (items: Items, defines: Defines): string[] {
     if (Array.isArray(items))
         return items.map(
             item => build(item, defines)
@@ -83,7 +83,7 @@ export function build(items: Items, defines: Defines): string[] {
         throw `Unexpected deck \`${JSON.stringify(items)}\` in script.`;
 }
 
-export function listify<T>(element: T | T[]): T[] {
+export function listify<T> (element: T | T[]): T[] {
     if (Array.isArray(element))
         return element.flat().filter(it => it !== undefined) as T[];
     else if (element !== undefined)
@@ -92,23 +92,23 @@ export function listify<T>(element: T | T[]): T[] {
         return [];
 }
 
-export function shuffle<T>(list: T[]): T[] {
+export function shuffle<T> (list: T[]): T[] {
     const copy = [...list];
     for (let i = copy.length - 1; i >= 1; i--) {
         const j = randomInt(0, i);
-        [copy[i], copy[j]] = [copy[j], copy[i]];
+        [ copy[i], copy[j] ] = [ copy[j], copy[i] ];
     }
     return copy;
 }
 
-export function choose<T>(list: T[], quantity: number): T[] {
+export function choose<T> (list: T[], quantity: number): T[] {
     if (quantity > list.length || quantity < 0)
         throw `Unexpected choose quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
 
     return shuffle(list).slice(list.length - quantity);
 }
 
-export function repeat<T>(list: T[], quantity: number): T[] {
+export function repeat<T> (list: T[], quantity: number): T[] {
     if (quantity < 0)
         throw `Unexpected repeat quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
 
@@ -121,34 +121,34 @@ export function repeat<T>(list: T[], quantity: number): T[] {
     return build;
 }
 
-export function pluck(object: Record<string, unknown>): string {
+export function pluck (object: Record<string, unknown>): string {
     return choose(Object.keys(object), 1)[0];
 }
 
-export function cross<T>(list1: T[], list2: T[], delimiter?: T): string[] {
+export function cross<T> (list1: T[], list2: T[], delimiter?: T): string[] {
     const build = [];
-    for (let i = 0; i < list1.length; i++)
-        for (let j = 0; j < list2.length; j++)
-            build.push(`${list1[i]}${delimiter ?? ' \u2022 '}${list2[j]}`);
+    for (const a of list1)
+        for (const b of list2)
+            build.push(`${String(a)}${String(delimiter) ?? ' \u2022 '}${String(b)}`);
     return shuffle(build);
 }
 
-export function zip<T>(list1: T[], list2: T[], delimiter?: T): string[] {
+export function zip<T> (list1: T[], list2: T[], delimiter?: T): string[] {
     const build = [],
         copy1 = shuffle(list1),
         copy2 = shuffle(list2);
     for (let i = 0; i < Math.min(list1.length, list2.length); i++)
-        build.push(wss(`${copy1[i]}${delimiter ?? ' \u2022 '}${copy2[i]}`));
+        build.push(wss(`${String(copy1[i])}${String(delimiter) ?? ' \u2022 '}${String(copy2[i])}`));
     return build;
 }
 
-export function evaluate(it: Value | undefined, values?: ValueDefines): number {
+export function evaluate (it: Value | undefined, values?: ValueDefines): number {
     if (it === undefined)
         return 0;
     if (typeof it === 'number')
         return it;
     else if (typeof it === 'string') {
-        if (values !== undefined && values[it] !== undefined)
+        if (values?.[it] !== undefined)
             return values[it] = evaluate(
                 values[it],
                 Object.assign({}, values, { [it]: undefined })
@@ -172,13 +172,13 @@ export function evaluate(it: Value | undefined, values?: ValueDefines): number {
         throw `Unexpected value \`${JSON.stringify(it)}\` in script.`;
 }
 
-export function validate(it: Option | undefined, options?: OptionDefines): boolean {
+export function validate (it: Option | undefined, options?: OptionDefines): boolean {
     if (it === undefined)
         return false;
     if (typeof it === 'boolean')
         return it;
     else if (typeof it === 'string') {
-        if (options !== undefined && options[it] !== undefined)
+        if (options?.[it] !== undefined)
             return options[it] = validate(
                 options[it],
                 Object.assign({}, options, { [it]: undefined })
@@ -198,7 +198,7 @@ export function validate(it: Option | undefined, options?: OptionDefines): boole
         throw `Unexpected option \`${JSON.stringify(it)}\` in script.`;
 }
 
-export function enable(rule: Rules, items: string[], options?: OptionDefines): boolean {
+export function enable (rule: Rules, items: string[], options?: OptionDefines): boolean {
     if ('if' in rule && rule.if !== undefined)
         if (!validate(rule.if, options))
             return false;
@@ -214,13 +214,13 @@ export function enable(rule: Rules, items: string[], options?: OptionDefines): b
     return true;
 }
 
-export function construct(it: Set | undefined, sets?: SetDefines): string[] {
+export function construct (it: Set | undefined, sets?: SetDefines): string[] {
     if (Array.isArray(it))
         return it;
     else if (it === undefined)
         return [];
     else if (typeof it === 'string') {
-        if (sets !== undefined && sets[it] !== undefined)
+        if (sets?.[it] !== undefined)
             return sets[it] = construct(
                 sets[it],
                 Object.assign({}, sets, { [it]: undefined })
@@ -231,7 +231,7 @@ export function construct(it: Set | undefined, sets?: SetDefines): string[] {
             throw `Undefined set \`${JSON.stringify(it)}\` in script.`;
     }
     else if ('union' in it)
-        return <string[]>it.union.reduce((x, y) => [...construct(x, sets), ...construct(y, sets)].filter((item, index, self) => self.indexOf(item) === index));
+        return <string[]>it.union.reduce((x, y) => [ ...construct(x, sets), ...construct(y, sets) ].filter((item, index, self) => self.indexOf(item) === index));
     else if ('intersect' in it)
         return <string[]>it.intersect.reduce((x, y) => construct(x, sets).filter(item => construct(y, sets).includes(item)));
     else if ('except' in it)
@@ -240,7 +240,7 @@ export function construct(it: Set | undefined, sets?: SetDefines): string[] {
         throw `Unexpected set \`${JSON.stringify(it)}\` in script.`;
 }
 
-export function matches(it: string, matcher: Matcher, defines: Defines): boolean {
+export function matches (it: string, matcher: Matcher, defines: Defines): boolean {
     if (Array.isArray(matcher))
         return matcher.some(m => matches(it, m, defines));
     else if (typeof matcher === 'string')

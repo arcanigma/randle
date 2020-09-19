@@ -1,13 +1,13 @@
-import { App } from '@slack/bolt';
+import { App, ButtonAction, CheckboxesAction } from '@slack/bolt';
 import { InputBlock, View } from '@slack/web-api';
 import { MongoClient } from 'mongodb';
 import * as home from '../home';
 import { size } from '../library/factory';
 
-export const view = (name: string, replacement: string): View => ({
+export const view = (name: string, replacement: string | undefined): View => ({
     type: 'modal',
     callback_id: 'edit_macro_modal',
-    ...name ? {private_metadata: name} : {},
+    ...name ? { private_metadata: name } : {},
     title: {
         type: 'plain_text',
         text: name ? `Edit macro ${name}` : 'Create new macro'
@@ -54,7 +54,7 @@ export const view = (name: string, replacement: string): View => ({
                 type: 'plain_text_input',
                 action_id: 'input',
                 min_length: 3,
-                ...replacement ? {initial_value: replacement} : {},
+                ...replacement ? { initial_value: replacement } : {},
                 placeholder: {
                     type: 'plain_text',
                     text: 'Text'
@@ -91,12 +91,17 @@ export const view = (name: string, replacement: string): View => ({
     ]
 });
 
-export const events = (app: App, store: Promise<MongoClient>): void => {
+type Input<T> = { input: T }
+type Inputs<T> = { inputs: T }
+
+export const register = ({ app, store }: { app: App; store: Promise<MongoClient> }): void => {
     const re_macro = /^[\w_][\w\d_]{2,14}$/;
     app.view('edit_macro_modal', async ({ ack, body, view, context, client }) => {
-        const user = body.user.id;
-
-        let name = view.private_metadata || view.state.values.name.input.value;
+        const user = body.user.id,
+            data = view.state.values,
+            name = (view.private_metadata || (<Input<ButtonAction>> data.name).input.value).toLowerCase(),
+            replacement = (<Input<ButtonAction>> data.replacement).input.value,
+            options = data.options ? ((<Inputs<CheckboxesAction>> data.options).inputs.selected_options ?? []).map(checkbox => <string> checkbox.value) : [];
 
         if (!re_macro.test(name)) {
             return await ack({
@@ -106,22 +111,15 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                 }
             });
         }
-        name = name.toLowerCase();
-
-        const replacement = view.state.values.replacement.input.value;
-
-        let options_selected = [];
-        if (view.state.values.options && view.state.values.options.inputs.selected_options)
-            options_selected = view.state.values.options.inputs.selected_options.map((checkbox: { value: string}) => checkbox.value);
 
         await ack();
 
         const coll = (await store).db().collection('macros');
-        if (options_selected.includes('delete')) {
-            const macros = (await coll.findOneAndUpdate(
+        if (options.includes('delete')) {
+            const macros = <{[key: string]: string}> (await coll.findOneAndUpdate(
                 { _id: user },
                 { $unset: { [name]: undefined } },
-                { projection: { _id: 0} }
+                { projection: { _id: 0 } }
             )).value;
 
             if (size(macros) == 1)
@@ -133,12 +131,12 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
             (await coll.findOneAndUpdate(
                 { _id: user },
                 { $set: { [name]: replacement } },
-                { projection: { _id: 0}, upsert: true }
+                { projection: { _id: 0 }, upsert: true }
             )).value;
         }
 
         await client.views.publish({
-            token: context.botToken,
+            token: <string> context.botToken,
             user_id: user,
             view: await home.view(user, store)
         });

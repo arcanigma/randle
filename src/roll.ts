@@ -8,12 +8,12 @@ import { trunc, wss } from './library/factory';
 import { anywhere } from './library/listeners';
 import { blame } from './library/messages';
 
-export const events = (app: App, store: Promise<MongoClient>): void => {
+export const register = ({ app, store }: { app: App; store: Promise<MongoClient> }): void => {
     // TODO refactor into parser
 
-    const re_semi = /\s*;\s*/;
+    const re_semis = /\s*;\s*/;
     const clausify: Middleware<SlackEventMiddlewareArgs<'message'>> = async ({ context, next }) => {
-        context.clauses = context.matches[1].trim().split(re_semi);
+        context.clauses = (<string[]> context.matches)[1].trim().split(re_semis);
 
         await next?.();
     };
@@ -21,18 +21,18 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
     const macrotize: Middleware<SlackEventMiddlewareArgs<'message'>> = async ({ message, context, next }) => {
         const coll = (await store).db().collection('macros');
         const personal = (await coll.findOne(
-                { _id: message.user },
-                { projection: { _id: 0} }
-            )) ?? {},
+            { _id: message.user },
+            { projection: { _id: 0 } }
+        )) as Record<string, string> ?? {},
             community = (await coll.findOne(
-                { _id: context.botUserId },
-                { projection: { _id: 0} }
-            )) ?? {},
+                { _id: <string> context.botUserId },
+                { projection: { _id: 0 } }
+            )) as Record<string, string> ?? {},
             macros = Object.assign({}, community, personal);
 
         if (Object.keys(macros).length >= 1) {
             const re_macros = new RegExp(`\\b(${Object.keys(macros).join('|')})\\b`, 'gi');
-            context.clauses = context.clauses.map((clause: string) =>
+            context.clauses = (<string[]>context.clauses).map((clause: string) =>
                 clause.replace(re_macros, m => macros[m.toLowerCase()])
             );
         }
@@ -43,31 +43,33 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
     const re_roll = /^!?roll\s+(.+)/is;
     app.message(re_roll, anywhere, clausify, macrotize, async ({ message, context, client, say }) => {
         try {
-            const clauses = context.clauses.length;
+            const clauses = (<string[]>context.clauses).length;
             for (let i = 0; i < clauses; i++)
-                context.clauses.push(...expandRepeats(context.clauses.shift()));
+                (<string[]>context.clauses).push(
+                    ...expandRepeats(<string>(<string[]>context.clauses).shift())
+                );
 
             const results = rollDice(context.clauses, message);
 
             if (results.blocks.length > 0)
                 await say({
-                    token: context.botToken,
+                    token: <string> context.botToken,
                     channel: message.channel,
                     username: 'Roll',
                     icon_emoji: ':game_die:',
                     text: `<@${message.user}> rolled dice`,
                     blocks: results.blocks,
-                    thread_ts: message.thread_ts ?? message.ts
+                    thread_ts: <string> (message.thread_ts ?? message.ts)
                 });
         }
-        catch (err) {
-            await blame({ error: err, message, context, client });
+        catch (error) {
+            await blame({ error: <string|Error> error, message, context, client });
         }
     });
 
     const re_ellipsis = /^\s*(.+)\s*\.\.\.\s*(\w+(?:\s*,\s*\w+)*)\s*$/,
         re_commas = /\s*,\s*/;
-    function expandRepeats(clause: string) {
+    function expandRepeats (clause: string) {
         const match = re_ellipsis.exec(clause);
         if (match) {
             const phrase = match[1].replace(re_trail, ''),
@@ -78,8 +80,8 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                 for (let i = 1; i <= reps; i++)
                     clones.push(`${phrase} on the ${ordinal(i)} roll`);
             else
-                for (let i = 0; i < over.length; i++)
-                    clones.push(`${phrase} for ${over[i]}`);
+                for (const label of over)
+                    clones.push(`${phrase} for ${label}`);
             return clones;
         }
         else {
@@ -87,10 +89,10 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
         }
     }
 
-    function rollDice(clauses: string[], message: MessageEvent) {
+    function rollDice (clauses: string[], message: MessageEvent) {
         const results: {
-            text?: string,
-            phrases: string[],
+            text?: string;
+            phrases: string[];
             blocks: Block[];
         } = {
             phrases: [],
@@ -112,42 +114,41 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                     rolls.push(randomInt(1, size));
 
                 const strikes: {
-                    [key: number]: number
+                    [key: number]: number;
                 } = {};
                 if (hilo) {
                     keep = Math.min(parseInt(keep) || 1, count);
 
                     const sorted = rolls.slice();
-                    if (hilo.toUpperCase() == 'L')
+                    if ((<string>hilo).toUpperCase() == 'L')
                         sorted.sort((x,y) => x-y);
                     else
                         sorted.sort((x,y) => y-x);
-                    for (let i = keep; i < sorted.length; i++) {
+                    for (let i = <number> keep; i < sorted.length; i++) {
                         const key = sorted[i];
                         strikes[key] = (strikes[key] ?? 0) + 1;
                     }
                 }
 
-                mod = parseFloat(mod) || 0;
+                mod = parseInt(mod) || 0;
                 if (mod) rolls.push(mod);
 
                 let atoms = [],
                     total = 0;
-                for (let i = 0; i < rolls.length; i++) {
-                    const roll = rolls[i],
-                        key = roll.toString(),
-                        sign = roll >= 0 ? '+' : '-',
-                        face = `${Math.abs(roll)}`;
+                for (const roll of rolls) {
+                    const num = parseInt(roll),
+                        sign = num >= 0 ? '+' : '-',
+                        face = String(roll);
 
                     if (atoms.length > 0 || sign == '-')
                         atoms.push(sign);
 
-                    if (!strikes[key]) {
-                        total += roll;
+                    if (!strikes[num]) {
+                        total += num;
                         atoms.push(face);
                     }
                     else {
-                        strikes[key]--;
+                        strikes[num]--;
                         atoms.push(`~[${face}]~`);
                     }
                 }
@@ -161,12 +162,12 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                     prefix = ':white_square:';
 
                 if (atoms.length > 1)
-                    atoms = [...atoms, '=', `*${total}*`];
+                    atoms = [ ...atoms, '=', `*${total}*` ];
                 else if (atoms.length == 1)
                     atoms[0] = `*${atoms[0]}*`;
                 else
                     atoms[0] = '_undefined_';
-                atoms = [`*${expr}:*`, ...atoms];
+                atoms = [ `*${expr}:*`, ...atoms ];
 
                 if (elements.length < MAX_CONTEXT_ELEMENTS)
                     elements.push(<MrkdwnElement>{
@@ -234,7 +235,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
     const re_number = /\b(?<![:_~*])[1-9][0-9]*(?![:_~*])\b/g,
         re_tag = /<([^>]+)>/g,
         re_trail = /^[\s.;,]+|[\s.;,]+$/g;
-    function prettifyMarkdown(clause: string) {
+    function prettifyMarkdown (clause: string) {
         clause = wss(clause
             .replace(re_number, '*$&*')
             .replace(re_tag, '')
@@ -244,18 +245,18 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
     }
 
     const re_math = /([+-]|\b)([0-9]+(?:\.[0-9]+)?)\s*([+-])\s*([0-9]+(?:\.[0-9]+)?)\b/;
-    function evaluateArithmetic(clause: string) {
+    function evaluateArithmetic (clause: string) {
         return regexClosure(clause, re_math, (_, sign, x, op, y) => {
             const ix = parseInt(`${sign}${x}`),
                 iy = parseInt(`${op}${y}`),
                 sum = ix+iy;
             return sign && sum >= 0
                 ? `+${sum}`
-                : sum.toString();
+                : String(sum);
         });
     }
 
-    function regexClosure(clause: string, re: RegExp, fun: (substring: string, ...args: (string | number)[]) => string) {
+    function regexClosure (clause: string, re: RegExp, fun: (substring: string, ...args: (string | number)[]) => string) {
         let old;
         do {
             old = clause;

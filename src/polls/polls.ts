@@ -21,11 +21,11 @@ export type Poll = {
     choices: string[];
     setup: PollSetupOptions[];
     votes: {
-        [user: string]: number
+        [user: string]: number;
     };
     latest?: {
-        summary: string,
-        message_ts: string,
+        summary: string;
+        message_ts: string;
         permalink: string;
     };
 };
@@ -37,13 +37,8 @@ export enum PollSetupOptions {
 }
 
 const re_emoji = /(:[^:\s]*(?:::[^:\s]*)*:)/g;
-export async function announce(
-    mode: string,
-    poll: Poll,
-    context: Context,
-    body: SlackAction | SlackViewAction,
-    client: WebClient,
-    store: Promise<MongoClient>
+export async function announce ({ mode, poll, context, body, client, store }:
+    { mode: string; poll: Poll; context: Context; body: SlackAction | SlackViewAction; client: WebClient; store: Promise<MongoClient> }
 ): Promise<void> {
     const user = body.user.id,
         voted = poll.members.filter(member => poll.votes[member] !== undefined),
@@ -119,7 +114,7 @@ export async function announce(
     else if (mode == 'close' || mode == 'autoclose') {
         summary = mode == 'close'
             ? `<@${poll.host}> closed the poll *${poll.prompt}*`
-            : `<@${context.botUserId}> closed the poll *${poll.prompt}* for <@${poll.host}>`;
+            : `<@${<string> context.botUserId}> closed the poll *${poll.prompt}* for <@${poll.host}>`;
 
         blocks.push(<ContextBlock>{
             type: 'context',
@@ -165,7 +160,7 @@ export async function announce(
     });
 
     const message: ChatPostMessageArguments = {
-        token: context.botToken,
+        token: <string> context.botToken,
         channel: poll.audience,
         username: `Poll: ${poll.prompt.replace(re_emoji, '')}`,
         icon_emoji: ':ballot_box_with_ballot:',
@@ -178,32 +173,32 @@ export async function announce(
         ts = ((
             await client.chat.postMessage(message)
         ) as WebAPICallResult & {
-            ts: string
+            ts: string;
         }).ts;
     }
-    catch (err) {
-        if (err.data.error == 'not_in_channel') {
+    catch (error) {
+        if ((<{ data: { error: string } }> error).data.error == 'not_in_channel') {
             await client.conversations.join({
-                token: context.botToken,
+                token: <string> context.botToken,
                 channel: poll.audience
             });
 
             await client.views.open({
-                token: context.botToken,
+                token: <string> context.botToken,
                 trigger_id: (<InteractiveMessage>body).trigger_id,
                 view: information_modal.view({
                     title: 'Notice',
-                    error: `<@${context.botUserId}> automatically joined the <#${poll.audience}> channel.`
+                    error: `<@${<string> context.botUserId}> automatically joined the <#${poll.audience}> channel.`
                 })
             });
 
             ts = ((
                 await client.chat.postMessage(message)
             ) as WebAPICallResult & {
-                ts: string
+                ts: string;
             }).ts;
         }
-        else throw err;
+        else throw error;
     }
 
     const permalink = ts ? (await client.chat.getPermalink({
@@ -228,9 +223,8 @@ export async function announce(
     );
 }
 
-export const events = (app: App, store: Promise<MongoClient>, timers: Record<string, NodeJS.Timeout>): void => {
-    create_poll_modal.events(app, store);
-    create_poll_shortcut.events(app);
-    polls_home.events(app, store);
-    poll_blocks.events(app, store, timers);
+export const register = ({ app, store, timers }: { app: App; store: Promise<MongoClient>; timers: Record<string, NodeJS.Timeout> }): void => {
+    [ create_poll_modal, create_poll_shortcut, polls_home, poll_blocks ].forEach(it => {
+        it.register({ app, store, timers });
+    });
 };

@@ -25,13 +25,13 @@ export const direct: Middleware<SlackEventMiddlewareArgs<'message'>> = async ({ 
 };
 
 export const community: Middleware<SlackEventMiddlewareArgs<'message'>> = async ({ message, next }) => {
-    const where = [CHANNEL, PRIVATE_CHANNEL, MULTI_DIRECT];
+    const where = [ CHANNEL, PRIVATE_CHANNEL, MULTI_DIRECT ];
     if (where.includes(message.channel_type))
         await next?.();
 };
 
 export const anywhere: Middleware<SlackEventMiddlewareArgs<'message'>> = async ({ message, next }) => {
-    const where = [CHANNEL, PRIVATE_CHANNEL, MULTI_DIRECT, DIRECT];
+    const where = [ CHANNEL, PRIVATE_CHANNEL, MULTI_DIRECT, DIRECT ];
     if (where.includes(message.channel_type))
         await next?.();
 };

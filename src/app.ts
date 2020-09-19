@@ -40,13 +40,9 @@ export const MAX_VIEW_BLOCKS = 100;
 export const MAX_MESSAGE_BLOCKS = 50;
 export const MAX_CONTEXT_ELEMENTS = 10;
 
-deck.events(app, store);
-debug.events(app);
-home.events(app, store);
-macros.events(app, store);
-polls.events(app, store, timers);
-roll.events(app, store);
-routes.events(receiver);
+[ deck, debug, home, macros, polls, roll, routes ].forEach(it => {
+    it.register({ app, receiver, store, timers });
+});
 
 void (async () => {
     const port = process.env.PORT ?? 80;

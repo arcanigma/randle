@@ -26,8 +26,10 @@ export const blocks = async (user: string, store: Promise<MongoClient>): Promise
     const coll = (await store).db().collection('macros');
     const macros = await coll.findOne(
         { _id: user },
-        { projection: { _id: 0} }
-    );
+        { projection: { _id: 0 } }
+    ) as {
+        [macro: string]: string;
+    };
 
     if (macros) {
         const names = Object.keys(macros).sort();

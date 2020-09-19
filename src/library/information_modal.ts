@@ -1,6 +1,6 @@
 import { SectionBlock, View } from '@slack/web-api';
 
-export const view = ({title, error}: {title: string, error: unknown}): View => ({
+export const view = ({ title, error }: {title: string; error: unknown}): View => ({
     type: 'modal',
     title: {
         type: 'plain_text',

@@ -15,14 +15,14 @@ import { build, enable, evaluate, listify, matches, pluck, shuffle, validate } f
 
 export const MAX_IMPORTS = 5;
 
-export const events = (app: App): void => {
+export const register = ({ app }: { app: App }): void => {
     const re_script = /^[`\s]*(\{.+\})[`\s]*$/s,
         re_url = /^\s*<([^|]+)(?:\|[^|]+)?>\s*$/;
     app.message(re_script, nonthread, community, async ({ message, context, client }) => {
         try {
             const suit = pluck(SUIT_EMOJIS);
 
-            const script = <Script>JSON5.parse(context.matches[1]);
+            const script = <Script>JSON5.parse((<string[]> context.matches)[1]);
             if (script.import) {
                 if (Array.isArray(script.import) && script.import.length > MAX_IMPORTS)
                     throw `Too many imports (limit of ${MAX_IMPORTS}) in script.`;
@@ -36,16 +36,16 @@ export const events = (app: App): void => {
                     try {
                         raw = await got.get(url).text();
                     }
-                    catch (err) {
-                        throw `Web error \`${err.message}\` for \`${url}\` import.`;
+                    catch (error) {
+                        throw `Web error \`${(<{ message: string }> error).message}\` for \`${url}\` import.`;
                     }
 
                     let iscript;
                     try {
                         iscript = <Script>JSON5.parse(raw);
                     }
-                    catch (err) {
-                        throw `Parse error \`${err.message}\` for \`${url}\` import.`;
+                    catch (error) {
+                        throw `Parse error \`${(<{ message: string }> error).message}\` for \`${url}\` import.`;
                     }
 
                     if ('import' in iscript)
@@ -53,7 +53,7 @@ export const events = (app: App): void => {
 
                     if ('event' in iscript)
                         script.event = script.event !== undefined
-                            ? `${script.event} \u2022 ${iscript.event}`
+                            ? `${script.event} \u2022 ${<string> iscript.event}`
                             : iscript.event;
 
                     if ('moderator' in iscript)
@@ -63,10 +63,10 @@ export const events = (app: App): void => {
                         script.limit = iscript.limit;
 
                     if ('deal' in iscript)
-                        script.deal = <Items> listify([script.deal, iscript.deal]);
+                        script.deal = <Items> listify([ script.deal, iscript.deal ]);
 
                     if ('rules' in iscript)
-                        script.rules = <Rules> listify([script.rules, iscript.rules]);
+                        script.rules = <Rules> listify([ script.rules, iscript.rules ]);
 
                     if ('sets' in iscript)
                         script.sets = Object.assign(script.sets ?? {}, iscript.sets);
@@ -130,7 +130,7 @@ export const events = (app: App): void => {
             }
 
             const dealt: {
-                [user: string]: string[]
+                [user: string]: string[];
             } = {};
             const limit = evaluate(script.limit, script.values),
                 rounds = !limit
@@ -150,7 +150,7 @@ export const events = (app: App): void => {
                 throw 'You must deal at least 1 item.';
 
             const counts: {
-                [count: number]: string[]
+                [count: number]: string[];
             } = {};
             users.filter(user => dealt[user]).forEach(user => {
                 const count = dealt[user].length;
@@ -214,17 +214,17 @@ export const events = (app: App): void => {
             }
 
             const ts = (await client.chat.postMessage({
-                token: context.botToken,
+                token: <string> context.botToken,
                 channel: message.channel,
                 username: `Deal: ${suit}`,
                 icon_emoji: SUIT_EMOJIS[suit],
                 text: all_notification,
                 blocks: all_blocks
             }) as WebAPICallResult & {
-                ts: string
+                ts: string;
             }).ts;
 
-            const permalink = (await client.chat.getPermalink({
+            const permalink = <string> (await client.chat.getPermalink({
                 channel: message.channel,
                 message_ts: ts
             })).permalink;
@@ -302,18 +302,18 @@ export const events = (app: App): void => {
 
                 try {
                     const dm = (await client.conversations.open({
-                        token: context.botToken,
+                        token: <string> context.botToken,
                         users: !validate(script.moderator, script.options)
                             ? user
                             : `${user},${message.user}`
                     }) as WebAPICallResult & {
                         channel: {
-                            id: string
-                        }
+                            id: string;
+                        };
                     }).channel.id;
 
                     await client.chat.postMessage({
-                        token: context.botToken,
+                        token: <string> context.botToken,
                         channel: dm,
                         username: `Deal: ${suit}`,
                         icon_emoji: SUIT_EMOJIS[suit],
@@ -321,23 +321,23 @@ export const events = (app: App): void => {
                         blocks: per_blocks
                     });
                 }
-                catch (err) {
-                    if (err.data.error != 'cannot_dm_bot') throw err;
+                catch (error) {
+                    if ((<{ data: { error: string } }> error).data.error != 'cannot_dm_bot') throw error;
                 }
             }
 
             if (items.length > 0 && validate(script.moderator, script.options)) {
                 const dm = (await client.conversations.open({
-                    token: context.botToken,
+                    token: <string> context.botToken,
                     users: message.user
                 }) as WebAPICallResult & {
                     channel: {
-                        id: string
-                    }
+                        id: string;
+                    };
                 }).channel.id;
 
                 await client.chat.postMessage({
-                    token: context.botToken,
+                    token: <string> context.botToken,
                     channel: dm,
                     username: `Deal: ${suit}`,
                     icon_emoji: SUIT_EMOJIS[suit],
@@ -353,15 +353,13 @@ export const events = (app: App): void => {
             }
 
             if (graph.length > 0)
-                await uploadGraphFile(
-                    `Graph: ${script.event ?? 'Event'}`,
-                    graph,
-                    script,
-                    message, context, client
-                );
+                await uploadGraphFile({ title: `Graph: ${script.event ?? 'Event'}`,
+                    elements: graph,
+                    script, message, context, client
+                });
         }
-        catch (err) {
-            await blame({ error: err, message, context, client });
+        catch (error) {
+            await blame({ error: <string|Error> error, message, context, client });
         }
     });
 
@@ -373,20 +371,20 @@ export const events = (app: App): void => {
         const user = body.user.id,
             revealed = action.selected_options
                 .map(it => it.value),
-            [, channel, json_event, suit ] = re_action_id.exec(action.action_id) ?? [],
-            [, whom, timestamp, json_permalink ] = re_block_id.exec(action.block_id) ?? [],
-            event = <string[]>JSON.parse(json_event),
-            permalink = <string[]>JSON.parse(json_permalink);
+            [ , channel, json_event, suit ] = re_action_id.exec(action.action_id) ?? [],
+            [ , whom, timestamp, json_permalink ] = re_block_id.exec(action.block_id) ?? [],
+            event = <string>JSON.parse(json_event),
+            permalink = <string>JSON.parse(json_permalink);
 
         if (user != whom)
-            return await respond({
+            return void respond({
                 replace_original: false,
                 response_type: 'ephemeral',
                 text: `These items belong to <@${whom}>.`
             });
 
-        if (revealed.length == 0)
-            return await respond({
+        if (revealed.length < 1)
+            return void respond({
                 replace_original: false,
                 response_type: 'ephemeral',
                 text: 'You have to select 1 or more items to reveal.'
@@ -408,7 +406,7 @@ export const events = (app: App): void => {
             ];
 
         await client.chat.postMessage({
-            token: context.botToken,
+            token: <string> context.botToken,
             channel: channel,
             username: `Deal: ${suit}`,
             icon_emoji: SUIT_EMOJIS[suit],

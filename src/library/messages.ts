@@ -3,11 +3,13 @@ import { ContextBlock, SectionBlock, WebClient } from '@slack/web-api';
 import { MAX_TEXT_SIZE } from '../app';
 import { trunc } from './factory';
 
-export async function blame({ error, message, context, client }: { error: string | Error; message: MessageEvent; context: Context; client: WebClient; }): Promise<void> {
+export async function blame ({ error, message, context, client }:
+    { error: string | Error; message: MessageEvent; context: Context; client: WebClient }
+): Promise<void> {
     if (error instanceof Error) {
         console.error({ error });
         await client.chat.postEphemeral({
-            token: context.botToken,
+            token: <string> context.botToken,
             user: message.user,
             channel: message.channel,
             text: 'There was an error',
@@ -32,7 +34,7 @@ export async function blame({ error, message, context, client }: { error: string
                       },
                       {
                           type: 'mrkdwn',
-                          text: `*Context:* ${message.channel_type}-${message.channel}`
+                          text: `*Context:* ${<string> message.channel_type}-${message.channel}`
                       },
                       {
                           type: 'mrkdwn',
@@ -46,7 +48,7 @@ export async function blame({ error, message, context, client }: { error: string
     else {
         console.warn({ error });
         await client.chat.postEphemeral({
-            token: context.botToken,
+            token: <string> context.botToken,
             user: message.user,
             channel: message.channel,
             text: 'There was an error',
