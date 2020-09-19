@@ -1,7 +1,7 @@
 import { App, ExpressReceiver } from '@slack/bolt';
 import { MongoClient } from 'mongodb';
+import * as debug from './debug';
 import * as deck from './deck/deck';
-import * as dev from './dev';
 import * as home from './home';
 import * as macros from './macros/macros';
 import * as polls from './polls/polls';
@@ -41,7 +41,7 @@ export const MAX_MESSAGE_BLOCKS = 50;
 export const MAX_CONTEXT_ELEMENTS = 10;
 
 deck.events(app, store);
-dev.events(app);
+debug.events(app);
 home.events(app, store);
 macros.events(app, store);
 polls.events(app, store, timers);
