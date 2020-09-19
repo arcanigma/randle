@@ -1,5 +1,12 @@
 import { App, ExpressReceiver } from '@slack/bolt';
 import { MongoClient } from 'mongodb';
+import * as deck from './deck/deck';
+import * as dev from './dev';
+import * as home from './home';
+import * as macros from './macros/macros';
+import * as polls from './polls/polls';
+import * as roll from './roll';
+import * as routes from './routes';
 
 if (!process.env.SLACK_SIGNING_SECRET)
     throw 'Undefined Slack signing secret.';
@@ -33,16 +40,16 @@ export const MAX_VIEW_BLOCKS = 100;
 export const MAX_MESSAGE_BLOCKS = 50;
 export const MAX_CONTEXT_ELEMENTS = 10;
 
-import * as deck from './deck/deck'; deck.events(app, store);
-import * as dev from './dev'; dev.events(app);
-import * as home from './home'; home.events(app, store);
-import * as macros from './macros/macros'; macros.events(app, store);
-import * as polls from './polls/polls'; polls.events(app, store, timers);
-import * as roll from './roll'; roll.events(app, store);
-import * as routes from './routes'; routes.events(receiver);
+deck.events(app, store);
+dev.events(app);
+home.events(app, store);
+macros.events(app, store);
+polls.events(app, store, timers);
+roll.events(app, store);
+routes.events(receiver);
 
 (async () => {
-    const port = process.env.PORT ?? 3000;
+    const port = process.env.PORT ?? 80;
     app.start(port);
     console.log(`Listening on port ${port}...`);
 })();
