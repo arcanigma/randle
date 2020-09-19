@@ -46,7 +46,7 @@ export async function announce(
     store: Promise<MongoClient>
 ): Promise<void> {
     const user = body.user.id,
-    voted = poll.members.filter(member => poll.votes[member] !== undefined),
+        voted = poll.members.filter(member => poll.votes[member] !== undefined),
         unvoted = poll.members.filter(member => poll.votes[member] === undefined);
 
     let summary;
@@ -191,7 +191,7 @@ export async function announce(
             await client.views.open({
                 token: context.botToken,
                 trigger_id: (<InteractiveMessage>body).trigger_id,
-                view: await information_modal.view({
+                view: information_modal.view({
                     title: 'Notice',
                     error: `<@${context.botUserId}> automatically joined the <#${poll.audience}> channel.`
                 })

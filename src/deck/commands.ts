@@ -1,4 +1,4 @@
-import { App, BlockAction, MultiStaticSelectAction } from '@slack/bolt';
+import { App, BlockAction, MessageEvent, MultiStaticSelectAction } from '@slack/bolt';
 import { Block, MultiSelect, SectionBlock } from '@slack/web-api';
 import { MongoClient } from 'mongodb';
 import ordinal from 'ordinal';
@@ -46,7 +46,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
             );
         }
         catch (err) {
-            await blame(err, message, context, client);
+            await blame({ error: err, message, context, client });
         }
     });
 
@@ -62,7 +62,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
             );
         }
         catch (err) {
-            await blame(err, message, context, client);
+            await blame({ error: err, message, context, client });
         }
     });
 
@@ -78,7 +78,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
             );
         }
         catch (err) {
-            await blame(err, message, context, client);
+            await blame({ error: err, message, context, client });
         }
     });
 
@@ -90,8 +90,8 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
         const user = body.user.id,
             selected = action.selected_options
                 .map(it => Number(it.value)).sort(),
-            [, mode, str_recount, json_items ] = action.action_id.match(re_action_id) ?? [],
-            [, whom, json_list ] = action.block_id.match(re_block_id) ?? [],
+            [, mode, str_recount, json_items ] = re_action_id.exec(action.action_id) ?? [],
+            [, whom, json_list ] = re_block_id.exec(action.block_id) ?? [],
             recount = Number(str_recount),
             list = <string[]>JSON.parse(json_list),
             items = (<number[]>JSON.parse(json_items)).map(index => list[index]);
@@ -127,11 +127,11 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                 }
             });
 
-            const message = body.message!;
+            const message = <MessageEvent> body.message;
 
             await respond({
                 replace_original: true,
-                text: message.text!,
+                text: message.text,
                 blocks: [
                     <SectionBlock>{
                         type: 'section',
@@ -170,9 +170,9 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
 
             await say({
                 token: context.botToken,
-                channel: body.channel!.id,
-                thread_ts: body.message!.ts,
-                text: message.text!,
+                channel: (<{ id: string }> body.channel).id,
+                thread_ts: message.ts,
+                text: <string> message.text,
                 blocks: history
             });
         }

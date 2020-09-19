@@ -7,11 +7,11 @@ export const events = (receiver: ExpressReceiver): void => {
         : 'logo-dev.png';
 
     // TODO proper support for favicon
-    receiver.router.get(['/', '/favicon.png'], async (_, res) => {
+    receiver.router.get(['/', '/favicon.png'], (_, res) => {
         res.sendFile(path.join(__dirname, `../assets/${LOGO_FILE}`));
     });
 
-    receiver.router.get('/status', async (_, res) => {
+    receiver.router.get('/status', (_, res) => {
         res.sendStatus(200);
     });
 

@@ -10,7 +10,7 @@ export function tokenize(sentence: string, separator: string | RegExp): string[]
 
 export function expect(tokens: string[], terminal: string | RegExp): string {
     if (tokens.length > 0 && alike(tokens[0], terminal))
-        return tokens.shift()!;
+        return <string> tokens.shift();
     else if (tokens.length == 0)
         throw 'Unexpected end of input.';
     else
@@ -24,7 +24,7 @@ export function expectEnd(tokens: string[]): void {
 
 export function accept(tokens: string[], terminal: string | RegExp): string | boolean {
     if (tokens.length > 0 && alike(tokens[0], terminal))
-        return tokens.shift()!;
+        return <string> tokens.shift();
     else
         return false;
 }

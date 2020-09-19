@@ -28,10 +28,10 @@ export async function postDeckMessage(
     const user = message.user,
         suit = pluck(SUIT_EMOJIS);
 
-    let list = <string[]>expression.split(',').map(it => it.trim());
+    let list = expression.split(',').map(it => it.trim());
     if (list.length == 1) {
         if (Number(list[0]) >= 1 && Number(list[0]) % 1 == 0)
-            list = Array(Number(list[0])).fill(1).map((v, i) => String(v + i));
+            list = (<number[]> Array(Number(list[0])).fill(1)).map((v, i) => String(v + i));
         else if (list[0] == '<!channel>')
             list = (await getMembers(message.channel, context, client)).map(them => `<@${them}>`);
         else if (re_macro.test(list[0]))
@@ -54,7 +54,7 @@ export async function postDeckMessage(
                     text: trunc(`<@${user}> ${MODE_WORD[mode].did.toLowerCase()} ${commas(items.map(item => `*${wss(item)}*`))}.`, MAX_TEXT_SIZE)
                 }
             },
-            ...(mode == 'Pool' ? [
+            ...mode == 'Pool' ? [
                 <SectionBlock>{
                     type: 'section',
                     block_id: `deck_message_block_${user}_${JSON.stringify(list)}`,
@@ -80,7 +80,7 @@ export async function postDeckMessage(
                         }))
                     }
                 }
-            ] : [])
+            ] : []
         ]
     });
 }

@@ -38,9 +38,9 @@ export const view = async (channel: string | undefined, context: Context, client
                     type: 'plain_text',
                     text: 'Select a channel'
                 },
-                ...(channel ? {
+                ...channel ? {
                     initial_channel: channel
-                } : {})
+                } : {}
             }
         },
         <InputBlock>{
@@ -61,12 +61,12 @@ export const view = async (channel: string | undefined, context: Context, client
                     type: 'plain_text',
                     text: 'Select users'
                 },
-                initial_users: channel ? (await client.conversations.members({
+                initial_users: channel ? ((await client.conversations.members({
                     token: context.botToken,
                     channel: channel
                 }) as WebAPICallResult & {
                     members: string[]
-                }).members.filter(user => user != context.botUserId) : []
+                }).members.filter(user => user != context.botUserId)) : []
             }
         },
         <InputBlock>{
@@ -196,7 +196,7 @@ export const view = async (channel: string | undefined, context: Context, client
 
 export const events = (app: App, store: Promise<MongoClient>): void => {
     const re_lines = /\r\n|\r|\n/,
-          re_mrkdwn = /([*_~`<>])/g;
+        re_mrkdwn = /([*_~`<>])/g;
     app.view('create_poll_modal', async ({ ack, body, view, context, client }) => {
         const host = body.user.id,
             data = view.state.values,

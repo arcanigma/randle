@@ -60,7 +60,7 @@ export function build(items: Items, defines: Defines): string[] {
     else if ('if' in items)
         return validate(items.if, defines.options)
             ? build(items.then, defines)
-            : ( items.else ? build(items.else, defines) : [] );
+            : items.else ? build(items.else, defines) : [] ;
     else if ('set' in items || 'union' in items) {
         let result = [
             ...construct(items.set, defines.sets),
@@ -80,7 +80,7 @@ export function build(items: Items, defines: Defines): string[] {
         return result;
     }
     else
-        throw `Unexpected deck \'${JSON.stringify(items)}\` in script.`;
+        throw `Unexpected deck \`${JSON.stringify(items)}\` in script.`;
 }
 
 export function listify<T>(element: T | T[]): T[] {
@@ -169,7 +169,7 @@ export function evaluate(it: Value | undefined, values?: ValueDefines): number {
     else if ('min' in it)
         return Math.min(...it.min.map(x => evaluate(x, values)));
     else
-        throw `Unexpected value \'${JSON.stringify(it)}\` in script.`;
+        throw `Unexpected value \`${JSON.stringify(it)}\` in script.`;
 }
 
 export function validate(it: Option | undefined, options?: OptionDefines): boolean {
@@ -195,7 +195,7 @@ export function validate(it: Option | undefined, options?: OptionDefines): boole
     else if ('not' in it)
         return !validate(it.not, options);
     else
-        throw `Unexpected option \'${JSON.stringify(it)}\` in script.`;
+        throw `Unexpected option \`${JSON.stringify(it)}\` in script.`;
 }
 
 export function enable(rule: Rules, items: string[], options?: OptionDefines): boolean {
@@ -209,7 +209,7 @@ export function enable(rule: Rules, items: string[], options?: OptionDefines): b
 
     if ('ifExcluded' in rule && rule.ifExcluded !== undefined)
         if (listify(rule.ifExcluded).every(it => items.includes(it)))
-           return false;
+            return false;
 
     return true;
 }
@@ -237,7 +237,7 @@ export function construct(it: Set | undefined, sets?: SetDefines): string[] {
     else if ('except' in it)
         return <string[]>it.except.reduce((x, y) => construct(x, sets).filter(item => !construct(y, sets).includes(item)));
     else
-        throw `Unexpected set \'${JSON.stringify(it)}\` in script.`;
+        throw `Unexpected set \`${JSON.stringify(it)}\` in script.`;
 }
 
 export function matches(it: string, matcher: Matcher, defines: Defines): boolean {
@@ -262,14 +262,14 @@ export function matches(it: string, matcher: Matcher, defines: Defines): boolean
     else if ('excludes' in matcher)
         return !it.includes(wss(matcher.excludes));
     else if ('matches' in matcher)
-        return it.match(wss(matcher.matches)) != null;
+        return new RegExp(wss(matcher.matches)).exec(it) != null;
     else if ('all' in matcher && matcher.all === true)
         return true;
     else if ('set' in matcher) {
-        let result = (
+        let result =
             construct(matcher.set, defines.sets).includes(it) ||
             construct(matcher.union, defines.sets).includes(it)
-        );
+        ;
 
         if ('intersect' in matcher)
             result = result && construct(matcher.intersect, defines.sets).includes(it);
@@ -280,5 +280,5 @@ export function matches(it: string, matcher: Matcher, defines: Defines): boolean
         return result;
     }
     else
-        throw `Unexpected matcher \'${JSON.stringify(matcher)}\` in script.`;
+        throw `Unexpected matcher \`${JSON.stringify(matcher)}\` in script.`;
 }

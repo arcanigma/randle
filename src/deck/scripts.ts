@@ -28,7 +28,7 @@ export const events = (app: App): void => {
                     throw `Too many imports (limit of ${MAX_IMPORTS}) in script.`;
 
                 for (let url of listify(script.import)) {
-                    const match = url.match(re_url);
+                    const match = re_url.exec(url);
                     if (match)
                         url = match[1];
 
@@ -60,7 +60,7 @@ export const events = (app: App): void => {
                         script.moderator = iscript.moderator;
 
                     if ('limit' in iscript)
-                        script.limit = script.limit;
+                        script.limit = iscript.limit;
 
                     if ('deal' in iscript)
                         script.deal = <Items> listify([script.deal, iscript.deal]);
@@ -140,9 +140,9 @@ export const events = (app: App): void => {
                 users.forEach(user => {
                     if (items.length > 0) {
                         if (dealt[user])
-                            dealt[user].push(items.shift()!);
+                            dealt[user].push(<string>items.shift());
                         else
-                            dealt[user] = [items.shift()!];
+                            dealt[user] = [<string>items.shift()];
                     }
                 });
 
@@ -206,10 +206,10 @@ export const events = (app: App): void => {
 
                 all_blocks.push(<ContextBlock>{
                     type: 'context',
-                    elements: publish.map(text => (<MrkdwnElement>{
+                    elements: publish.map(text => <MrkdwnElement>{
                         type: 'mrkdwn',
                         text: text
-                    }))
+                    })
                 });
             }
 
@@ -233,8 +233,8 @@ export const events = (app: App): void => {
                 const per_list = commas(dealt[user].map(item => `*${item}*`)),
                     per_venue = script.event ? `for the *${script.event}* event` : `from the <#${message.channel}> channel`,
                     per_when = `<!date^${parseInt(message.ts)}^{date_short_pretty} at {time}^${permalink}|there>`,
-                    per_who = message.user != user ? `<@${message.user}>${(!validate(script.moderator, script.options) ? '' : ' as the moderator')}` : 'You',
-                    per_whom = message.user != user ? (validate(script.moderator, script.options) ? `<@${user}>` : 'you') : 'yourself',
+                    per_who = message.user != user ? `<@${message.user}>${!validate(script.moderator, script.options) ? '' : ' as the moderator'}` : 'You',
+                    per_whom = message.user != user ? validate(script.moderator, script.options) ? `<@${user}>` : 'you' : 'yourself',
                     per_notification = `${per_who} dealt ${per_whom} ${dealt[user].length != 1 ? 'items' : 'an item'}`,
                     per_summary = `${per_who} dealt ${per_whom} ${per_list} ${per_venue} ${per_when}.`,
                     per_blocks: Block[] = [];
@@ -293,10 +293,10 @@ export const events = (app: App): void => {
 
                     per_blocks.push(<ContextBlock>{
                         type: 'context',
-                        elements: shown.map(text => (<MrkdwnElement>{
+                        elements: shown.map(text => <MrkdwnElement>{
                             type: 'mrkdwn',
                             text: text
-                        }))
+                        })
                     });
                 }
 
@@ -361,7 +361,7 @@ export const events = (app: App): void => {
                 );
         }
         catch (err) {
-            await blame(err, message, context, client);
+            await blame({ error: err, message, context, client });
         }
     });
 
@@ -373,8 +373,8 @@ export const events = (app: App): void => {
         const user = body.user.id,
             revealed = action.selected_options
                 .map(it => it.value),
-            [, channel, json_event, suit ] = action.action_id.match(re_action_id) ?? [],
-            [, whom, timestamp, json_permalink ] = action.block_id.match(re_block_id) ?? [],
+            [, channel, json_event, suit ] = re_action_id.exec(action.action_id) ?? [],
+            [, whom, timestamp, json_permalink ] = re_block_id.exec(action.block_id) ?? [],
             event = <string[]>JSON.parse(json_event),
             permalink = <string[]>JSON.parse(json_permalink);
 

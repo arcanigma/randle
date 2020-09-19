@@ -64,25 +64,25 @@ export const blocks = async (user: string, store: Promise<MongoClient>, options:
     ]);
 
     const coll = (await store).db().collection('polls');
-    const polls: Cursor<Poll> = (await coll.find({
-        ...(options.polls.filter != PollFilterOptions.All ? {
+    const polls: Cursor<Poll> = coll.find({
+        ...options.polls.filter != PollFilterOptions.All ? {
             closed: { $exists: options.polls.filter == PollFilterOptions.Closed }
-        } : {}),
+        } : {},
         $or: [
             { host: user },
             { members: { $in: [user] } }
         ]
-    })).sort(
+    }).sort(
         options.polls.filter != PollFilterOptions.Closed
-        ? { opened: -1 }
-        : { closed: -1 }
+            ? { opened: -1 }
+            : { closed: -1 }
     ).limit(MAX_POLLS_SHOWN);
 
     if (await polls.count() > 0) {
-        await polls.forEach(async (poll) => {
+        await polls.forEach((poll) => {
             blocks.push(...[
                 <DividerBlock>{ type: 'divider' },
-                ...await poll_blocks.blocks(user, poll, options)
+                ...poll_blocks.blocks(user, poll, options)
             ]);
         });
     }
@@ -108,7 +108,7 @@ export const blocks = async (user: string, store: Promise<MongoClient>, options:
     return blocks;
 };
 
-export const events = (app: App, store: Promise<MongoClient>):void  => {
+export const events = (app: App, store: Promise<MongoClient>):void => {
     app.action<BlockAction<StaticSelectAction>>('filter_polls_select', async ({ ack, body, action, context, client }) => {
         await ack();
 

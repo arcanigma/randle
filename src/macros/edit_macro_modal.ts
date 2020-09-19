@@ -4,10 +4,10 @@ import { MongoClient } from 'mongodb';
 import * as home from '../home';
 import { size } from '../library/factory';
 
-export const view = async (name: string, replacement: string): Promise<View> => ({
+export const view = (name: string, replacement: string): View => ({
     type: 'modal',
     callback_id: 'edit_macro_modal',
-    ...(name ? {private_metadata: name} : {}),
+    ...name ? {private_metadata: name} : {},
     title: {
         type: 'plain_text',
         text: name ? `Edit macro ${name}` : 'Create new macro'
@@ -21,7 +21,7 @@ export const view = async (name: string, replacement: string): Promise<View> => 
         text: 'Cancel'
     },
     blocks: [
-        ...(!name ? [<InputBlock>{
+        ...!name ? [<InputBlock>{
             type: 'input',
             block_id: 'name',
             label: {
@@ -42,7 +42,7 @@ export const view = async (name: string, replacement: string): Promise<View> => 
                     text: 'Name'
                 }
             }
-        }] : []),
+        }] : [],
         <InputBlock>{
             type: 'input',
             block_id: 'replacement',
@@ -54,14 +54,14 @@ export const view = async (name: string, replacement: string): Promise<View> => 
                 type: 'plain_text_input',
                 action_id: 'input',
                 min_length: 3,
-                ...(replacement ? {initial_value: replacement} : {}),
+                ...replacement ? {initial_value: replacement} : {},
                 placeholder: {
                     type: 'plain_text',
                     text: 'Text'
                 }
             }
         },
-        ...(name ? [<InputBlock>{
+        ...name ? [<InputBlock>{
             type: 'input',
             optional: true,
             block_id: 'options',
@@ -87,7 +87,7 @@ export const view = async (name: string, replacement: string): Promise<View> => 
                     }
                 ]
             }
-        }] : [])
+        }] : []
     ]
 });
 
@@ -124,8 +124,8 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                 { projection: { _id: 0} }
             )).value;
 
-            if (size(macros)  == 1)
-                coll.deleteOne(
+            if (size(macros) == 1)
+                await coll.deleteOne(
                     { _id: user }
                 );
         }

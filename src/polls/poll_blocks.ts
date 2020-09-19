@@ -7,7 +7,7 @@ import { commas, names, size } from '../library/factory';
 import * as information_modal from '../library/information_modal';
 import { announce, AUTOCLOSE_GRACE, Poll, PollSetupOptions } from './polls';
 
-export const blocks = async (user: string, poll: Poll, options: HomeOptions): Promise<Block[]> => {
+export const blocks = (user: string, poll: Poll, options: HomeOptions): Block[] => {
     const voted = poll.members.filter(member => poll.votes[member] !== undefined),
         unvoted = poll.members.filter(member => poll.votes[member] === undefined);
 
@@ -22,28 +22,28 @@ export const blocks = async (user: string, poll: Poll, options: HomeOptions): Pr
         <ContextBlock>{
             type: 'context',
             elements: [
-                ...(options.polls.filter == PollFilterOptions.All ? [{
+                ...options.polls.filter == PollFilterOptions.All ? [{
                     type: 'mrkdwn',
                     text: `*Status:* ${poll.closed !== undefined ? 'closed' : 'open'}`
-                }] : []),
+                }] : [],
                 {
                     type: 'mrkdwn',
                     text: `*Audience:* <#${poll.audience}>`
                 },
-                ...(poll.votes[user] !== undefined ? [{
+                ...poll.votes[user] !== undefined ? [{
                     type: 'mrkdwn',
                     text: `*You Voted:* ${poll.choices[poll.votes[user]]}`
-                }] : []),
-                ...(poll.latest ? [{
+                }] : [],
+                ...poll.latest ? [{
                     type: 'mrkdwn',
                     text: `*Latest:* ${poll.latest.summary} <!date^${parseInt(poll.latest.message_ts)}^{date_short_pretty} at {time}^${poll.latest.permalink}|there>`
-                }] : [])
+                }] : []
             ]
         },
         <ActionsBlock>{
             type: 'actions',
             elements: [
-                ...(poll.choices.map((choice, index) =>
+                ...poll.choices.map((choice, index) =>
                     ({
                         type: 'button',
                         action_id: `vote_button_${index}`,
@@ -52,22 +52,22 @@ export const blocks = async (user: string, poll: Poll, options: HomeOptions): Pr
                             emoji: true,
                             text: choice
                         },
-                        ...(poll.votes[user] === index ? {
+                        ...poll.votes[user] === index ? {
                             style: !poll.closed ? 'primary' : 'danger'
                         } : !poll.members.includes(user) ? {
                             style: 'danger'
-                        } : {}),
+                        } : {},
                         value: JSON.stringify({
                             poll: poll._id,
                             choice: poll.votes[user] != index ? index : null
                         })
                     })
-                )),
-                ...(poll.host == user ? [{
+                ),
+                ...poll.host == user ? [{
                     type: 'overflow',
                     action_id: 'poll_overflow_button',
                     options: [
-                        ...(!poll.closed ? [
+                        ...!poll.closed ? [
                             {
                                 text: {
                                     type: 'plain_text',
@@ -120,7 +120,7 @@ export const blocks = async (user: string, poll: Poll, options: HomeOptions): Pr
                                     admin: 'delete'
                                 })
                             }
-                        ]),
+                        ],
                     ],
                     confirm: {
                         title: {
@@ -139,8 +139,8 @@ export const blocks = async (user: string, poll: Poll, options: HomeOptions): Pr
                             type:'plain_text',
                             text:'Cancel'
                         }
-                      }
-                }] : [])
+                    }
+                }] : []
             ]
         },
         <ContextBlock>{
@@ -150,27 +150,27 @@ export const blocks = async (user: string, poll: Poll, options: HomeOptions): Pr
                     type: 'mrkdwn',
                     text: `*Host:* ${poll.host != user ? `<@${poll.host}>` : 'you'}`
                 },
-                ...(user == poll.host || poll.setup.includes(PollSetupOptions.Participation) ? [
-                    ...(voted.length > 0 ? [{
+                ...user == poll.host || poll.setup.includes(PollSetupOptions.Participation) ? [
+                    ...voted.length > 0 ? [{
                         type: 'mrkdwn',
                         text: `*Voted:* ${names(voted, user)}`
-                    },] : []),
-                    ...(unvoted.length > 0 ? [{
+                    },] : [],
+                    ...unvoted.length > 0 ? [{
                         type: 'mrkdwn',
                         text: `*Not Voted:* ${names(unvoted, user)}`
-                    }] : [])
+                    }] : []
                 ] : [{
                     type: 'mrkdwn',
                     text: `*Members:* ${names(poll.members, user)}`
-                }]),
-                ...(poll.setup ? [{
+                }],
+                ...poll.setup ? [{
                     type: 'mrkdwn',
                     text: `*Setup:* ${commas(poll.setup.map(option => ({
                         participation: 'participation notices',
                         anonymous: 'anonymous voting',
                         autoclose: 'automatic closing'
                     })[option])) || 'default'}`
-                }] : [])
+                }] : []
             ]
         }
     ];
@@ -207,10 +207,10 @@ export const events = (app: App, store: Promise<MongoClient>, timers: Record<str
             filter = PollFilterOptions.Closed;
         }
         else if (data.admin == 'reannounce') {
-            const poll: Poll = (await coll.findOne({
+            const poll = <Poll> (await coll.findOne({
                 _id: new ObjectID(data.poll),
                 host: user
-            }))!;
+            }));
 
             await announce('reannounce', poll, context, body, client, store);
 
@@ -282,27 +282,29 @@ export const events = (app: App, store: Promise<MongoClient>, timers: Record<str
                 }
 
                 if (size(poll.votes) == poll.members.length) {
-                    timers[data.poll] = setTimeout(async () => {
-                        delete timers[data.poll];
+                    timers[data.poll] = setTimeout(() => {
+                        void (async () => {
+                            delete timers[data.poll];
 
-                        const poll: Poll = (await coll.findOne({
-                            _id: new ObjectID(data.poll)
-                        }))!;
+                            const poll = <Poll> (await coll.findOne({
+                                _id: new ObjectID(data.poll)
+                            }));
 
-                        if (size(poll.votes) == poll.members.length) {
-                            await coll.updateOne(
-                                { _id: new ObjectID(data.poll) },
-                                { $set: { closed: new Date() } }
-                            );
+                            if (size(poll.votes) == poll.members.length) {
+                                await coll.updateOne(
+                                    { _id: new ObjectID(data.poll) },
+                                    { $set: { closed: new Date() } }
+                                );
 
-                            await announce('autoclose', poll, context, body, client, store);
-                        }
+                                await announce('autoclose', poll, context, body, client, store);
+                            }
+                        })();
                     }, AUTOCLOSE_GRACE * 1000);
 
                     await client.views.open({
                         token: context.botToken,
                         trigger_id: body.trigger_id,
-                        view: await information_modal.view({
+                        view: information_modal.view({
                             title: 'Warning',
                             error: `You voted last. The poll automatically closes after *${AUTOCLOSE_GRACE} seconds* unless somebody votes or unvotes before then.`
                         })
@@ -320,7 +322,7 @@ export const events = (app: App, store: Promise<MongoClient>, timers: Record<str
             await client.views.open({
                 token: context.botToken,
                 trigger_id: body.trigger_id,
-                view: await information_modal.view({
+                view: information_modal.view({
                     title: 'Error',
                     error: "You can't vote in this poll."
                 })

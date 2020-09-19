@@ -22,7 +22,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
     const listen_roll: Middleware<SlackEventMiddlewareArgs<'message'>> = async ({ message, context, next }) => {
         if (message.text && !message.subtype) {
             let matches;
-            if ((matches = wss(message.text).match(re_roll))) {
+            if ((matches = re_roll.exec(wss(message.text)))) {
                 context.clauses = [{
                     text: matches[1],
                     where: 'inline'
@@ -66,7 +66,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
             }
         }
         catch (err) {
-            await blame(err, message, context, client);
+            await blame({ error: err, message, context, client });
         }
     });
 
@@ -96,7 +96,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
     const re_ellipsis = /^\s*(.+)\s*\.\.\.\s*(\w+(?:\s*,\s*\w+)*)\s*$/,
         re_commas = /\s*,\s*/;
     function expandRepeats(clause: Clause) {
-        const match = clause.text.match(re_ellipsis);
+        const match = re_ellipsis.exec(clause.text);
         if (match) {
             const phrase = match[1].replace(re_trail, ''),
                 over = match[2].split(re_commas),
@@ -195,9 +195,9 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                 }
 
                 let prefix;
-                if (total == 1 * (!hilo ? count : keep) + mod)
+                if (total == 1 * (!hilo ? count : keep) + parseInt(mod))
                     prefix = ':heavy_multiplication_x:';
-                else if (total == size * (!hilo ? count : keep) + mod)
+                else if (total == size * (!hilo ? count : keep) + parseInt(mod))
                     prefix = ':heavy_check_mark:';
                 else
                     prefix = ':white_square:';
@@ -289,11 +289,11 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
     const re_math = /([+-]|\b)([0-9]+(?:\.[0-9]+)?)\s*([+-])\s*([0-9]+(?:\.[0-9]+)?)\b/;
     function evaluateArithmetic(clause: Clause) {
         return regexClosure(clause, re_math, (_, sign, x, op, y) => {
-            x = parseFloat(`${sign}${x}`);
-            y = parseFloat(`${op}${y}`);
-            const sum = x+y;
+            const ix = parseInt(`${sign}${x}`),
+                iy = parseInt(`${op}${y}`),
+                sum = ix+iy;
             return sign && sum >= 0
-                ? '+' + sum
+                ? `+${sum}`
                 : sum.toString();
         });
     }

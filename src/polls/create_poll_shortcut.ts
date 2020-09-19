@@ -22,7 +22,7 @@ export const events = (app: App): void => {
                 await client.views.open({
                     token: context.botToken,
                     trigger_id: shortcut.trigger_id,
-                    view: await information_modal.view({
+                    view: information_modal.view({
                         title: 'Error',
                         error: "You can't create a poll in this conversation."
                     })

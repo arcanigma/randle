@@ -15,10 +15,10 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
             name = name.toLowerCase();
 
             const coll = (await store).db().collection('macros');
-            const macros = (await coll.findOne(
+            const macros = await coll.findOne(
                 { _id: user },
                 { projection: { _id: 0} }
-            ));
+            );
 
             if (macros[name])
                 replacement = macros[name];
@@ -27,7 +27,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
         await client.views.open({
             token: context.botToken,
             trigger_id: body.trigger_id,
-            view: await edit_macro_modal.view(name, replacement)
+            view: edit_macro_modal.view(name, replacement)
         });
     });
 };

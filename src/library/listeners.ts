@@ -1,12 +1,12 @@
 import { Middleware, SlackEventMiddlewareArgs } from '@slack/bolt';
 
 const CHANNEL = 'channel',
-      PRIVATE_CHANNEL = 'group',
-      DIRECT = 'im',
-      MULTI_DIRECT = 'mpim';
+    PRIVATE_CHANNEL = 'group',
+    DIRECT = 'im',
+    MULTI_DIRECT = 'mpim';
 
-export const log: Middleware<SlackEventMiddlewareArgs<'message'>> = async ({ message, context, next }) => {
-    console.log({
+export const debug: Middleware<SlackEventMiddlewareArgs<'message'>> = async ({ message, context, next }) => {
+    console.debug({
         message: message,
         context: context
     });

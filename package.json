@@ -1,40 +1,40 @@
 {
     "name": "randle",
     "description": "Dice, cards, and polling bot for Slack.",
-    "version": "3.1.0",
-    "main": "dist/app.js",
+    "version": "3.2.0",
+    "main": "./dist/app.js",
     "scripts": {
+        "lint": "eslint ./src/ --fix",
         "build": "tsc",
-        "start": "node --enable-source-maps dist/app.js",
-        "dev": "tsc && node --enable-source-maps -r dotenv/config dist/app.js"
+        "start": "node --enable-source-maps ./dist/app.js",
+        "dev": "node --enable-source-maps -r dotenv/config ./dist/app.js"
     },
     "engines": {
         "node": "^12.x"
     },
     "dependencies": {
-        "@slack/bolt": "^2.2.3",
-        "@slack/web-api": "^5.11.0",
-        "got": "^11.5.1",
-        "json5": "^2.1",
-        "mongodb": "^3.6.0",
+        "@slack/bolt": "*",
+        "@slack/web-api": "*",
+        "cytoscape": "*",
+        "got": "*",
+        "json5": "*",
+        "mongodb": "*",
         "ordinal": "*",
-        "php-random-int": "^1.0",
-        "puppeteer": "^5.2.1"
+        "php-random-int": "*",
+        "puppeteer": "*"
     },
     "devDependencies": {
-        "@types/puppeteer-core": "^2.0.0",
-        "@types/cytoscape": "^3.14.7",
-        "@types/json5": "^0.0",
-        "@types/mongodb": "^3.5",
-        "@types/node": "^14.0.27",
-        "@typescript-eslint/eslint-plugin": "^3.7.1",
-        "@typescript-eslint/parser": "^3.7.1",
-        "cytoscape": "^3.15.2",
-        "cytoscape-avsdf": "^1.0.0",
-        "dotenv": "^8.2",
-        "eslint": "^7.6.0",
-        "ngrok": "^3.2",
-        "typescript": "^3.9.7"
+        "@tsconfig/node12": "*",
+        "@types/cytoscape": "*",
+        "@types/json5": "*",
+        "@types/mongodb": "*",
+        "@types/node": "*",
+        "@types/puppeteer-core": "*",
+        "@typescript-eslint/eslint-plugin": "*",
+        "@typescript-eslint/parser": "*",
+        "dotenv": "*",
+        "eslint": "*",
+        "typescript": "*"
     },
     "license": "MIT",
     "author": {

@@ -48,8 +48,8 @@ polls.events(app, store, timers);
 roll.events(app, store);
 routes.events(receiver);
 
-(async () => {
+void (async () => {
     const port = process.env.PORT ?? 80;
-    app.start(port);
-    console.log(`Listening on port ${port}...`);
+    await app.start(port);
+    console.debug(`Listening on port ${port}...`);
 })();

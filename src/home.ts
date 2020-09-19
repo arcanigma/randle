@@ -1,5 +1,5 @@
 import { App } from '@slack/bolt';
-import { Block, View } from '@slack/web-api';
+import { View } from '@slack/web-api';
 import { MongoClient } from 'mongodb';
 import { MAX_VIEW_BLOCKS } from './app.js';
 import * as macros from './macros/macros_home';
@@ -34,7 +34,7 @@ export const view = async (user: string, store: Promise<MongoClient>, options?: 
         { type: 'divider' },
         ...await macros.blocks(user, store),
         { type: 'divider' }
-    ].slice(0, MAX_VIEW_BLOCKS) as Block[]
+    ].slice(0, MAX_VIEW_BLOCKS)
 });
 
 export const events = (app: App, store: Promise<MongoClient>): void => {
