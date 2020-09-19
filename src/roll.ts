@@ -18,7 +18,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
     // TODO support JSON Script embeds, even in macros
 
     const re_roll = /^!?roll\s+(.+)/i,
-          re_parens = /(?:\([^'()][^()]*\)|\[[^'[\]][^[\]]*\])/g;
+        re_parens = /(?:\([^'()][^()]*\)|\[[^'[\]][^[\]]*\])/g;
     const listen_roll: Middleware<SlackEventMiddlewareArgs<'message'>> = async ({ message, context, next }) => {
         if (message.text && !message.subtype) {
             let matches;
@@ -72,28 +72,29 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
 
     async function macroize(store: Promise<MongoClient>, context: Context, user: string) {
         const coll = (await store).db().collection('macros');
-        const macros = (await coll.findOne(
+        const personal = (await coll.findOne(
                 { _id: user },
                 { projection: { _id: 0} }
-            )) ?? {};
-        const community = (await coll.findOne(
-            { _id: context.botUserId },
-            { projection: { _id: 0} }
-        )) ?? {};
-        Object.keys(community).forEach(name => {
-            if (!macros[name])
-                macros[name] = community[name];
-        });
+            )) ?? {},
+            community = (await coll.findOne(
+                { _id: context.botUserId },
+                { projection: { _id: 0} }
+            )) ?? {},
+            macros = Object.assign({}, community, personal);
 
-        const re_macros = new RegExp(`\\b(${Object.keys(macros).join('|')})\\b`, 'gi');
-        return context.clauses.map((clause: Clause) => ({
-            text: clause.text.replace(re_macros, m => macros[m.toLowerCase()]),
-            where: clause.where
-        }));
+        if (Object.keys(macros).length >= 1) {
+            const re_macros = new RegExp(`\\b(${Object.keys(macros).join('|')})\\b`, 'gi');
+            context.clauses = context.clauses.map((clause: Clause) => ({
+                text: clause.text.replace(re_macros, m => macros[m.toLowerCase()]),
+                where: clause.where
+            }));
+        }
+
+        return context.clauses;
     }
 
     const re_ellipsis = /^\s*(.+)\s*\.\.\.\s*(\w+(?:\s*,\s*\w+)*)\s*$/,
-          re_commas = /\s*,\s*/;
+        re_commas = /\s*,\s*/;
     function expandRepeats(clause: Clause) {
         const match = clause.text.match(re_ellipsis);
         if (match) {
@@ -232,7 +233,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
 
                 if (results[clauses[i].where].blocks.length < MAX_MESSAGE_BLOCKS) {
                     if (results[clauses[i].where].blocks.length == 0)
-                    results[clauses[i].where].blocks.push(<SectionBlock>{
+                        results[clauses[i].where].blocks.push(<SectionBlock>{
                             type: 'section',
                             text: {
                                 type: 'mrkdwn',
@@ -240,7 +241,7 @@ export const events = (app: App, store: Promise<MongoClient>): void => {
                             }
                         });
                     else
-                    results[clauses[i].where].blocks.push(<SectionBlock>{
+                        results[clauses[i].where].blocks.push(<SectionBlock>{
                             type: 'section',
                             text: {
                                 type: 'mrkdwn',
