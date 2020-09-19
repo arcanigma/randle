@@ -61,8 +61,24 @@ export function build(items: Items, defines: Defines): string[] {
         return validate(items.if, defines.options)
             ? build(items.then, defines)
             : ( items.else ? build(items.else, defines) : [] );
-    else if ('set' in items)
-        return construct(items.set, defines.sets);
+    else if ('set' in items || 'union' in items) {
+        let result = [
+            ...construct(items.set, defines.sets),
+            ...construct(items.union, defines.sets)
+        ];
+
+        if ('intersect' in items) {
+            const intersect = construct(items.intersect, defines.sets);
+            result = result.filter(it => intersect.includes(it));
+        }
+
+        if ('except' in items) {
+            const except = construct(items.except, defines.sets);
+            result = result.filter(it => !except.includes(it));
+        }
+
+        return result;
+    }
     else
         throw `Unexpected deck \'${JSON.stringify(items)}\` in script.`;
 }
@@ -249,8 +265,20 @@ export function matches(it: string, matcher: Matcher, defines: Defines): boolean
         return it.match(wss(matcher.matches)) != null;
     else if ('all' in matcher && matcher.all === true)
         return true;
-    else if ('set' in matcher)
-        return construct(matcher.set, defines.sets).includes(it);
+    else if ('set' in matcher) {
+        let result = (
+            construct(matcher.set, defines.sets).includes(it) ||
+            construct(matcher.union, defines.sets).includes(it)
+        );
+
+        if ('intersect' in matcher)
+            result = result && construct(matcher.intersect, defines.sets).includes(it);
+
+        if ('except' in matcher)
+            result = result && !construct(matcher.except, defines.sets).includes(it);
+
+        return result;
+    }
     else
         throw `Unexpected matcher \'${JSON.stringify(matcher)}\` in script.`;
 }

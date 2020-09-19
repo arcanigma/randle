@@ -22,7 +22,7 @@ export type Script = {
     import?: string | string[];
 } & Defines;
 
-export type Defines = { // TODO unify these types?
+export type Defines = {
     sets?: SetDefines;
     values?: ValueDefines;
     options?: OptionDefines;
@@ -40,7 +40,6 @@ export type Set =
     | { union: Set[]; }
     | { intersect: Set[]; }
     | { except: Set[]; }
-    // TODO support nested Items
 
 export type Value =
     | number
@@ -68,7 +67,7 @@ export type Items =
     | { cross: Items; with: Items; using?: string; }
     | { zip: Items; with: Items; using?: string; }
     | { if: Option; then: Items; else?: Items; }
-    | { set: Set; }
+    | { set: Set; union?: Set, intersect?: Set, except?: Set }
     | Items[]
 
 export type Rules =
@@ -82,7 +81,7 @@ export type ShowRule = {
     show: Matcher;
     to: Matcher;
     as?: string;
-    loopless?: Option; // TODO all-encompassing loopless/no-self option
+    loopless?: Option;
 } & Conditional
 
 export type AnnounceRule = {
@@ -118,7 +117,7 @@ export type Matcher =
     | { excludes: string; }
     | { matches: string; }
     | { all: true }
-    | { set: Set; }
+    | { set: Set; union?: Set, intersect?: Set, except?: Set }
     | Matcher[]
 
 export const events = (app: App, store: Promise<MongoClient>): void => {
