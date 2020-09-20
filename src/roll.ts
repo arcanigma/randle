@@ -3,7 +3,7 @@ import { Block, ContextBlock, MrkdwnElement, SectionBlock } from '@slack/web-api
 import { MongoClient } from 'mongodb';
 import ordinal from 'ordinal';
 import randomInt from 'php-random-int';
-import { MAX_CONTEXT_ELEMENTS, MAX_MESSAGE_BLOCKS, MAX_TEXT_SIZE } from './app.js';
+import { MAX_CONTEXT_ELEMENTS, MAX_MESSAGE_BLOCKS, MAX_TEXT_SIZE } from './app';
 import { trunc, wss } from './library/factory';
 import { anywhere } from './library/listeners';
 import { blame } from './library/messages';
