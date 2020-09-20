@@ -1,12 +1,12 @@
 import { App, BlockAction, Context, InteractiveMessage, SlackAction, SlackViewAction, ViewSubmitAction } from '@slack/bolt';
 import { ActionsBlock, Block, ChatPostMessageArguments, ContextBlock, MrkdwnElement, SectionBlock, WebAPICallResult, WebClient } from '@slack/web-api';
 import { MongoClient, ObjectID } from 'mongodb';
+import { Cache } from '../app';
 import { commas, names, offbox, onbox } from '../library/factory';
 import * as information_modal from '../library/information_modal';
 import * as create_poll_modal from './create_poll_modal';
 import * as create_poll_shortcut from './create_poll_shortcut';
-import * as polls_home from './polls_home';
-import * as poll_blocks from './poll_blocks';
+import * as poll_interactions from './poll_interactions';
 
 export const AUTOCLOSE_GRACE = 30;
 
@@ -209,22 +209,20 @@ export async function announce ({ mode, poll, context, body, client, store }:
     const coll = (await store).db().collection('polls');
     await coll.updateOne(
         { _id: new ObjectID(poll._id) },
-        ts
-            ? { $set: {
-                latest: {
-                    summary: summary,
-                    message_ts: ts,
-                    permalink: permalink
-                }
-            } }
-            : { $unset: {
-                latest: undefined
-            } }
+        ts ? { $set: {
+            latest: {
+                summary: summary,
+                message_ts: ts,
+                permalink: permalink
+            }
+        } } : { $unset: {
+            latest: undefined
+        } }
     );
 }
 
-export const register = ({ app, store, timers }: { app: App; store: Promise<MongoClient>; timers: Record<string, NodeJS.Timeout> }): void => {
-    [ create_poll_modal, create_poll_shortcut, polls_home, poll_blocks ].forEach(it => {
-        it.register({ app, store, timers });
+export const register = ({ app, store, cache, timers }: { app: App; store: Promise<MongoClient>; cache: Cache; timers: Record<string, NodeJS.Timeout> }): void => {
+    [ create_poll_modal, create_poll_shortcut, poll_interactions ].forEach(it => {
+        it.register({ app, store, cache, timers });
     });
 };

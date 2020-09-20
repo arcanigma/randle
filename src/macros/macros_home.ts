@@ -1,15 +1,29 @@
 import { Block, ContextBlock, DividerBlock, SectionBlock } from '@slack/web-api';
 import { MongoClient } from 'mongodb';
+import { HomeTabs } from '../home';
 
-export const blocks = async (user: string, store: Promise<MongoClient>): Promise<Block[]> => {
-    const blocks: Block[] = [];
+export const tabs: HomeTabs = {
+    'macros-user': {
+        title: 'Macros \u2022 Personal',
+        emoji: ':game_die:'
+    },
 
-    blocks.push(...[
+    // TODO read workspace macros
+    // TODO edit workspace macros if super user
+    // 'macros-workspace': {
+    //     title: 'Macros \u2022 Community',
+    //     emoji: ':game_die:'
+    // }
+};
+
+export const blocks = async ({ user, store }: { user: string; store: Promise<MongoClient> }): Promise<Block[]> => {
+    const blocks: Block[] = [
+        <DividerBlock>{ type: 'divider' },
         <SectionBlock>{
             type: 'section',
             text: {
                 type: 'mrkdwn',
-                text: '>>> *Macros*'
+                text: '*Personal*'
             },
             accessory: {
                 type: 'button',
@@ -21,7 +35,7 @@ export const blocks = async (user: string, store: Promise<MongoClient>): Promise
             }
         },
         <DividerBlock>{ type: 'divider' }
-    ]);
+    ];
 
     const coll = (await store).db().collection('macros');
     const macros = await coll.findOne(

@@ -4,7 +4,7 @@ import { MongoClient, ObjectId } from 'mongodb';
 import { size } from '../library/factory';
 import { announce, Poll, PollSetupOptions } from './polls';
 
-export const view = async (channel: string | undefined, context: Context, client: WebClient): Promise<View> => ({
+export const view = async ({ channel, context, client }: { channel: string | undefined; context: Context; client: WebClient }): Promise<View> => ({
     type: 'modal',
     callback_id: 'create_poll_modal',
     title: {

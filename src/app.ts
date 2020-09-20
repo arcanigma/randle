@@ -35,13 +35,19 @@ const store = MongoClient.connect(
 
 const timers: Record<string, NodeJS.Timeout> = {};
 
+export type Cache = Record<string, {
+    tab?: string;
+}>;
+
+const cache: Cache = {};
+
 export const MAX_TEXT_SIZE = 1000;
 export const MAX_VIEW_BLOCKS = 100;
 export const MAX_MESSAGE_BLOCKS = 50;
 export const MAX_CONTEXT_ELEMENTS = 10;
 
 [ deck, debug, home, macros, polls, roll, routes ].forEach(it => {
-    it.register({ app, receiver, store, timers });
+    it.register({ app, receiver, store, cache, timers });
 });
 
 void (async () => {

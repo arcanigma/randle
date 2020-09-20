@@ -3,9 +3,9 @@ import { MongoClient } from 'mongodb';
 import * as commands from './commands';
 import * as scripts from './scripts';
 
-export const SUIT_EMOJIS: ({
+export const SUIT_EMOJIS: {
     [suit: string]: string;
-}) = {
+} = {
     'Spades': ':spades:',
     'Hearts': ':hearts:',
     'Clubs': ':clubs:',

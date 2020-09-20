@@ -1,10 +1,11 @@
-import { App, ButtonAction, CheckboxesAction } from '@slack/bolt';
+import { App, BlockAction, ButtonAction, CheckboxesAction } from '@slack/bolt';
 import { InputBlock, View } from '@slack/web-api';
 import { MongoClient } from 'mongodb';
+import { Cache } from '../app';
 import * as home from '../home';
 import { size } from '../library/factory';
 
-export const view = (name: string, replacement: string | undefined): View => ({
+export const view = ({ name, replacement }: { name: string; replacement: string | undefined }): View => ({
     type: 'modal',
     callback_id: 'edit_macro_modal',
     ...name ? { private_metadata: name } : {},
@@ -73,7 +74,6 @@ export const view = (name: string, replacement: string | undefined): View => ({
                 type: 'checkboxes',
                 action_id: 'inputs',
                 options: [
-                    // TODO team-scoped macros if super user
                     {
                         text: {
                             type: 'plain_text',
@@ -94,7 +94,35 @@ export const view = (name: string, replacement: string | undefined): View => ({
 type Input<T> = { input: T }
 type Inputs<T> = { inputs: T }
 
-export const register = ({ app, store }: { app: App; store: Promise<MongoClient> }): void => {
+export const register = ({ app, store, cache }: { app: App; store: Promise<MongoClient>; cache: Cache }): void => {
+    app.action<BlockAction<ButtonAction>>('edit_macro_button', async ({ ack, body, action, context, client }) => {
+        await ack();
+
+        const user = body.user.id;
+
+        let name = action.value;
+
+        let replacement;
+        if (name) {
+            name = name.toLowerCase();
+
+            const coll = (await store).db().collection('macros');
+            const macros = <{[key: string]: string}> await coll.findOne(
+                { _id: user },
+                { projection: { _id: 0 } }
+            );
+
+            if (macros[name])
+                replacement = macros[name];
+        }
+
+        await client.views.open({
+            token: <string> context.botToken,
+            trigger_id: body.trigger_id,
+            view: view({ name, replacement })
+        });
+    });
+
     const re_macro = /^[\w_][\w\d_]{2,14}$/;
     app.view('edit_macro_modal', async ({ ack, body, view, context, client }) => {
         const user = body.user.id,
@@ -138,7 +166,7 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
         await client.views.publish({
             token: <string> context.botToken,
             user_id: user,
-            view: await home.view(user, store)
+            view: await home.view({ user, store, cache })
         });
     });
 };

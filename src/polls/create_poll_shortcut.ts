@@ -14,7 +14,7 @@ export const register = ({ app }: { app: App }): void => {
             await client.views.open({
                 token: <string> context.botToken,
                 trigger_id: shortcut.trigger_id,
-                view: await create_poll_modal.view(channel, context, client)
+                view: await create_poll_modal.view({ channel, context, client })
             });
         }
         catch (error) {

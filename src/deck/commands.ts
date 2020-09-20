@@ -11,13 +11,13 @@ import { getMacro } from '../macros/macros';
 import { SUIT_EMOJIS } from './deck';
 import { choose, pluck, repeat, shuffle } from './solving';
 
-export const MODE_WORD: ({
+export const MODE_WORD: {
     [mode: string]: {
         did: string;
         redo: string;
         redid: string;
     };
-}) = {
+} = {
     'Shuffle': {
         did: 'Shuffled',
         redo: 'Reshuffle',
@@ -98,7 +98,7 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
             else if (list[0] == '<!channel>')
                 list = (await getMembers(message.channel, context, client)).map(them => `<@${them}>`);
             else if (re_macro.test(list[0]))
-                list = (await getMacro(store, context, user, list[0])).split(',').map(it => it.trim());
+                list = (await getMacro({ store, context, user, name: list[0] })).split(',').map(it => it.trim());
         }
 
         const items = fun(list);

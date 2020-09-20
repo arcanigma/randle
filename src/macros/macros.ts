@@ -1,9 +1,9 @@
 import { App, Context } from '@slack/bolt';
 import { MongoClient } from 'mongodb';
-import * as edit_macro_button from './edit_macro_button';
-import * as edit_macro_modal from './edit_macro_modal';
+import { Cache } from '../app';
+import * as macro_interactions from './macro_interactions';
 
-export async function getMacro (store: Promise<MongoClient>, context: Context, user: string, name: string): Promise<string> {
+export async function getMacro ({ user, name, store, context }: { user: string; name: string; store: Promise<MongoClient>; context: Context }): Promise<string> {
     name = name.toLowerCase();
 
     const coll = (await store).db().collection('macros');
@@ -18,8 +18,8 @@ export async function getMacro (store: Promise<MongoClient>, context: Context, u
     name;
 }
 
-export const register = ({ app, store }: { app: App; store: Promise<MongoClient> }): void => {
-    [ edit_macro_button, edit_macro_modal ].forEach(it => {
-        it.register({ app, store });
+export const register = ({ app, store, cache }: { app: App; store: Promise<MongoClient>; cache: Cache }): void => {
+    [macro_interactions].forEach(it => {
+        it.register({ app, store, cache });
     });
 };
