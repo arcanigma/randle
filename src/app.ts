@@ -36,7 +36,7 @@ const store = MongoClient.connect(
 const timers: Record<string, NodeJS.Timeout> = {};
 
 export type Cache = Record<string, {
-    tab?: string;
+    home_tab?: string;
 }>;
 
 const cache: Cache = {};

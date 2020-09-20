@@ -166,7 +166,7 @@ export const register = ({ app, store, cache }: { app: App; store: Promise<Mongo
         await client.views.publish({
             token: <string> context.botToken,
             user_id: user,
-            view: await home.view({ user, store, cache })
+            view: await home.view({ user, store, cache, context })
         });
     });
 };

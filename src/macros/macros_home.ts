@@ -1,5 +1,7 @@
-import { Block, ContextBlock, DividerBlock, SectionBlock } from '@slack/web-api';
+import { Context } from '@slack/bolt';
+import { Block, DividerBlock, SectionBlock } from '@slack/web-api';
 import { MongoClient } from 'mongodb';
+import { Cache } from '../app';
 import { HomeTabs } from '../home';
 
 export const tabs: HomeTabs = {
@@ -7,43 +9,51 @@ export const tabs: HomeTabs = {
         title: 'Macros \u2022 Personal',
         emoji: ':game_die:'
     },
-
-    // TODO read workspace macros
-    // TODO edit workspace macros if super user
-    // 'macros-workspace': {
-    //     title: 'Macros \u2022 Community',
-    //     emoji: ':game_die:'
-    // }
+    'macros-workspace': {
+        title: 'Macros \u2022 Community',
+        emoji: ':game_die:'
+    }
 };
 
-export const blocks = async ({ user, store }: { user: string; store: Promise<MongoClient> }): Promise<Block[]> => {
+export const blocks = async ({ user, store, cache, context }: { user: string; store: Promise<MongoClient>; cache: Cache; context: Context }): Promise<Block[]> => {
+    const tab = cache[user].home_tab ?? 'macros-user';
+
+    const coll = (await store).db().collection('macros');
+    const macros = await coll.findOne(
+        { _id:
+            tab == 'macros-user' ? user :
+                tab == 'macros-workspace' ? <string> context.botUserId :
+                    undefined },
+        { projection: { _id: 0 } }
+    ) as {
+        [macro: string]: string;
+    };
+
+    const count = Object.keys(macros).length;
+
     const blocks: Block[] = [
         <DividerBlock>{ type: 'divider' },
         <SectionBlock>{
             type: 'section',
             text: {
                 type: 'mrkdwn',
-                text: '*Personal*'
+                text: tab == 'macros-user' ? `You have *${count}* personal macro${count != 1 ? 's' : ''}.` :
+                    tab == 'macros-workspace' ? `The community has *${count}* shared macro${count != 1 ? 's' : ''}.` :
+                        'Unknown macro type.'
             },
-            accessory: {
+            // TODO edit workspace macros if super user
+            ...(tab == 'macros-user' ? { accessory: {
                 type: 'button',
                 action_id: 'edit_macro_button',
+                style: 'primary',
                 text: {
                     type: 'plain_text',
                     text: 'Create'
                 }
-            }
+            } } : {})
         },
-        <DividerBlock>{ type: 'divider' }
+        <DividerBlock>{ type: 'divider' },
     ];
-
-    const coll = (await store).db().collection('macros');
-    const macros = await coll.findOne(
-        { _id: user },
-        { projection: { _id: 0 } }
-    ) as {
-        [macro: string]: string;
-    };
 
     if (macros) {
         const names = Object.keys(macros).sort();
@@ -55,7 +65,7 @@ export const blocks = async ({ user, store }: { user: string; store: Promise<Mon
                     type: 'mrkdwn',
                     text: `*\`${name}\`* \u2022 ${macros[name]}`
                 },
-                accessory: {
+                ...(tab == 'macros-user' ? { accessory: {
                     type: 'button',
                     action_id: 'edit_macro_button',
                     text: {
@@ -63,20 +73,9 @@ export const blocks = async ({ user, store }: { user: string; store: Promise<Mon
                         text: 'Edit'
                     },
                     value: name
-                }
+                } } : {} )
             });
         }
-    }
-    else {
-        blocks.push(<ContextBlock>{
-            type: 'context',
-            elements: [
-                {
-                    type: 'plain_text',
-                    text: 'You have no macros.'
-                }
-            ]
-        });
     }
 
     return blocks;

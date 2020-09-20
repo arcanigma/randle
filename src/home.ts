@@ -1,4 +1,4 @@
-import { App, BlockAction, StaticSelectAction } from '@slack/bolt';
+import { App, BlockAction, Context, StaticSelectAction } from '@slack/bolt';
 import { SectionBlock, View } from '@slack/web-api';
 import { MongoClient } from 'mongodb';
 import { Cache, MAX_VIEW_BLOCKS } from './app';
@@ -19,14 +19,14 @@ const HOME_TABS = Object.assign({},
 
 const DEFAULT_TAB = 'macros-user';
 
-export const view = async ({ user, store, cache }: { user: string; store: Promise<MongoClient>; cache: Cache }): Promise<View> => {
+export const view = async ({ user, store, cache, context }: { user: string; store: Promise<MongoClient>; cache: Cache; context: Context }): Promise<View> => {
     if (cache[user] === undefined)
         cache[user] = {};
 
-    if (cache[user].tab === undefined)
-        cache[user].tab = DEFAULT_TAB;
+    if (cache[user].home_tab === undefined)
+        cache[user].home_tab = DEFAULT_TAB;
 
-    const tab = cache[user].tab ?? DEFAULT_TAB;
+    const tab = cache[user].home_tab ?? DEFAULT_TAB;
 
     const view: View = {
         type: 'home',
@@ -64,7 +64,7 @@ export const view = async ({ user, store, cache }: { user: string; store: Promis
     };
 
     if (tab.startsWith('macros'))
-        view.blocks.push(...await macros.blocks({ user, store }));
+        view.blocks.push(...await macros.blocks({ user, store, cache, context }));
     else if (tab.startsWith('polls'))
         view.blocks.push(...await polls.blocks({ user, store, cache }));
 
@@ -81,7 +81,7 @@ export const register = ({ app, store, cache }: { app: App; store: Promise<Mongo
         await client.views.publish({
             token: <string> context.botToken,
             user_id: user,
-            view: await view({ user, store, cache })
+            view: await view({ user, store, cache, context })
         });
     });
 
@@ -91,12 +91,12 @@ export const register = ({ app, store, cache }: { app: App; store: Promise<Mongo
         const user = body.user.id,
             tab = action.selected_option.value;
 
-        cache[user].tab = tab;
+        cache[user].home_tab = tab;
 
         await client.views.publish({
             token: <string> context.botToken,
             user_id: user,
-            view: await view({ user, store, cache })
+            view: await view({ user, store, cache, context })
         });
     });
 };

@@ -34,7 +34,7 @@ export const register = ({ app, store, cache, timers }: { app: App; store: Promi
 
             await announce({ mode: data.admin, poll, context, body, client, store });
 
-            cache[user].tab = 'polls-closed';
+            cache[user].home_tab = 'polls-closed';
         }
         else if (data.admin == 'reannounce') {
             const poll = <Poll> (await coll.findOne({
@@ -60,7 +60,7 @@ export const register = ({ app, store, cache, timers }: { app: App; store: Promi
 
             await announce({ mode: 'reopen', poll, context, body, client, store });
 
-            cache[user].tab = 'polls-open';
+            cache[user].home_tab = 'polls-open';
         }
         else if (data.admin == 'delete') {
             await coll.deleteOne({
@@ -78,7 +78,7 @@ export const register = ({ app, store, cache, timers }: { app: App; store: Promi
         await client.views.publish({
             token: <string> context.botToken,
             user_id: user,
-            view: await home.view({ user, store, cache })
+            view: await home.view({ user, store, cache, context })
         });
     });
 
@@ -148,7 +148,7 @@ export const register = ({ app, store, cache, timers }: { app: App; store: Promi
             await client.views.publish({
                 token: <string> context.botToken,
                 user_id: user,
-                view: await home.view({ user, store, cache })
+                view: await home.view({ user, store, cache, context })
             });
         }
         else {

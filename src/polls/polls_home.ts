@@ -5,7 +5,7 @@ import { HomeTabs } from '../home';
 import { commas, names } from '../library/factory';
 import { Poll, PollSetupOptions } from './polls';
 
-const MAX_POLLS_SHOWN = 20; // TODO pagination
+const MAX_POLLS_SHOWN = 10;
 
 export const tabs: HomeTabs = {
     'polls-open': {
@@ -23,8 +23,8 @@ export const tabs: HomeTabs = {
 };
 
 export const blocks = async ({ user, store, cache }: { user: string; store: Promise<MongoClient>; cache: Cache }): Promise<Block[]> => {
-    const blocks: Block[] = [],
-        tab = cache[user].tab ?? 'polls-open';
+    const tab = cache[user].home_tab ?? 'polls-open',
+        blocks: Block[] = [];
 
     const coll = (await store).db().collection('polls');
     const polls = <Cursor<Poll>> coll.find({
@@ -52,20 +52,18 @@ export const blocks = async ({ user, store, cache }: { user: string; store: Prom
     else {
         blocks.push(...[
             <DividerBlock>{ type: 'divider' },
-            <ContextBlock>{
-                type: 'context',
-                elements: [
-                    {
-                        type: 'mrkdwn',
-                        text: `You aren't a host or member of ${
-                            tab == 'polls-open' ?
-                                'any *open*' :
-                                tab == 'polls-closed' ?
-                                    'any *closed*' :
-                                    '*any*'
-                        } polls.`
-                    }
-                ]
+            <SectionBlock>{
+                type: 'section',
+                text: {
+                    type: 'mrkdwn',
+                    text: `You aren't a host or member of ${
+                        tab == 'polls-open' ?
+                            'any *open*' :
+                            tab == 'polls-closed' ?
+                                'any *closed*' :
+                                '*any*'
+                    } polls.`
+                }
             }
         ]);
     }
@@ -76,7 +74,7 @@ export const blocks = async ({ user, store, cache }: { user: string; store: Prom
 const poll_blocks = ({ user, poll, cache }: { user: string; poll: Poll; cache: Cache }): Block[] => {
     const voted = poll.members.filter(member => poll.votes[member] !== undefined),
         unvoted = poll.members.filter(member => poll.votes[member] === undefined),
-        tab = cache[user].tab ?? 'polls-open';
+        tab = cache[user].home_tab ?? 'polls-open';
 
     const blocks: Block[] = [
         <SectionBlock>{
