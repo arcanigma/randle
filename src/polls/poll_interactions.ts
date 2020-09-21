@@ -145,6 +145,8 @@ export const register = ({ app, store, cache, timers }: { app: App; store: Promi
                 }
             }
 
+            cache[user].home_tab = 'polls-open';
+
             await client.views.publish({
                 token: <string> context.botToken,
                 user_id: user,
