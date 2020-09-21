@@ -1,0 +1,11 @@
+{
+		"recommendations": [
+				"dbaeumer.vscode-eslint",
+				"mrmlnc.vscode-json5",
+				"ms-vscode-remote.remote-wsl",
+				"ms-vscode.js-debug-nightly"
+		],
+		"unwantedRecommendations": [
+
+		]
+}
