@@ -58,7 +58,7 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
             await postDeckMessage({
                 mode: 'Draw',
                 expression: (<string[]> context.matches)[2],
-                fun: items => choose(items, parseInt((<string[]> context.matches)[1]) ?? 1),
+                fun: items => choose(items, parseInt((<string[]> context.matches)[1]) || 1),
                 recount: 0,
                 message, context, client, say
             });
@@ -74,7 +74,7 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
             await postDeckMessage({
                 mode: 'Pool',
                 expression: (<string[]> context.matches)[2],
-                fun: items => repeat(items, parseInt((<string[]> context.matches)[1]) ?? 1),
+                fun: items => repeat(items, parseInt((<string[]> context.matches)[1]) || 1),
                 recount: 0,
                 message, context, client, say
             });
