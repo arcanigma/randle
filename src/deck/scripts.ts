@@ -109,24 +109,25 @@ export const register = ({ app }: { app: App }): void => {
                     });
                 });
 
-                listify(script.rules).filter((rule): rule is ShowRule => 'show' in rule && enable(rule, draft, script.options)).forEach(rule => {
-                    listify(rule.to).forEach(to => {
-                        draft.filter(it => matches(it, to, script)).forEach(yours => {
-                            listify(rule.show).forEach(show => {
-                                draft.filter(it => matches(it, show, script) && (!rule.loopless || it != yours)).forEach(theirs => {
-                                    graph.push(<ElementDefinition>{
-                                        group: 'edges',
-                                        data: {
-                                            source: yours,
-                                            target: theirs,
-                                            arrow: !rule.as ? 'triangle' : 'triangle-tee'
-                                        }
+                if (graph.length > 0)
+                    listify(script.rules).filter((rule): rule is ShowRule => 'show' in rule && enable(rule, draft, script.options)).forEach(rule => {
+                        listify(rule.to).forEach(to => {
+                            draft.filter(it => matches(it, to, script)).forEach(yours => {
+                                listify(rule.show).forEach(show => {
+                                    draft.filter(it => matches(it, show, script) && (!rule.loopless || it != yours)).forEach(theirs => {
+                                        graph.push(<ElementDefinition>{
+                                            group: 'edges',
+                                            data: {
+                                                source: yours,
+                                                target: theirs,
+                                                arrow: !rule.as ? 'triangle' : 'triangle-tee'
+                                            }
+                                        });
                                     });
                                 });
                             });
                         });
                     });
-                });
             }
 
             const dealt: {
