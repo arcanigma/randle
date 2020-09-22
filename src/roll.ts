@@ -138,7 +138,7 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
                 for (const roll of rolls) {
                     const num = parseInt(roll),
                         sign = num >= 0 ? '+' : '-',
-                        face = String(roll);
+                        face = Math.abs(roll);
 
                     if (atoms.length > 0 || sign == '-')
                         atoms.push(sign);
