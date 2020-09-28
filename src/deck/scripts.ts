@@ -252,7 +252,7 @@ export const register = ({ app }: { app: App }): void => {
                         action_id: `script_message_select_${message.channel}_${JSON.stringify(script.event)}_${suit}`,
                         placeholder: {
                             type: 'plain_text',
-                            text: 'Reveal'
+                            text: 'Reveal' // TODO script option for this
                         },
                         options: dealt[user].map((item, index) => ({
                             text: {

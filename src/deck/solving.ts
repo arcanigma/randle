@@ -129,7 +129,7 @@ export function cross<T> (list1: T[], list2: T[], delimiter?: T): string[] {
     const build = [];
     for (const a of list1)
         for (const b of list2)
-            build.push(`${String(a)}${String(delimiter) ?? ' \u2022 '}${String(b)}`);
+            build.push(`${String(a)}${delimiter ? String(delimiter) : ' \u2022 '}${String(b)}`);
     return shuffle(build);
 }
 
@@ -138,7 +138,7 @@ export function zip<T> (list1: T[], list2: T[], delimiter?: T): string[] {
         copy1 = shuffle(list1),
         copy2 = shuffle(list2);
     for (let i = 0; i < Math.min(list1.length, list2.length); i++)
-        build.push(wss(`${String(copy1[i])}${String(delimiter) ?? ' \u2022 '}${String(copy2[i])}`));
+        build.push(wss(`${String(copy1[i])}${delimiter ? String(delimiter) : ' \u2022 '}${String(copy2[i])}`));
     return build;
 }
 
