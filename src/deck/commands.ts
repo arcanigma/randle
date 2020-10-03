@@ -9,7 +9,7 @@ import { getMembers } from '../library/lookup';
 import { blame } from '../library/messages';
 import { getMacro } from '../macros/macros';
 import { SUIT_EMOJIS } from './deck';
-import { choose, pluck, repeat, shuffle } from './solving';
+import { choose, pluck, repeat, shuffleInPlace } from './solving';
 
 export const MODE_WORD: {
     [mode: string]: {
@@ -42,7 +42,7 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
             await postDeckMessage({
                 mode: 'Shuffle',
                 expression: (<string[]> context.matches)[1],
-                fun: items => shuffle(items),
+                fun: items => shuffleInPlace(items),
                 recount: 0,
                 message, context, client, say
             });

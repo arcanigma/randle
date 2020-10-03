@@ -92,20 +92,24 @@ export function listify<T> (element: T | T[]): T[] {
         return [];
 }
 
-export function shuffle<T> (list: T[]): T[] {
+export function shuffleCopy<T> (list: T[]): T[] {
     const copy = [...list];
-    for (let i = copy.length - 1; i >= 1; i--) {
+    return shuffleInPlace(copy);
+}
+
+export function shuffleInPlace<T> (list: T[]): T[] {
+    for (let i = list.length - 1; i >= 1; i--) {
         const j = randomInt(0, i);
-        [ copy[i], copy[j] ] = [ copy[j], copy[i] ];
+        [ list[i], list[j] ] = [ list[j], list[i] ];
     }
-    return copy;
+    return list;
 }
 
 export function choose<T> (list: T[], quantity: number): T[] {
     if (quantity > list.length || quantity < 0)
         throw `Unexpected choose quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
 
-    return shuffle(list).slice(list.length - quantity);
+    return shuffleCopy(list).slice(list.length - quantity);
 }
 
 export function repeat<T> (list: T[], quantity: number): T[] {
@@ -130,13 +134,13 @@ export function cross<T> (list1: T[], list2: T[], delimiter?: T): string[] {
     for (const a of list1)
         for (const b of list2)
             build.push(`${String(a)}${delimiter ? String(delimiter) : ' \u2022 '}${String(b)}`);
-    return shuffle(build);
+    return shuffleCopy(build);
 }
 
 export function zip<T> (list1: T[], list2: T[], delimiter?: T): string[] {
     const build = [],
-        copy1 = shuffle(list1),
-        copy2 = shuffle(list2);
+        copy1 = shuffleCopy(list1),
+        copy2 = shuffleCopy(list2);
     for (let i = 0; i < Math.min(list1.length, list2.length); i++)
         build.push(wss(`${String(copy1[i])}${delimiter ? String(delimiter) : ' \u2022 '}${String(copy2[i])}`));
     return build;

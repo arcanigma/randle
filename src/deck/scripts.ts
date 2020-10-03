@@ -11,7 +11,7 @@ import { getMembers } from '../library/lookup';
 import { blame } from '../library/messages';
 import { AnnounceRule, ExplainRule, GraphRule, Items, Rules, Script, ShowRule, SUIT_EMOJIS } from './deck';
 import { uploadGraphFile } from './graphing';
-import { build, enable, evaluate, listify, matches, pluck, shuffle, validate } from './solving';
+import { build, enable, evaluate, listify, matches, pluck, shuffleCopy, validate } from './solving';
 
 export const MAX_IMPORTS = 5;
 
@@ -84,7 +84,7 @@ export const register = ({ app }: { app: App }): void => {
             if (!script.deal)
                 throw `Unexpected deal \`${JSON.stringify(script.deal)}\` in script.`;
 
-            const items = shuffle(build(script.deal, script)),
+            const items = shuffleCopy(build(script.deal, script)),
                 draft = items.filter((item, index) => items.indexOf(item) === index),
                 users = (await getMembers(message.channel, context, client))
                     .filter(user => user != message.user || !validate(script.moderator, script.options));
@@ -191,7 +191,7 @@ export const register = ({ app }: { app: App }): void => {
                     });
                 });
 
-                publish = shuffle(publish);
+                publish = shuffleCopy(publish);
 
                 listify(script.rules).filter((rule): rule is ExplainRule => 'explain' in rule && enable(rule, draft, script.options)).forEach(rule => {
                     const text = trunc(`:${!rule.emoji ? 'information_source' : rule.emoji}: ${rule.explain}.`, MAX_TEXT_SIZE);
@@ -252,7 +252,7 @@ export const register = ({ app }: { app: App }): void => {
                         action_id: `script_message_select_${message.channel}_${JSON.stringify(script.event)}_${suit}`,
                         placeholder: {
                             type: 'plain_text',
-                            text: 'Reveal' // TODO script option for this
+                            text: 'Reveal'
                         },
                         options: dealt[user].map((item, index) => ({
                             text: {
@@ -284,7 +284,7 @@ export const register = ({ app }: { app: App }): void => {
                     });
                 }
                 if (shown.length > 0) {
-                    shown = shuffle(shown);
+                    shown = shuffleCopy(shown);
 
                     if (shown.length > MAX_CONTEXT_ELEMENTS)
                         shown = [

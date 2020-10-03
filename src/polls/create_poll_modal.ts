@@ -1,6 +1,7 @@
-import { App, ButtonAction, ChannelsSelectAction, CheckboxesAction, Context, MultiUsersSelectAction } from '@slack/bolt';
+import { App, ButtonAction, ChannelsSelectAction, CheckboxesAction, Context, MultiUsersSelectAction, StaticSelectAction } from '@slack/bolt';
 import { InputBlock, View, WebAPICallResult, WebClient } from '@slack/web-api';
 import { MongoClient, ObjectId } from 'mongodb';
+import { shuffleInPlace } from '../deck/solving';
 import { size } from '../library/factory';
 import { announce, Poll, PollSetupOptions } from './polls';
 
@@ -116,6 +117,59 @@ export const view = async ({ channel, context, client }: { channel: string | und
         },
         <InputBlock>{
             type: 'input',
+            block_id: 'order',
+            label: {
+                type: 'plain_text',
+                text: 'Order of Choices'
+            },
+            element: {
+                type: 'static_select',
+                action_id: 'input',
+                placeholder: {
+                    type: 'plain_text',
+                    text: 'Select an order'
+                },
+                initial_option: {
+                    text: {
+                        type: 'plain_text',
+                        text: 'Original'
+                    },
+                    value: 'original'
+                },
+                options: [
+                    {
+                        text: {
+                            type: 'plain_text',
+                            text: 'Original'
+                        },
+                        value: 'original'
+                    },
+                    {
+                        text: {
+                            type: 'plain_text',
+                            text: 'Sort Ascending'
+                        },
+                        value: 'ascending'
+                    },
+                    {
+                        text: {
+                            type: 'plain_text',
+                            text: 'Sort Descending'
+                        },
+                        value: 'descending'
+                    },
+                    {
+                        text: {
+                            type: 'plain_text',
+                            text: 'Shuffle'
+                        },
+                        value: 'shuffle'
+                    }
+                ]
+            }
+        },
+        <InputBlock>{
+            type: 'input',
             optional: true,
             block_id: 'setup',
             label: {
@@ -207,6 +261,7 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
             members = (<Input<MultiUsersSelectAction>> data.members).input.selected_users,
             prompt = (<Input<ButtonAction>> data.prompt).input.value.replace(re_lines, ' ').replace(re_mrkdwn, ''),
             choices = (<Input<ButtonAction>> data.choices).input.value.trim().split(re_lines).map((choice: string) => choice.trim().replace(re_mrkdwn, '')).filter(Boolean),
+            order = (<Input<StaticSelectAction>> data.order).input.selected_option.value,
             setup = ((<Inputs<CheckboxesAction>> data.setup).inputs.selected_options ?? []).map(checkbox => <PollSetupOptions> checkbox.value);
 
         const errors: { [blockId: string]: string } = {};
@@ -231,6 +286,13 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
             });
 
         await ack();
+
+        if (order == 'ascending')
+            choices.sort();
+        else if (order == 'descending')
+            choices.sort().reverse();
+        else if (order == 'shuffle')
+            shuffleInPlace(choices);
 
         const poll: Poll = {
             _id: undefined,
