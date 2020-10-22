@@ -15,6 +15,8 @@ import { build, enable, evaluate, listify, matches, pluck, shuffleCopy, validate
 
 export const MAX_IMPORTS = 5;
 
+// TODO interactive scripting with modal
+
 export const register = ({ app }: { app: App }): void => {
     const re_script = /^[`\s]*(\{.+\})[`\s]*$/s,
         re_url = /^\s*<([^|]+)(?:\|[^|]+)?>\s*$/;
@@ -247,6 +249,7 @@ export const register = ({ app }: { app: App }): void => {
                         type: 'mrkdwn',
                         text: trunc(per_summary, MAX_TEXT_SIZE)
                     },
+                    // TODO reveal where (audience)
                     accessory: <MultiSelect>{
                         type: 'multi_static_select',
                         action_id: `script_message_select_${message.channel}_${JSON.stringify(script.event)}_${suit}`,

@@ -8,6 +8,8 @@ import * as create_poll_modal from './create_poll_modal';
 import * as create_poll_shortcut from './create_poll_shortcut';
 import * as poll_interactions from './poll_interactions';
 
+// TODO slash polls with macros
+
 export const AUTOCLOSE_GRACE = 30;
 
 export type Poll = {
@@ -98,12 +100,12 @@ export async function announce ({ mode, poll, context, body, client, store }:
         if (voted.length > 0)
             counts.push(<MrkdwnElement>{
                 type: 'mrkdwn',
-                text: `*Voted:* ${onbox(voted.length)} *${voted.length}*`
+                text: `*Voted:* *${voted.length}* ${onbox(voted.length)}`
             });
         if (unvoted.length > 0)
             counts.push(<MrkdwnElement>{
                 type: 'mrkdwn',
-                text: `*Not Voted:* ${offbox(unvoted.length)} *${unvoted.length}*`
+                text: `*Not Voted:* *${unvoted.length}* ${offbox(unvoted.length)}`
             });
         if (counts.length > 0)
             blocks.push(<ContextBlock>{
@@ -122,7 +124,7 @@ export async function announce ({ mode, poll, context, body, client, store }:
                 const cohort = poll.members.filter(member => poll.votes[member] === index);
                 return cohort.length > 0 ? {
                     type: 'mrkdwn',
-                    text: `*${choice}:* ${onbox(cohort.length)} *${cohort.length}*${!poll.setup.includes(PollSetupOptions.Anonymous) ? ` (${names(cohort)})` : ''}`
+                    text: `*${choice}:* *${cohort.length}* ${onbox(cohort.length)}${!poll.setup.includes(PollSetupOptions.Anonymous) ? ` (${names(cohort)})` : ''}`
                 } : undefined;
             }).filter(element => element !== undefined)
         });
@@ -136,7 +138,7 @@ export async function announce ({ mode, poll, context, body, client, store }:
         if (unvoted.length > 0)
             counts.push(<MrkdwnElement>{
                 type: 'mrkdwn',
-                text: `*Not Voted:* ${offbox(unvoted.length)} *${unvoted.length}* (${names(unvoted)})`
+                text: `*Not Voted:* *${unvoted.length}* ${offbox(unvoted.length)} (${names(unvoted)})`
             });
         if (counts.length > 0)
             blocks.push(<ContextBlock>{

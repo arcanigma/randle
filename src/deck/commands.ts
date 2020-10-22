@@ -28,7 +28,7 @@ export const MODE_WORD: {
         redo: 'Redraw',
         redid: 'Redrew'
     },
-    'Pool': {
+    'Pool': { // TODO hashed macro pools
         did: 'Pooled',
         redo: 'Repool',
         redid: 'Repooled'
