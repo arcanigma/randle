@@ -11,7 +11,7 @@ import { getMembers } from '../library/lookup';
 import { blame } from '../library/messages';
 import { AnnounceRule, ExplainRule, GraphRule, Items, Rules, Script, ShowRule, SUIT_EMOJIS } from './deck';
 import { uploadGraphFile } from './graphing';
-import { build, enable, evaluate, listify, matches, pluck, shuffleCopy, validate } from './solving';
+import { build, enable, evaluate, listify, matches, pluck, shuffleCopy, shuffleInPlace, validate } from './solving';
 
 export const MAX_IMPORTS = 5;
 
@@ -88,8 +88,8 @@ export const register = ({ app }: { app: App }): void => {
 
             const items = shuffleCopy(build(script.deal, script)),
                 draft = items.filter((item, index) => items.indexOf(item) === index),
-                users = (await getMembers(message.channel, context, client))
-                    .filter(user => user != message.user || !validate(script.moderator, script.options));
+                users = shuffleInPlace((await getMembers(message.channel, context, client))
+                    .filter(user => user != message.user || !validate(script.moderator, script.options)));
 
             const graph: ElementDefinition[] = [];
             if (script.rules && listify(script.rules).some(rule => 'graph' in rule)) {
