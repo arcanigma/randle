@@ -249,7 +249,7 @@ export function matches (it: string, matcher: Matcher, defines: Defines): boolea
     if (Array.isArray(matcher))
         return matcher.some(m => matches(it, m, defines));
     else if (typeof matcher === 'string')
-        return it == wss(matcher);
+        return matches (it, { 'includes': matcher }, defines);
     else if ('is' in matcher)
         return it == wss(matcher.is);
     if ('isNot' in matcher)
