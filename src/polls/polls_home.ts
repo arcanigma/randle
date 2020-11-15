@@ -215,6 +215,7 @@ const poll_blocks = ({ user, poll, cache }: { user: string; poll: Poll; cache: C
                     type: 'mrkdwn',
                     text: `*Host:* ${poll.host != user ? `<@${poll.host}>` : 'you'}`
                 },
+                // TODO display results instead if poll is closed
                 ...user == poll.host || poll.setup.includes(PollSetupOptions.Participation) ? [
                     ...voted.length > 0 ? [{
                         type: 'mrkdwn',

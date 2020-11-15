@@ -117,6 +117,7 @@ export const register = ({ app }: { app: App }): void => {
                             draft.filter(it => matches(it, to, script)).forEach(yours => {
                                 listify(rule.show).forEach(show => {
                                     draft.filter(it => matches(it, show, script) && (!rule.loopless || it != yours)).forEach(theirs => {
+                                        // TODO merge parallel edges
                                         graph.push(<ElementDefinition>{
                                             group: 'edges',
                                             data: {
