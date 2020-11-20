@@ -9,7 +9,7 @@ import { commas, names, trunc } from '../library/factory';
 import { community, nonthread } from '../library/listeners';
 import { getMembers } from '../library/lookup';
 import { blame } from '../library/messages';
-import { AnnounceRule, ExplainRule, GraphRule, Items, Rules, Script, ShowRule, SUIT_EMOJIS } from './deck';
+import { AnnounceRule, ExplainRule, GraphRule, Items, RelayRule, Rules, Script, ShowRule, SUIT_EMOJIS } from './deck';
 import { uploadGraphFile } from './graphing';
 import { build, enable, evaluate, listify, matches, pluck, shuffleCopy, shuffleInPlace, validate } from './solving';
 
@@ -90,6 +90,31 @@ export const register = ({ app }: { app: App }): void => {
                 draft = items.filter((item, index) => items.indexOf(item) === index),
                 users = shuffleInPlace((await getMembers(message.channel, context, client))
                     .filter(user => user != message.user || !validate(script.moderator, script.options)));
+
+            const relays: string[][] = [];
+            if (script.rules && listify(script.rules).some(rule => 'relay' in rule)) {
+                let relay: string[] = [];
+                for (const rule of listify(script.rules)) {
+                    if ('relay' in rule && enable(rule, draft, script.options)) {
+                        if (rule.relay.service == 'wordnik') {
+                            const url = `https://api.wordnik.com/v4/words.json/randomWords?hasDictionaryDef=true&includePartOfSpeech=${rule.relay.parts ? rule.relay.parts.join(',') : ''}&minCorpusCount=${rule.relay.corpus ?? -1}&minDictionaryCount=${rule.relay.dictionary ?? 1}&minLength=${rule.relay.length ?? 1}&limit=${rule.relay.limit ?? 1}&api_key=${process.env.WORDNIK_API_KEY ?? ''}`;
+
+                            let json: {
+                                id: number;
+                                word: string;
+                            }[];
+                            try {
+                                json = await got.get(url).json();
+                            }
+                            catch (error) {
+                                throw `Web error \`${(<{ message: string }> error).message}\` for \`${url}\` relay.`;
+                            }
+                            relay = json.map(it => it.word);
+                        }
+                    }
+                }
+                relays.push(relay);
+            }
 
             const graph: ElementDefinition[] = [];
             if (script.rules && listify(script.rules).some(rule => 'graph' in rule)) {
@@ -276,6 +301,7 @@ export const register = ({ app }: { app: App }): void => {
                             dealt[user].filter(it => matches(it, to, script)).forEach(yours => {
                                 listify(rule.show).forEach(show => {
                                     Object.keys(dealt).forEach(them => {
+                                        // TODO loopless is an Option, should validate
                                         dealt[them].filter(it => matches(it, show, script) && (!rule.loopless || it != yours)).forEach(theirs => {
                                             const text = trunc(`:${!rule.as ? 'eye-in-speech-bubble' : 'left_speech_bubble'}: Because you were dealt *${yours}* you see that ${them != user ? `<@${them}> was` : 'you were also'} dealt ${!rule.as ? `*${theirs}*` : `*${rule.as}* as an alias`}.`, MAX_TEXT_SIZE);
                                             if (!shown.includes(text))
@@ -285,6 +311,21 @@ export const register = ({ app }: { app: App }): void => {
                                 });
                             });
                         });
+                    });
+
+                    listify(script.rules).filter((rule): rule is RelayRule => 'relay' in rule && enable(rule, draft, script.options)).forEach((rule, which) => {
+                        if (relays[which].length > 0) {
+                            const results = validate(rule.numbered, script.options)
+                                ? commas(relays[which].map((it, index) => `*${index+1}* \u2022 *${it}*`))
+                                : commas(relays[which].map(it => `*${it}`));
+                            listify(rule.for).forEach(forr => {
+                                dealt[user].filter(it => matches(it, forr, script)).forEach(yours => {
+                                    const text = trunc(`:eye-in-speech-bubble: Because you were dealt *${yours}* you were relayed ${results}${rule.as ? ` as *${rule.as}*` : ''}.`, MAX_TEXT_SIZE);
+                                    if (!shown.includes(text))
+                                        shown.push(text);
+                                });
+                            });
+                        }
                     });
                 }
                 if (shown.length > 0) {

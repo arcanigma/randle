@@ -75,6 +75,7 @@ export type Rules =
     | AnnounceRule
     | GraphRule
     | ExplainRule
+    | RelayRule
     | Rules[]
 
 export type ShowRule = {
@@ -98,6 +99,22 @@ export type ExplainRule = {
     explain: string;
     emoji?: string;
 } & Conditional
+
+export type RelayRule = {
+    relay: RelayService;
+    for: Matcher;
+    as?: string;
+    numbered?: Option;
+} & Conditional
+
+export type RelayService = {
+    service: 'wordnik';
+    parts?: string[];
+    length?: number;
+    corpus?: number;
+    dictionary?: number;
+    limit?: number;
+};
 
 export type Conditional = {
     if?: Option;
