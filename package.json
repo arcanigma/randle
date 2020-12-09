@@ -1,7 +1,7 @@
 {
     "name": "randle",
     "description": "Dice, cards, and polling bot for Slack.",
-    "version": "3.2.1",
+    "version": "3.3.0",
     "main": "./dist/app.js",
     "scripts": {
         "build": "tsc",

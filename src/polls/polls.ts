@@ -53,6 +53,9 @@ export async function announce ({ mode, poll, context, body, client, store }:
             reannounce: 'reannounced'
         }[mode]} the poll *${poll.prompt}*`;
 
+        const team_id = body.team ? body.team.id : '',
+            app_id = (<ViewSubmitAction|BlockAction>body).api_app_id ?? '';
+
         blocks.push(<ActionsBlock>{
             type: 'actions',
             elements: poll.choices.map((choice, index) => ({
@@ -63,7 +66,7 @@ export async function announce ({ mode, poll, context, body, client, store }:
                     emoji: true,
                     text: choice
                 },
-                url: `slack://app?team=${body.team.id}&id=${(<ViewSubmitAction|BlockAction>body).api_app_id}&tab=home`,
+                url: `slack://app?team=${team_id}&id=${app_id}&tab=home`,
                 value: JSON.stringify({
                     poll: poll._id,
                     choice: index
