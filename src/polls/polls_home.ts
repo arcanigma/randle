@@ -3,7 +3,7 @@ import { Cursor, MongoClient } from 'mongodb';
 import { Cache } from '../app';
 import { HomeTabs } from '../home';
 import { commas, names } from '../library/factory';
-import { Poll, PollSetupOptions } from './polls';
+import { Poll } from './polls';
 
 const MAX_POLLS_SHOWN = 10;
 
@@ -216,7 +216,7 @@ const poll_blocks = ({ user, poll, cache }: { user: string; poll: Poll; cache: C
                     text: `*Host:* ${poll.host != user ? `<@${poll.host}>` : 'you'}`
                 },
                 // TODO display results instead if poll is closed
-                ...user == poll.host || poll.setup.includes(PollSetupOptions.Participation) ? [
+                ...user == poll.host ? [
                     ...voted.length > 0 ? [{
                         type: 'mrkdwn',
                         text: `*Voted:* ${names(voted, user)}`
@@ -229,14 +229,17 @@ const poll_blocks = ({ user, poll, cache }: { user: string; poll: Poll; cache: C
                     type: 'mrkdwn',
                     text: `*Members:* ${names(poll.members, user)}`
                 }],
-                ...poll.setup ? [{
+                {
                     type: 'mrkdwn',
-                    text: `*Setup:* ${commas(poll.setup.map(option => ({
-                        participation: 'participation notices',
-                        anonymous: 'anonymous voting',
-                        autoclose: 'automatic closing'
-                    })[option])) || 'default'}`
-                }] : []
+                    text: `*About:* ${commas([
+                        {
+                            'anonymous': 'anonymous poll',
+                            'simultaneous': 'simultaneous poll',
+                            'live': 'live poll'
+                        }[poll.method],
+                        poll.autoclose ? 'autoclose' : undefined
+                    ])}`
+                }
             ]
         }
     ];

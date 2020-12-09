@@ -21,7 +21,8 @@ export type Poll = {
     members: string[];
     prompt: string;
     choices: string[];
-    setup: PollSetupOptions[];
+    method: 'anonymous' | 'simultaneous' | 'live';
+    autoclose: boolean;
     votes: {
         [user: string]: number;
     };
@@ -31,12 +32,6 @@ export type Poll = {
         permalink: string;
     };
 };
-
-export enum PollSetupOptions {
-    Anonymous = 'anonymous',
-    Participation = 'participation',
-    Autoclose = 'autoclose'
-}
 
 const re_emoji = /(:[^:\s]*(?:::[^:\s]*)*:)/g;
 export async function announce ({ mode, poll, context, body, client, store }:
@@ -84,29 +79,48 @@ export async function announce ({ mode, poll, context, body, client, store }:
                 },
                 {
                     type: 'mrkdwn',
-                    text: `*Setup:* ${commas(poll.setup.map(option => ({
-                        participation: 'participation notices',
-                        anonymous: 'anonymous voting',
-                        autoclose: 'automatic closing'
-                    })[option])) || 'default'}`
+                    text: `*About:* ${commas([
+                        {
+                            'anonymous': 'anonymous poll',
+                            'simultaneous': 'simultaneous poll',
+                            'live': 'live poll'
+                        }[poll.method],
+                        poll.autoclose ? 'autoclose' : undefined
+                    ])}`
                 }
             ]
         });
     }
     else if (mode == 'participate') {
-        summary = `<@${user}> ${poll.votes[user] !== undefined ? 'voted' : 'unvoted'}`;
+        if (poll.votes[user] === undefined)
+            summary = `<@${user}> unvoted`;
+        else if (poll.method != 'live')
+            summary = `<@${user}> voted`;
+        else
+            summary = `<@${user}> voted for *${poll.choices[poll.votes[user]]}*`;
 
         const counts = [];
-        if (voted.length > 0)
+
+        if (poll.method == 'live')
+            counts.push(...poll.choices.map((choice, index) => {
+                const cohort = poll.members.filter(member => poll.votes[member] === index);
+                return cohort.length > 0 ? {
+                    type: 'mrkdwn',
+                    text: `*${choice}:* *${cohort.length}* ${onbox(cohort.length)}`
+                } : undefined;
+            }).filter(element => element !== undefined));
+        else if (voted.length > 0)
             counts.push(<MrkdwnElement>{
                 type: 'mrkdwn',
-                text: `*Voted:* *${voted.length}* ${onbox(voted.length)}`
+                text: `*Voted* *${voted.length}* ${onbox(voted.length)}`
             });
+
         if (unvoted.length > 0)
             counts.push(<MrkdwnElement>{
                 type: 'mrkdwn',
                 text: `*Not Voted:* *${unvoted.length}* ${offbox(unvoted.length)}`
             });
+
         if (counts.length > 0)
             blocks.push(<ContextBlock>{
                 type: 'context',
@@ -114,32 +128,33 @@ export async function announce ({ mode, poll, context, body, client, store }:
             });
     }
     else if (mode == 'close' || mode == 'autoclose') {
-        summary = mode == 'close'
-            ? `<@${poll.host}> closed the poll *${poll.prompt}*`
-            : `<@${<string> context.botUserId}> closed the poll *${poll.prompt}* for <@${poll.host}>`;
-
-        blocks.push(<ContextBlock>{
-            type: 'context',
-            elements: poll.choices.map((choice, index) => {
-                const cohort = poll.members.filter(member => poll.votes[member] === index);
-                return cohort.length > 0 ? {
-                    type: 'mrkdwn',
-                    text: `*${choice}:* *${cohort.length}* ${onbox(cohort.length)}${!poll.setup.includes(PollSetupOptions.Anonymous) ? ` (${names(cohort)})` : ''}`
-                } : undefined;
-            }).filter(element => element !== undefined)
-        });
+        if (mode != 'autoclose')
+            summary = `<@${poll.host}> closed the poll *${poll.prompt}*`;
+        else
+            summary = `<@${<string> context.botUserId}> closed the poll *${poll.prompt}* for <@${poll.host}>`;
 
         const counts = [];
-        if (poll.setup.includes(PollSetupOptions.Anonymous) && voted.length > 0)
+
+        counts.push(...poll.choices.map((choice, index) => {
+            const cohort = poll.members.filter(member => poll.votes[member] === index);
+            return cohort.length > 0 ? {
+                type: 'mrkdwn',
+                text: `*${choice}:* *${cohort.length}* ${onbox(cohort.length)}${poll.method != 'anonymous' ? ` (${names(cohort)})` : ''}`
+            } : undefined;
+        }).filter(element => element !== undefined));
+
+        if (poll.method == 'anonymous' && voted.length > 0)
             counts.push(<MrkdwnElement>{
                 type: 'mrkdwn',
                 text: `*Voted Anonymously:* *${voted.length}* (${names(voted)})`
             });
+
         if (unvoted.length > 0)
             counts.push(<MrkdwnElement>{
                 type: 'mrkdwn',
                 text: `*Not Voted:* *${unvoted.length}* ${offbox(unvoted.length)} (${names(unvoted)})`
             });
+
         if (counts.length > 0)
             blocks.push(<ContextBlock>{
                 type: 'context',

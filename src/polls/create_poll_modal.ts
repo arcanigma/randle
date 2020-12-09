@@ -3,7 +3,7 @@ import { InputBlock, View, WebAPICallResult, WebClient } from '@slack/web-api';
 import { MongoClient, ObjectId } from 'mongodb';
 import { shuffleInPlace } from '../deck/solving';
 import { size } from '../library/factory';
-import { announce, Poll, PollSetupOptions } from './polls';
+import { announce, Poll } from './polls';
 
 export const view = async ({ channel, context, client }: { channel: string | undefined; context: Context; client: WebClient }): Promise<View> => ({
     type: 'modal',
@@ -170,11 +170,58 @@ export const view = async ({ channel, context, client }: { channel: string | und
         },
         <InputBlock>{
             type: 'input',
-            optional: true,
-            block_id: 'setup',
+            block_id: 'method',
             label: {
                 type: 'plain_text',
-                text: 'Setup'
+                text: 'Polling Method'
+            },
+            element: {
+                type: 'static_select',
+                action_id: 'input',
+                placeholder: {
+                    type: 'plain_text',
+                    text: 'Select a polling method'
+                },
+                initial_option: {
+                    text: {
+                        type: 'plain_text',
+                        text: 'Anonymous (vote/unvote notices, tallied results)'
+                    },
+                    value: 'anonymous'
+                },
+                options: [
+                    {
+                        text: {
+                            type: 'plain_text',
+                            text: 'Anonymous (vote/unvote notices, tallied results)'
+                        },
+                        value: 'anonymous'
+                    },
+                    {
+                        text: {
+                            type: 'plain_text',
+                            emoji: true,
+                            text: 'Simultaneous (vote/unvote notices, ascribed results)'
+                        },
+                        value: 'simultaneous'
+                    },
+                    {
+                        text: {
+                            type: 'plain_text',
+                            text: 'Live (vote-for/unvote notices, ascribed results)'
+                        },
+                        value: 'live'
+                    }
+                ]
+            }
+        },
+        <InputBlock>{
+            type: 'input',
+            optional: true,
+            block_id: 'features',
+            label: {
+                type: 'plain_text',
+                text: 'Features'
             },
             element: {
                 type: 'checkboxes',
@@ -183,64 +230,28 @@ export const view = async ({ channel, context, client }: { channel: string | und
                     {
                         text: {
                             type: 'plain_text',
-                            text: ':busts_in_silhouette: Anonymous Voting',
-                            emoji: true
-                        },
-                        description: {
-                            type: 'plain_text',
-                            text: 'Results show only tallies, not member names.'
-                        },
-                        value: PollSetupOptions.Anonymous
-                    },
-                    {
-                        text: {
-                            type: 'plain_text',
-                            text: ':bell: Participation Notices',
-                            emoji: true
-                        },
-                        description: {
-                            type: 'plain_text',
-                            text: 'Announce each time a member votes or unvotes.'
-                        },
-                        value: PollSetupOptions.Participation
-                    },
-                    {
-                        text: {
-                            type: 'plain_text',
-                            text: ':hourglass_flowing_sand: Automatic Closing',
+                            text: 'Automatic Closing',
                             emoji: true
                         },
                         description: {
                             type: 'plain_text',
                             text: 'Closes automatically when all members have voted.'
                         },
-                        value: PollSetupOptions.Autoclose
+                        value: 'autoclose'
                     }
                 ],
                 initial_options: [
                     {
                         text: {
                             type: 'plain_text',
-                            text: ':bell: Participation Notices',
-                            emoji: true
-                        },
-                        description: {
-                            type: 'plain_text',
-                            text: 'Announce each time a member votes or unvotes.'
-                        },
-                        value: PollSetupOptions.Participation
-                    },
-                    {
-                        text: {
-                            type: 'plain_text',
-                            text: ':hourglass_flowing_sand: Automatic Closing',
+                            text: 'Automatic Closing',
                             emoji: true
                         },
                         description: {
                             type: 'plain_text',
                             text: 'Closes automatically when all members have voted.'
                         },
-                        value: PollSetupOptions.Autoclose
+                        value: 'autoclose'
                     }
                 ]
             }
@@ -262,7 +273,9 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
             prompt = (<Input<ButtonAction>> data.prompt).input.value.replace(re_lines, ' ').replace(re_mrkdwn, ''),
             choices = (<Input<ButtonAction>> data.choices).input.value.trim().split(re_lines).map((choice: string) => choice.trim().replace(re_mrkdwn, '')).filter(Boolean),
             order = (<Input<StaticSelectAction>> data.order).input.selected_option.value,
-            setup = ((<Inputs<CheckboxesAction>> data.setup).inputs.selected_options ?? []).map(checkbox => <PollSetupOptions> checkbox.value);
+            method = (<Input<StaticSelectAction>> data.method).input.selected_option.value as 'anonymous' | 'simultaneous' | 'live',
+            features = ((<Inputs<CheckboxesAction>> data.features).inputs.selected_options ?? []).map(checkbox => checkbox.value as string),
+            autoclose = features.includes('autoclose');
 
         const errors: { [blockId: string]: string } = {};
 
@@ -302,7 +315,8 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
             members,
             prompt,
             choices,
-            setup,
+            method,
+            autoclose,
             votes: {}
         };
 

@@ -4,7 +4,7 @@ import { Cache } from '../app';
 import * as home from '../home';
 import { size } from '../library/factory';
 import * as information_modal from '../library/information_modal';
-import { announce, AUTOCLOSE_GRACE, Poll, PollSetupOptions } from './polls';
+import { announce, AUTOCLOSE_GRACE, Poll } from './polls';
 
 export const register = ({ app, store, cache, timers }: { app: App; store: Promise<MongoClient>; cache: Cache; timers: Record<string, NodeJS.Timeout> }): void => {
     app.action<BlockAction<StaticSelectAction>>('poll_overflow_button', async ({ ack, body, action, context, client }) => {
@@ -105,10 +105,9 @@ export const register = ({ app, store, cache, timers }: { app: App; store: Promi
         )).value;
 
         if (poll) {
-            if (poll.setup.includes(PollSetupOptions.Participation))
-                await announce({ mode: 'participate', poll, context, body, client, store });
+            await announce({ mode: 'participate', poll, context, body, client, store });
 
-            if (poll.setup.includes(PollSetupOptions.Autoclose)) {
+            if (poll.autoclose) {
                 if (timers[data.poll]) {
                     clearTimeout(timers[data.poll]);
                     delete timers[data.poll];
