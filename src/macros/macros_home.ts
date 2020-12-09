@@ -2,16 +2,16 @@ import { Context } from '@slack/bolt';
 import { Block, DividerBlock, SectionBlock } from '@slack/web-api';
 import { MongoClient } from 'mongodb';
 import { Cache } from '../app';
-import { HomeTabs } from '../home';
+import { HomeTabs, touch } from '../home';
 
 export const tabs: HomeTabs = {
     'macros-user': {
-        title: 'Macros \u2022 Personal',
-        emoji: ':game_die:'
+        title: 'Your Macros',
+        emoji: ':gear:'
     },
     'macros-workspace': {
-        title: 'Macros \u2022 Community',
-        emoji: ':game_die:'
+        title: 'Shared Macros',
+        emoji: ':gear:'
     }
 };
 

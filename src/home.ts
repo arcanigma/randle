@@ -1,5 +1,5 @@
 import { App, BlockAction, Context, StaticSelectAction } from '@slack/bolt';
-import { SectionBlock, View } from '@slack/web-api';
+import { ActionsBlock, View } from '@slack/web-api';
 import { MongoClient } from 'mongodb';
 import { Cache, MAX_VIEW_BLOCKS } from './app';
 import * as macros from './macros/macros_home';
@@ -8,7 +8,7 @@ import * as polls from './polls/polls_home';
 export type HomeTabs = {
     [shortcode: string]: {
         title: string;
-        emoji?: string;
+        emoji: string;
     };
 }
 
@@ -31,13 +31,9 @@ export const view = async ({ user, store, cache, context }: { user: string; stor
     const view: View = {
         type: 'home',
         blocks: [
-            <SectionBlock> {
-                type: 'section',
-                text: {
-                    type: 'mrkdwn',
-                    text: `${HOME_TABS[tab].emoji ?? '>>>'} *${HOME_TABS[tab].title}*`
-                },
-                accessory: {
+            <ActionsBlock> {
+                type: 'actions',
+                elements: [{
                     type: 'static_select',
                     action_id: 'home_tab_select',
                     placeholder: {
@@ -47,18 +43,19 @@ export const view = async ({ user, store, cache, context }: { user: string; stor
                     initial_option: {
                         text: {
                             type: 'plain_text',
-                            text: HOME_TABS[tab].title
+                            text: `${HOME_TABS[tab].emoji} ${HOME_TABS[tab].title}`
                         },
                         value: tab
                     },
                     options: Object.keys(HOME_TABS).map(tab => ({
                         text: {
                             type: 'plain_text',
-                            text: HOME_TABS[tab].title
+                            emoji: true,
+                            text: `${HOME_TABS[tab].emoji} ${HOME_TABS[tab].title}`
                         },
                         value: tab
                     }))
-                }
+                }]
             }
         ]
     };

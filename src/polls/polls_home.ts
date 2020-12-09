@@ -9,15 +9,15 @@ const MAX_POLLS_SHOWN = 10;
 
 export const tabs: HomeTabs = {
     'polls-open': {
-        title: 'Polls \u2022 Open',
+        title: 'Open Polls',
         emoji: ':ballot_box_with_ballot:'
     },
     'polls-closed': {
-        title: 'Polls \u2022 Closed',
+        title: 'Closed Polls',
         emoji: ':ballot_box_with_ballot:'
     },
     'polls-all': {
-        title: 'Polls \u2022 All',
+        title: 'All Polls',
         emoji: ':ballot_box_with_ballot:'
     }
 };
