@@ -29,7 +29,7 @@ export const blocks = async ({ user, store, cache, context }: { user: string; st
         [macro: string]: string;
     };
 
-    const count = Object.keys(macros).length;
+    const count = macros ? Object.keys(macros).length: 0;
 
     const blocks: Block[] = [
         <DividerBlock>{ type: 'divider' },
