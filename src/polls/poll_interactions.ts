@@ -34,7 +34,7 @@ export const register = ({ app, store, cache, timers }: { app: App; store: Promi
 
             await announce({ mode: data.admin, poll, context, body, client, store });
 
-            cache[user].home_tab = 'polls-closed';
+            cache[`${user}/home_tab`] = 'polls-closed';
         }
         else if (data.admin == 'reannounce') {
             const poll = <Poll> (await coll.findOne({
@@ -43,8 +43,6 @@ export const register = ({ app, store, cache, timers }: { app: App; store: Promi
             }));
 
             await announce({ mode: 'reannounce', poll, context, body, client, store });
-
-            // cache[user].tab = 'polls-open';
         }
         else if (data.admin == 'reopen') {
             const poll = <Poll> (await coll.findOneAndUpdate(
@@ -60,7 +58,7 @@ export const register = ({ app, store, cache, timers }: { app: App; store: Promi
 
             await announce({ mode: 'reopen', poll, context, body, client, store });
 
-            cache[user].home_tab = 'polls-open';
+            cache[`${user}/home_tab`] = 'polls-open';
         }
         else if (data.admin == 'delete') {
             await coll.deleteOne({
@@ -68,8 +66,6 @@ export const register = ({ app, store, cache, timers }: { app: App; store: Promi
                 host: user,
                 closed: { $exists: true }
             });
-
-            // cache[user].tab = 'polls-closed';
         }
         else {
             throw `Unsupported poll administration option \`${JSON.stringify(data.admin)}\`.`;
@@ -144,7 +140,7 @@ export const register = ({ app, store, cache, timers }: { app: App; store: Promi
                 }
             }
 
-            cache[user].home_tab = 'polls-open';
+            cache[`${user}/home_tab`] = 'polls-open';
 
             await client.views.publish({
                 token: <string> context.botToken,

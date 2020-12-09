@@ -2,7 +2,7 @@ import { Context } from '@slack/bolt';
 import { Block, DividerBlock, SectionBlock } from '@slack/web-api';
 import { MongoClient } from 'mongodb';
 import { Cache } from '../app';
-import { HomeTabs, touch } from '../home';
+import { HomeTabs } from '../home';
 
 export const tabs: HomeTabs = {
     'macros-user': {
@@ -16,7 +16,7 @@ export const tabs: HomeTabs = {
 };
 
 export const blocks = async ({ user, store, cache, context }: { user: string; store: Promise<MongoClient>; cache: Cache; context: Context }): Promise<Block[]> => {
-    const tab = cache[user].home_tab ?? 'macros-user';
+    const tab = cache[`${user}/home_tab`] ?? 'macros-user';
 
     const coll = (await store).db().collection('macros');
     const macros = await coll.findOne(

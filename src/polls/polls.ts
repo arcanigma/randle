@@ -9,6 +9,7 @@ import * as create_poll_shortcut from './create_poll_shortcut';
 import * as poll_interactions from './poll_interactions';
 
 // TODO slash polls with macros
+// TODO TTL for closed polls
 
 export const AUTOCLOSE_GRACE = 30;
 

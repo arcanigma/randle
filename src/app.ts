@@ -33,12 +33,11 @@ const store = MongoClient.connect(
     }
 );
 
+// TODO deprecate Records for index signatures
+
 const timers: Record<string, NodeJS.Timeout> = {};
 
-export type Cache = Record<string, {
-    home_tab?: string;
-}>;
-
+export type Cache = Record<string, string | number | boolean>;
 const cache: Cache = {};
 
 export const MAX_TEXT_SIZE = 1000;

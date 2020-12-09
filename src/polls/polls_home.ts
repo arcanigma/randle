@@ -23,7 +23,7 @@ export const tabs: HomeTabs = {
 };
 
 export const blocks = async ({ user, store, cache }: { user: string; store: Promise<MongoClient>; cache: Cache }): Promise<Block[]> => {
-    const tab = cache[user].home_tab ?? 'polls-open',
+    const tab = cache[`${user}/home_tab`] ?? 'polls-open',
         blocks: Block[] = [];
 
     const coll = (await store).db().collection('polls');
@@ -74,7 +74,7 @@ export const blocks = async ({ user, store, cache }: { user: string; store: Prom
 const poll_blocks = ({ user, poll, cache }: { user: string; poll: Poll; cache: Cache }): Block[] => {
     const voted = poll.members.filter(member => poll.votes[member] !== undefined),
         unvoted = poll.members.filter(member => poll.votes[member] === undefined),
-        tab = cache[user].home_tab ?? 'polls-open';
+        tab = cache[`${user}/home_tab`] ?? 'polls-open';
 
     const blocks: Block[] = [
         <SectionBlock>{
@@ -163,7 +163,7 @@ const poll_blocks = ({ user, poll, cache }: { user: string; poll: Poll; cache: C
                                     admin: 'reannounce'
                                 })
                             }
-                            // TODO edit with "edited" warning
+                            // TODO allow edit with "edited" warning
                         ] : [
                             {
                                 text: {
@@ -215,7 +215,6 @@ const poll_blocks = ({ user, poll, cache }: { user: string; poll: Poll; cache: C
                     type: 'mrkdwn',
                     text: `*Host:* ${poll.host != user ? `<@${poll.host}>` : 'you'}`
                 },
-                // TODO display results instead if poll is closed
                 ...user == poll.host ? [
                     ...voted.length > 0 ? [{
                         type: 'mrkdwn',

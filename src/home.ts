@@ -20,13 +20,7 @@ const HOME_TABS = Object.assign({},
 const DEFAULT_TAB = 'macros-user';
 
 export const view = async ({ user, store, cache, context }: { user: string; store: Promise<MongoClient>; cache: Cache; context: Context }): Promise<View> => {
-    if (cache[user] === undefined)
-        cache[user] = {};
-
-    if (cache[user].home_tab === undefined)
-        cache[user].home_tab = DEFAULT_TAB;
-
-    const tab = cache[user].home_tab ?? DEFAULT_TAB;
+    const tab = <string>cache[`${user}/home_tab`] ?? DEFAULT_TAB;
 
     const view: View = {
         type: 'home',
@@ -88,7 +82,7 @@ export const register = ({ app, store, cache }: { app: App; store: Promise<Mongo
         const user = body.user.id,
             tab = action.selected_option.value;
 
-        cache[user].home_tab = tab;
+        cache[`${user}/home_tab`] = tab;
 
         await client.views.publish({
             token: <string> context.botToken,
