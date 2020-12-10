@@ -10,8 +10,8 @@ export function commas (list: (string | undefined)[], separator=', ', conjunctio
         return '';
 }
 
-export function names (list: string[], user?: string, separator=', '): string {
-    return commas(list.map(u => `<@${u}>`), separator) || 'nobody';
+export function names (list: string[], separator?: string, conjunction?: string): string {
+    return commas(list.map(u => `<@${u}>`), separator, conjunction) || 'nobody';
 }
 
 export function size (object: {[key: string]: unknown}): number {

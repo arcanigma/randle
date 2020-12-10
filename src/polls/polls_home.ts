@@ -2,8 +2,7 @@ import { ActionsBlock, Block, ContextBlock, DividerBlock, SectionBlock } from '@
 import { Cursor, MongoClient } from 'mongodb';
 import { Cache } from '../app';
 import { HomeTabs } from '../home';
-import { commas, names } from '../library/factory';
-import { Poll } from './polls';
+import { Poll, poll_about, poll_cohorts, poll_not_voted, poll_voted } from './polls';
 
 const MAX_POLLS_SHOWN = 10;
 
@@ -72,9 +71,7 @@ export const blocks = async ({ user, store, cache }: { user: string; store: Prom
 };
 
 const poll_blocks = ({ user, poll, cache }: { user: string; poll: Poll; cache: Cache }): Block[] => {
-    const voted = poll.members.filter(member => poll.votes[member] !== undefined),
-        unvoted = poll.members.filter(member => poll.votes[member] === undefined),
-        tab = cache[`${user}/home_tab`] ?? 'polls-open';
+    const tab = cache[`${user}/home_tab`] ?? 'polls-open';
 
     const blocks: Block[] = [
         <SectionBlock>{
@@ -93,16 +90,21 @@ const poll_blocks = ({ user, poll, cache }: { user: string; poll: Poll; cache: C
                 }] : [],
                 {
                     type: 'mrkdwn',
+                    text: `*Host:* ${poll.host != user ? `<@${poll.host}>` : 'you'}`
+                },
+                {
+                    type: 'mrkdwn',
                     text: `*Audience:* <#${poll.audience}>`
                 },
-                ...poll.votes[user] !== undefined ? [{
+                ...poll_about(poll),
+                ...(poll.votes[user] !== undefined ? [{
                     type: 'mrkdwn',
-                    text: `*You Voted:* ${poll.choices[poll.votes[user]]}`
-                }] : [],
-                ...poll.latest ? [{
+                    text: `*You Voted For:* ${poll.choices[poll.votes[user]]}`
+                }] : []),
+                ...(poll.latest ? [{
                     type: 'mrkdwn',
                     text: `*Latest:* ${poll.latest.summary} <!date^${parseInt(poll.latest.message_ts)}^{date_short_pretty} at {time}^${poll.latest.permalink}|there>`
-                }] : []
+                }] : [])
             ]
         },
         <ActionsBlock>{
@@ -211,34 +213,8 @@ const poll_blocks = ({ user, poll, cache }: { user: string; poll: Poll; cache: C
         <ContextBlock>{
             type: 'context',
             elements: [
-                {
-                    type: 'mrkdwn',
-                    text: `*Host:* ${poll.host != user ? `<@${poll.host}>` : 'you'}`
-                },
-                ...user == poll.host ? [
-                    ...voted.length > 0 ? [{
-                        type: 'mrkdwn',
-                        text: `*Voted:* ${names(voted, user)}`
-                    },] : [],
-                    ...unvoted.length > 0 ? [{
-                        type: 'mrkdwn',
-                        text: `*Not Voted:* ${names(unvoted, user)}`
-                    }] : []
-                ] : [{
-                    type: 'mrkdwn',
-                    text: `*Members:* ${names(poll.members, user)}`
-                }],
-                {
-                    type: 'mrkdwn',
-                    text: `*About:* ${commas([
-                        {
-                            'anonymous': 'anonymous poll',
-                            'simultaneous': 'simultaneous poll',
-                            'live': 'live poll'
-                        }[poll.method],
-                        poll.autoclose ? 'autoclose' : undefined
-                    ])}`
-                }
+                ...(poll.method == 'live' ? poll_cohorts : poll_voted)(poll, true),
+                ...poll_not_voted(poll, true)
             ]
         }
     ];
