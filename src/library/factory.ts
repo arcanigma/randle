@@ -25,6 +25,11 @@ export function trunc (text: string, limit: number): string {
         return text.substring(0, limit-3) + '...';
 }
 
+export function fallback_date (ts: string): string {
+    const date = new Date(parseInt(ts) * 1000);
+    return `${date.toDateString()} at ${date.toLocaleTimeString()}`;
+}
+
 const re_wss = /\s+/g;
 export function wss (text: string): string {
     return text.trim().replace(re_wss, ' ');

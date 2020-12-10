@@ -5,7 +5,7 @@ import got from 'got';
 import JSON5 from 'json5';
 import ordinal from 'ordinal';
 import { MAX_CONTEXT_ELEMENTS, MAX_TEXT_SIZE } from '../app';
-import { commas, names, trunc } from '../library/factory';
+import { commas, fallback_date, names, trunc } from '../library/factory';
 import { community, nonthread } from '../library/listeners';
 import { getMembers } from '../library/lookup';
 import { blame } from '../library/messages';
@@ -261,7 +261,7 @@ export const register = ({ app }: { app: App }): void => {
             for (const user of Object.keys(dealt)) {
                 const per_list = commas(dealt[user].map(item => `*${item}*`)),
                     per_venue = script.event ? `for the *${script.event}* event` : `from the <#${message.channel}> channel`,
-                    per_when = `<!date^${parseInt(message.ts)}^{date_short_pretty} at {time}^${permalink}|there>`,
+                    per_when = `<!date^${parseInt(message.ts)}^{date_short_pretty} at {time}^${permalink}|${fallback_date(message.ts)}>`,
                     per_who = message.user != user ? `<@${message.user}>${!validate(script.moderator, script.options) ? '' : ' as the moderator'}` : 'You',
                     per_whom = message.user != user ? validate(script.moderator, script.options) ? `<@${user}>` : 'you' : 'yourself',
                     per_notification = `${per_who} dealt ${per_whom} ${dealt[user].length != 1 ? 'items' : 'an item'}`,
@@ -439,7 +439,7 @@ export const register = ({ app }: { app: App }): void => {
         const all_list = commas(revealed.map(item => `*${item}*`)),
             all_notification = `<@${user}> revealed ${revealed.length != 1 ? 'items' : 'an item'}`,
             all_venue = `for ${event ? `the *${event}*` : 'this'} event`,
-            all_when = `<!date^${parseInt(timestamp)}^{date_short_pretty} at {time}^${permalink}|here>`,
+            all_when = `<!date^${parseInt(timestamp)}^{date_short_pretty} at {time}^${permalink}|${fallback_date(timestamp)}>`,
             all_summary = `<@${user}> revealed that they were dealt ${all_list} ${all_venue} ${all_when}.`,
             all_blocks: Block[] = [
                 <SectionBlock>{

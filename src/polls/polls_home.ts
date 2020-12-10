@@ -2,6 +2,7 @@ import { ActionsBlock, Block, ContextBlock, DividerBlock, SectionBlock } from '@
 import { Cursor, MongoClient } from 'mongodb';
 import { Cache } from '../app';
 import { HomeTabs } from '../home';
+import { fallback_date } from '../library/factory';
 import { Poll, poll_about, poll_cohorts, poll_not_voted, poll_voted } from './polls';
 
 const MAX_POLLS_SHOWN = 10;
@@ -103,7 +104,7 @@ const poll_blocks = ({ user, poll, cache }: { user: string; poll: Poll; cache: C
                 }] : []),
                 ...(poll.latest ? [{
                     type: 'mrkdwn',
-                    text: `*Latest:* ${poll.latest.summary} <!date^${parseInt(poll.latest.message_ts)}^{date_short_pretty} at {time}^${poll.latest.permalink}|there>`
+                    text: `*Latest:* <!date^${parseInt(poll.latest.message_ts)}^{date_short_pretty} at {time}^${poll.latest.permalink}|${fallback_date(poll.latest.message_ts)}> ${poll.latest.summary}`
                 }] : [])
             ]
         },
