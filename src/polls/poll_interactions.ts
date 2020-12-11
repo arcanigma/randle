@@ -4,6 +4,7 @@ import { Cache } from '../app';
 import * as home from '../home';
 import { size } from '../library/factory';
 import * as information_modal from '../library/information_modal';
+import * as create_edit_poll_modal from './create_edit_poll_modal';
 import { announce, AUTOCLOSE_GRACE, Poll } from './polls';
 
 export const register = ({ app, store, cache, timers }: { app: App; store: Promise<MongoClient>; cache: Cache; timers: Record<string, NodeJS.Timeout> }): void => {
@@ -59,6 +60,18 @@ export const register = ({ app, store, cache, timers }: { app: App; store: Promi
             await announce({ mode: 'reopen', poll, context, body, client, store });
 
             cache[`${user}/home_tab`] = 'polls-open';
+        }
+        else if (data.admin == 'edit') {
+            const poll = <Poll> (await coll.findOne({
+                _id: new ObjectID(data.poll),
+                host: user
+            }));
+
+            await client.views.open({
+                token: <string> context.botToken,
+                trigger_id: body.trigger_id,
+                view: await create_edit_poll_modal.view({ poll, context, client })
+            });
         }
         else if (data.admin == 'delete') {
             await coll.deleteOne({

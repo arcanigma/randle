@@ -1,26 +1,42 @@
 import { App, ButtonAction, ChannelsSelectAction, CheckboxesAction, Context, MultiUsersSelectAction, StaticSelectAction } from '@slack/bolt';
-import { InputBlock, View, WebAPICallResult, WebClient } from '@slack/web-api';
-import { MongoClient, ObjectId } from 'mongodb';
+import { InputBlock, SectionBlock, View, WebAPICallResult, WebClient } from '@slack/web-api';
+import { MongoClient, ObjectID, ObjectId } from 'mongodb';
+import { Cache } from '../app';
 import { shuffleInPlace } from '../deck/solving';
+import * as home from '../home';
 import { size } from '../library/factory';
 import { announce, Poll } from './polls';
 
-export const view = async ({ channel, context, client }: { channel: string | undefined; context: Context; client: WebClient }): Promise<View> => ({
+export const view = async ({ channel, poll, context, client }: { channel?: string | undefined; poll?: Poll; context: Context; client: WebClient }): Promise<View> => ({
     type: 'modal',
-    callback_id: 'create_poll_modal',
+    callback_id: 'create_edit_poll_modal',
+    private_metadata: !poll ? 'new' : poll._id?.toHexString(),
     title: {
         type: 'plain_text',
-        text: 'Create a poll'
+        text: !poll
+            ? 'Create a poll'
+            : 'Edit a poll'
     },
     submit: {
         type: 'plain_text',
-        text: 'Create'
+        text: !poll
+            ? 'Create'
+            : 'Edit'
     },
     close: {
         type: 'plain_text',
         text: 'Cancel'
     },
     blocks: [
+        ...(poll ? [
+            <SectionBlock>{
+                type: 'section',
+                text: {
+                    type: 'mrkdwn',
+                    text: ':warning: *Warning:* If you edit the poll in any way, all votes will be reset.'
+                }
+            }
+        ]: []),
         <InputBlock>{
             type: 'input',
             block_id: 'audience',
@@ -39,9 +55,9 @@ export const view = async ({ channel, context, client }: { channel: string | und
                     type: 'plain_text',
                     text: 'Select a channel'
                 },
-                ...channel ? {
-                    initial_channel: channel
-                } : {}
+                ...(channel || poll ? {
+                    initial_channel: !poll ? channel : poll.audience
+                } : {})
             }
         },
         <InputBlock>{
@@ -62,12 +78,15 @@ export const view = async ({ channel, context, client }: { channel: string | und
                     type: 'plain_text',
                     text: 'Select users'
                 },
-                initial_users: channel ? ((await client.conversations.members({
-                    token: <string> context.botToken,
-                    channel: channel
-                }) as WebAPICallResult & {
-                    members: string[];
-                }).members.filter(user => user != context.botUserId)) : []
+                initial_users:
+                    channel ? (
+                        (await client.conversations.members({
+                            token: <string> context.botToken,
+                            channel: channel
+                        }) as WebAPICallResult & {
+                            members: string[];
+                        }).members.filter(user => user != context.botUserId)
+                    ) : poll ? poll.members : []
             }
         },
         <InputBlock>{
@@ -89,7 +108,10 @@ export const view = async ({ channel, context, client }: { channel: string | und
                     text: 'Question or statement'
                 },
                 min_length: 5,
-                max_length: 300
+                max_length: 300,
+                ...(poll ? {
+                    initial_value: poll.prompt
+                } : {})
             }
         },
         <InputBlock>{
@@ -112,7 +134,10 @@ export const view = async ({ channel, context, client }: { channel: string | und
                     text: 'One choice per line'
                 },
                 min_length: 5,
-                max_length: 300
+                max_length: 300,
+                ...(poll ? {
+                    initial_value: poll.choices.join('\n')
+                } : {})
             }
         },
         <InputBlock>{
@@ -182,13 +207,30 @@ export const view = async ({ channel, context, client }: { channel: string | und
                     type: 'plain_text',
                     text: 'Select a polling method'
                 },
-                initial_option: {
-                    text: {
-                        type: 'plain_text',
-                        text: 'Anonymous (vote/unvote notices, tallied results)'
-                    },
-                    value: 'anonymous'
-                },
+                initial_option:
+                    {
+                        'anonymous': {
+                            text: {
+                                type: 'plain_text',
+                                text: 'Anonymous (vote/unvote notices, tallied results)'
+                            },
+                            value: 'anonymous'
+                        },
+                        'simultaneous': {
+                            text: {
+                                type: 'plain_text',
+                                text: 'Simultaneous (vote/unvote notices, ascribed results)'
+                            },
+                            value: 'simultaneous'
+                        },
+                        'live': {
+                            text: {
+                                type: 'plain_text',
+                                text: 'Live (vote-for/unvote notices, ascribed results)'
+                            },
+                            value: 'live'
+                        }
+                    }[poll ? poll.method : 'anonymous'],
                 options: [
                     {
                         text: {
@@ -200,7 +242,6 @@ export const view = async ({ channel, context, client }: { channel: string | und
                     {
                         text: {
                             type: 'plain_text',
-                            emoji: true,
                             text: 'Simultaneous (vote/unvote notices, ascribed results)'
                         },
                         value: 'simultaneous'
@@ -240,20 +281,23 @@ export const view = async ({ channel, context, client }: { channel: string | und
                         value: 'autoclose'
                     }
                 ],
-                initial_options: [
-                    {
-                        text: {
-                            type: 'plain_text',
-                            text: 'Automatic Closing',
-                            emoji: true
-                        },
-                        description: {
-                            type: 'plain_text',
-                            text: 'Closes automatically when all members have voted.'
-                        },
-                        value: 'autoclose'
-                    }
-                ]
+                ...(!poll || poll.autoclose
+                    ? { initial_options: [
+                        {
+                            text: {
+                                type: 'plain_text',
+                                text: 'Automatic Closing',
+                                emoji: true
+                            },
+                            description: {
+                                type: 'plain_text',
+                                text: 'Closes automatically when all members have voted.'
+                            },
+                            value: 'autoclose'
+                        }
+                    ] }
+                    : {}
+                )
             }
         }
     ]
@@ -262,10 +306,10 @@ export const view = async ({ channel, context, client }: { channel: string | und
 type Input<T> = { input: T }
 type Inputs<T> = { inputs: T }
 
-export const register = ({ app, store }: { app: App; store: Promise<MongoClient> }): void => {
+export const register = ({ app, store, cache }: { app: App; store: Promise<MongoClient>; cache: Cache }): void => {
     const re_lines = /\r\n|\r|\n/,
         re_mrkdwn = /([*_~`<>])/g;
-    app.view('create_poll_modal', async ({ ack, body, view, context, client }) => {
+    app.view('create_edit_poll_modal', async ({ ack, body, view, context, client }) => {
         const host = body.user.id,
             data = view.state.values,
             audience = (<Input<ChannelsSelectAction>> data.audience).input.selected_channel,
@@ -307,22 +351,52 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
         else if (order == 'shuffle')
             shuffleInPlace(choices);
 
-        const poll: Poll = {
-            _id: undefined,
-            opened: new Date(),
-            host,
-            audience,
-            members,
-            prompt,
-            choices,
-            method,
-            autoclose,
-            votes: {}
-        };
+        if (view.private_metadata == 'new') {
+            const ipoll: Poll = {
+                _id: undefined,
+                opened: new Date(),
+                host,
+                audience,
+                members,
+                prompt,
+                choices,
+                method,
+                autoclose,
+                votes: {}
+            };
 
-        const coll = (await store).db().collection('polls');
-        poll._id = <ObjectId> (await coll.insertOne(poll)).insertedId;
+            const coll = (await store).db().collection('polls');
+            ipoll._id = <ObjectId> (await coll.insertOne(ipoll)).insertedId;
 
-        await announce({ mode: 'open', poll, context, body, client, store });
+            await announce({ mode: 'open', poll: ipoll, context, body, client, store });
+        }
+        else {
+            const coll = (await store).db().collection('polls');
+            const upoll = <Poll> (await coll.findOneAndUpdate(
+                {
+                    _id: new ObjectID(view.private_metadata),
+                    host
+                },
+                { $set: {
+                    edited: new Date(),
+                    audience,
+                    members,
+                    prompt,
+                    choices,
+                    method,
+                    autoclose,
+                    votes: {} // TODO selectively reset or preserve
+                } },
+                { returnOriginal: false }
+            )).value;
+
+            await announce({ mode: 'edit', poll: upoll, context, body, client, store });
+
+            await client.views.publish({
+                token: <string> context.botToken,
+                user_id: host,
+                view: await home.view({ user: host, store, cache, context })
+            });
+        }
     });
 };

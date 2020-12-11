@@ -1,6 +1,6 @@
 import { App } from '@slack/bolt';
 import * as information_modal from '../library/information_modal';
-import * as create_poll_modal from './create_poll_modal';
+import * as create_edit_poll_modal from './create_edit_poll_modal';
 
 export const register = ({ app }: { app: App }): void => {
     app.shortcut('create_poll_shortcut', async ({ ack, shortcut, context, client }) => {
@@ -14,7 +14,7 @@ export const register = ({ app }: { app: App }): void => {
             await client.views.open({
                 token: <string> context.botToken,
                 trigger_id: shortcut.trigger_id,
-                view: await create_poll_modal.view({ channel, context, client })
+                view: await create_edit_poll_modal.view({ channel, context, client })
             });
         }
         catch (error) {

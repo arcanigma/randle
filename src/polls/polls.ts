@@ -4,7 +4,7 @@ import { MongoClient, ObjectID } from 'mongodb';
 import { Cache } from '../app';
 import { commas, names, offbox, onbox } from '../library/factory';
 import * as information_modal from '../library/information_modal';
-import * as create_poll_modal from './create_poll_modal';
+import * as create_edit_poll_modal from './create_edit_poll_modal';
 import * as create_poll_shortcut from './create_poll_shortcut';
 import * as poll_interactions from './poll_interactions';
 
@@ -17,6 +17,7 @@ export type Poll = {
     _id?: ObjectID;
     opened: Date;
     closed?: Date;
+    edited?: Date;
     host: string;
     audience: string;
     members: string[];
@@ -43,11 +44,12 @@ export async function announce ({ mode, poll, context, body, client, store }:
 
     let summary;
 
-    if (mode == 'open' || mode == 'reopen' || mode == 'reannounce') {
+    if (mode == 'open' || mode == 'reopen' || mode == 'reannounce' || mode == 'edit') {
         summary = `<@${poll.host}> ${{
             open: 'opened',
             reopen: 'reopened',
-            reannounce: 'reannounced'
+            reannounce: 'reannounced',
+            edit: 'edited and reset'
         }[mode]} the poll *${poll.prompt}*`;
 
         const team_id = body.team ? body.team.id : '',
@@ -193,7 +195,7 @@ export async function announce ({ mode, poll, context, body, client, store }:
 }
 
 export const register = ({ app, store, cache, timers }: { app: App; store: Promise<MongoClient>; cache: Cache; timers: Record<string, NodeJS.Timeout> }): void => {
-    [ create_poll_modal, create_poll_shortcut, poll_interactions ].forEach(it => {
+    [ create_edit_poll_modal, create_poll_shortcut, poll_interactions ].forEach(it => {
         it.register({ app, store, cache, timers });
     });
 };
@@ -246,7 +248,8 @@ export const poll_about = (poll: Poll): MrkdwnElement[] => {
                 'simultaneous': 'simultaneous poll',
                 'live': 'live poll'
             }[poll.method],
-            poll.autoclose ? 'autoclose' : undefined
+            poll.autoclose ? 'autoclose' : undefined,
+            poll.edited ? 'edited' : undefined
         ])}`
     }];
 };

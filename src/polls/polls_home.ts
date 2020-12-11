@@ -159,6 +159,16 @@ const poll_blocks = ({ user, poll, cache }: { user: string; poll: Poll; cache: C
                             {
                                 text: {
                                     type: 'plain_text',
+                                    text: 'Edit Poll'
+                                },
+                                value: JSON.stringify({
+                                    poll: poll._id,
+                                    admin: 'edit'
+                                })
+                            },
+                            {
+                                text: {
+                                    type: 'plain_text',
                                     text: 'Reannounce Poll'
                                 },
                                 value: JSON.stringify({
@@ -166,7 +176,6 @@ const poll_blocks = ({ user, poll, cache }: { user: string; poll: Poll; cache: C
                                     admin: 'reannounce'
                                 })
                             }
-                            // TODO allow edit with "edited" warning
                         ] : [
                             {
                                 text: {
