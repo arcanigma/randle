@@ -33,17 +33,15 @@ const store = MongoClient.connect(
     }
 );
 
-// TODO deprecate Records for index signatures
-
 const timers: Record<string, NodeJS.Timeout> = {};
 
 export type Cache = Record<string, string | number | boolean>;
 const cache: Cache = {};
 
-export const MAX_TEXT_SIZE = 1000;
-export const MAX_VIEW_BLOCKS = 100;
-export const MAX_MESSAGE_BLOCKS = 50;
-export const MAX_CONTEXT_ELEMENTS = 10;
+export const MAX_TEXT_SIZE = 1000,
+    MAX_VIEW_BLOCKS = 100,
+    MAX_MESSAGE_BLOCKS = 50,
+    MAX_CONTEXT_ELEMENTS = 10;
 
 [ deck, debug, home, macros, polls, roll, routes ].forEach(it => {
     it.register({ app, receiver, store, cache, timers });

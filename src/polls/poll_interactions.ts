@@ -104,7 +104,7 @@ export const register = ({ app, store, cache, timers }: { app: App; store: Promi
         const poll = <Poll> (await coll.findOneAndUpdate(
             {
                 _id: new ObjectID(data.poll),
-                members: { $in: [user] },
+                members: user,
                 closed: { $exists: false }
             },
             data.choice !== null

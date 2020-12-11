@@ -8,10 +8,10 @@ import * as create_edit_poll_modal from './create_edit_poll_modal';
 import * as create_poll_shortcut from './create_poll_shortcut';
 import * as poll_interactions from './poll_interactions';
 
-// TODO slash polls with macros
-// TODO TTL for closed polls
+// TODO slash command for easy polls
 
-export const AUTOCLOSE_GRACE = 30;
+export const AUTOCLOSE_GRACE = 30,
+    EXPIRATION_DAYS = 14;
 
 export type Poll = {
     _id?: ObjectID;
@@ -195,6 +195,14 @@ export async function announce ({ mode, poll, context, body, client, store }:
 }
 
 export const register = ({ app, store, cache, timers }: { app: App; store: Promise<MongoClient>; cache: Cache; timers: Record<string, NodeJS.Timeout> }): void => {
+    void (async () => {
+        const coll = (await store).db().collection('polls');
+        await coll.createIndex({ host: 1 });
+        await coll.createIndex({ members: 1 });
+        await coll.createIndex({ opened: 1 });
+        await coll.createIndex({ closed: 1 }, { expireAfterSeconds: EXPIRATION_DAYS * 86400 });
+    })();
+
     [ create_edit_poll_modal, create_poll_shortcut, poll_interactions ].forEach(it => {
         it.register({ app, store, cache, timers });
     });

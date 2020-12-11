@@ -33,7 +33,7 @@ export const blocks = async ({ user, store, cache }: { user: string; store: Prom
         } : {},
         $or: [
             { host: user },
-            { members: { $in: [user] } }
+            { members: user }
         ]
     }).sort(
         tab != 'polls-closed'
