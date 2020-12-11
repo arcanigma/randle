@@ -86,11 +86,11 @@ export async function announce ({ mode, poll, context, body, client, store }:
     }
     else if (mode == 'participate') {
         if (poll.votes[user] === undefined)
-            summary = `<@${user}> unvoted in the poll *${poll.prompt}*`;
+            summary = `<@${user}> unvoted`;
         else if (poll.method != 'live')
-            summary = `<@${user}> voted in the poll *${poll.prompt}*`;
+            summary = `<@${user}> voted`;
         else
-            summary = `<@${user}> voted for *${poll.choices[poll.votes[user]]}* in the poll *${poll.prompt}*`;
+            summary = `<@${user}> voted for *${poll.choices[poll.votes[user]]}*`;
 
         blocks.push(<ContextBlock>{
             type: 'context',
