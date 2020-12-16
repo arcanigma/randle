@@ -222,10 +222,16 @@ const poll_blocks = ({ user, poll, cache }: { user: string; poll: Poll; cache: C
         },
         <ContextBlock>{
             type: 'context',
-            elements: [
-                ...(poll.method == 'live' ? poll_cohorts : poll_voted)(poll, true),
-                ...poll_not_voted(poll, true)
-            ]
+            elements: poll.closed === undefined
+                ? [
+                    ...(poll.method == 'live' ? poll_cohorts : poll_voted)(poll, true),
+                    ...poll_not_voted(poll, true)
+                ]
+                : [
+                    ...poll_cohorts(poll, poll.method != 'anonymous'),
+                    ...(poll.method == 'anonymous' ? poll_voted(poll, true) : []),
+                    ...poll_not_voted(poll, true)
+                ]
         }
     ];
 

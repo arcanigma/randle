@@ -81,6 +81,7 @@ export async function announce ({ mode, poll, context, body, client, store }:
                     ...poll_members(poll)
                 ]
                 : [
+                    ...poll_about(poll),
                     ...(poll.method == 'live' ? poll_cohorts : poll_voted)(poll, true),
                     ...poll_not_voted(poll, true)
                 ]
