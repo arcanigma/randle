@@ -1,28 +1,24 @@
 import { Context, MessageEvent } from '@slack/bolt';
 import { WebClient } from '@slack/web-api';
 import { ElementDefinition } from 'cytoscape';
-import puppeteer from 'puppeteer';
+import { firefox } from 'playwright-firefox';
 import { Script } from './deck';
 
 export async function uploadGraphFile ({ title, elements, script, message, context, client }:
     { title: string; elements: ElementDefinition[]; script: Script; message: MessageEvent; context: Context; client: WebClient }
 ): Promise<void> {
     if (elements.length == 0)
-        throw 'Unexected 0 graph elements.';
+        throw 'Unexpected 0 graph elements.';
 
     const html = graphToHtml(title, elements);
 
-    const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox']
-    });
+    const browser = await firefox.launch();
 
     const page = await browser.newPage();
 
-    await page.setViewport({
+    await page.setViewportSize({
         width: 1440,
-        height: 1440,
-        deviceScaleFactor: 1
+        height: 1440
     });
 
     await page.setContent(html);

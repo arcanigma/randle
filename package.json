@@ -1,7 +1,7 @@
 {
     "name": "randle",
     "description": "Dice, cards, and polling bot for Slack.",
-    "version": "3.4.0",
+    "version": "3.5.0",
     "main": "./dist/app.js",
     "scripts": {
         "build": "tsc",
@@ -21,15 +21,13 @@
         "mongodb": "^3.6",
         "ordinal": "^1.0",
         "php-random-int": "^1.0",
-        "puppeteer": "^5.4.1"
+        "playwright-firefox": "^1.8.0"
     },
     "devDependencies": {
         "@tsconfig/node12": "*",
         "@types/cytoscape": "^3.14.8",
-        "@types/json5": "*",
         "@types/mongodb": "^3.5.32",
         "@types/node": "^14.14.6",
-        "@types/puppeteer-core": "*",
         "@typescript-eslint/eslint-plugin": "^4.6.0",
         "@typescript-eslint/parser": "^4.6.0",
         "dotenv": "^8.2",

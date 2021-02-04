@@ -8,8 +8,8 @@
     "stack": "heroku-18",
     "image": "heroku/nodejs",
     "buildpacks": [
-        { "url": "heroku/nodejs" },
-        { "url": "https://github.com/jontewks/puppeteer-heroku-buildpack" }
+        { "url": "https://github.com/mxschmitt/heroku-playwright-buildpack" },
+        { "url": "heroku/nodejs" }
     ],
     "env": {
         "SLACK_BOT_TOKEN": {
@@ -20,6 +20,10 @@
         },
         "MONGODB_URI": {
             "description": "MongoDB URI"
+        },
+        "PLAYWRIGHT_BUILDPACK_BROWSERS": {
+            "description": "Playwright Browser",
+            "value": "firefox"
         }
     }
 }
