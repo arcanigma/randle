@@ -249,7 +249,7 @@ export function matches (it: string, matcher: Matcher, defines: Defines): boolea
     if (Array.isArray(matcher))
         return matcher.some(m => matches(it, m, defines));
     else if (typeof matcher === 'string')
-        return matches (it, { 'includes': matcher }, defines);
+        return matches(it, { 'includes': matcher }, defines);
     else if ('is' in matcher)
         return it == wss(matcher.is);
     if ('isNot' in matcher)
@@ -272,15 +272,14 @@ export function matches (it: string, matcher: Matcher, defines: Defines): boolea
         return true;
     else if ('set' in matcher) {
         let result =
-            construct(matcher.set, defines.sets).includes(it) ||
-            construct(matcher.union, defines.sets).includes(it)
-        ;
+            matches(it, construct(matcher.set, defines.sets), defines) ||
+            matches(it, construct(matcher.union, defines.sets), defines);
 
         if ('intersect' in matcher)
-            result = result && construct(matcher.intersect, defines.sets).includes(it);
+            result = result && matches(it, construct(matcher.intersect, defines.sets), defines);
 
         if ('except' in matcher)
-            result = result && !construct(matcher.except, defines.sets).includes(it);
+            result = result && !matches(it, construct(matcher.except, defines.sets), defines);
 
         return result;
     }
