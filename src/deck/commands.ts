@@ -1,4 +1,4 @@
-import { App, BlockAction, Context, MessageEvent, MultiStaticSelectAction, SayFn } from '@slack/bolt';
+import { App, BlockAction, Context, GenericMessageEvent, MultiStaticSelectAction, SayFn } from '@slack/bolt';
 import { Block, MultiSelect, SectionBlock, WebClient } from '@slack/web-api';
 import { MongoClient } from 'mongodb';
 import ordinal from 'ordinal';
@@ -44,7 +44,10 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
                 expression: (<string[]> context.matches)[1],
                 fun: items => shuffleInPlace(items),
                 recount: 0,
-                message, context, client, say
+                message: message as GenericMessageEvent,
+                context,
+                client,
+                say
             });
         }
         catch (error) {
@@ -60,7 +63,10 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
                 expression: (<string[]> context.matches)[2],
                 fun: items => choose(items, parseInt((<string[]> context.matches)[1]) || 1),
                 recount: 0,
-                message, context, client, say
+                message: message as GenericMessageEvent,
+                context,
+                client,
+                say
             });
         }
         catch (error) {
@@ -76,7 +82,10 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
                 expression: (<string[]> context.matches)[2],
                 fun: items => repeat(items, parseInt((<string[]> context.matches)[1]) || 1),
                 recount: 0,
-                message, context, client, say
+                message: message as GenericMessageEvent,
+                context,
+                client,
+                say
             });
         }
         catch (error) {
@@ -86,7 +95,7 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
 
     const re_macro = /^[\w_][\w\d_]{2,14}$/;
     async function postDeckMessage ( { mode, expression, fun, recount, message, context, client, say }:
-        { mode: string; expression: string; fun: (list: string[]) => string[]; recount: number; message: MessageEvent; context: Context; client: WebClient; say: SayFn }
+        { mode: string; expression: string; fun: (list: string[]) => string[]; recount: number; message: GenericMessageEvent; context: Context; client: WebClient; say: SayFn }
     ): Promise<void> {
         const user = message.user,
             suit = pluck(SUIT_EMOJIS);
@@ -193,7 +202,7 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
                 }
             });
 
-            const message = <MessageEvent> body.message;
+            const message = body.message as GenericMessageEvent;
 
             await respond({
                 replace_original: true,

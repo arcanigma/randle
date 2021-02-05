@@ -48,7 +48,7 @@ export const MAX_TEXT_SIZE = 1000,
 });
 
 void (async () => {
-    const port = process.env.PORT ?? 80;
+    const port = Number(process.env.PORT ?? 80);
     await app.start(port);
     console.debug(`Listening on port ${port}...`);
 })();

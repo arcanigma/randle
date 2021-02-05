@@ -1,4 +1,4 @@
-import { App, MessageEvent, Middleware, SlackEventMiddlewareArgs } from '@slack/bolt';
+import { App, BotMessageEvent, GenericMessageEvent, MessageEvent, Middleware, SlackEventMiddlewareArgs } from '@slack/bolt';
 import { Block, ContextBlock, MrkdwnElement, SectionBlock } from '@slack/web-api';
 import { MongoClient } from 'mongodb';
 import ordinal from 'ordinal';
@@ -21,7 +21,7 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
     const macrotize: Middleware<SlackEventMiddlewareArgs<'message'>> = async ({ message, context, next }) => {
         const coll = (await store).db().collection('macros');
         const personal = (await coll.findOne(
-            { _id: message.user },
+            { _id: (<GenericMessageEvent> message).user },
             { projection: { _id: 0 } }
         )) as Record<string, string> ?? {},
             community = (await coll.findOne(
@@ -57,9 +57,9 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
                     channel: message.channel,
                     username: 'Roll',
                     icon_emoji: ':game_die:',
-                    text: `<@${message.user}> rolled dice`,
+                    text: `<@${(<GenericMessageEvent> message).user}> rolled dice`,
                     blocks: results.blocks,
-                    thread_ts: <string> (message.thread_ts ?? message.ts)
+                    thread_ts: (<BotMessageEvent> message).thread_ts ?? message.ts
                 });
         }
         catch (error) {
@@ -196,7 +196,7 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
                             type: 'section',
                             text: {
                                 type: 'mrkdwn',
-                                text: trunc(`<@${message.user}> rolled ${clauses[i]}.`, MAX_TEXT_SIZE)
+                                text: trunc(`<@${(<GenericMessageEvent> message).user}> rolled ${clauses[i]}.`, MAX_TEXT_SIZE)
                             }
                         });
                     else

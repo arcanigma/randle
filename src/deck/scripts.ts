@@ -1,4 +1,4 @@
-import { App, BlockAction, MultiStaticSelectAction } from '@slack/bolt';
+import { App, BlockAction, GenericMessageEvent, MultiStaticSelectAction } from '@slack/bolt';
 import { Block, ContextBlock, MrkdwnElement, MultiSelect, SectionBlock, WebAPICallResult } from '@slack/web-api';
 import { ElementDefinition } from 'cytoscape';
 import got from 'got';
@@ -22,9 +22,10 @@ export const register = ({ app }: { app: App }): void => {
         re_url = /^\s*<([^|]+)(?:\|[^|]+)?>\s*$/;
     app.message(re_script, nonthread, community, async ({ message, context, client }) => {
         try {
+            const gmessage = message as GenericMessageEvent;
             const suit = pluck(SUIT_EMOJIS);
 
-            const script = <Script>JSON5.parse((<string[]> context.matches)[1]);
+            const script: Script = JSON5.parse((<string[]> context.matches)[1]);
             if (script.import) {
                 if (Array.isArray(script.import) && script.import.length > MAX_IMPORTS)
                     throw `Too many imports (limit of ${MAX_IMPORTS}) in script.`;
@@ -42,9 +43,9 @@ export const register = ({ app }: { app: App }): void => {
                         throw `Web error \`${(<{ message: string }> error).message}\` for \`${url}\` import.`;
                     }
 
-                    let iscript;
+                    let iscript: Script;
                     try {
-                        iscript = <Script>JSON5.parse(raw);
+                        iscript = JSON5.parse(raw);
                     }
                     catch (error) {
                         throw `Parse error \`${(<{ message: string }> error).message}\` for \`${url}\` import.`;
@@ -89,7 +90,7 @@ export const register = ({ app }: { app: App }): void => {
             const items = shuffleCopy(build(script.deal, script)),
                 draft = items.filter((item, index) => items.indexOf(item) === index),
                 users = shuffleInPlace((await getMembers(message.channel, context, client))
-                    .filter(user => user != message.user || !validate(script.moderator, script.options)));
+                    .filter(user => user != gmessage.user || !validate(script.moderator, script.options)));
 
             const relays: string[][] = [];
             if (script.rules && listify(script.rules).some(rule => 'relay' in rule)) {
@@ -192,9 +193,9 @@ export const register = ({ app }: { app: App }): void => {
             const all_list = commas(Object.keys(counts).map(Number).sort().reverse().map(count => {
                     return `${count > 0 ? `*${count}* each` : '*none*'} to ${names(counts[count])}`;
                 }), '; '),
-                all_leftover = items.length == 0 ? '' : ` with *${items.length}* leftover${!validate(script.moderator, script.options) ? '' : ` for <@${message.user}> as the moderator`}`,
-                all_notification = `<@${message.user}> dealt items`,
-                all_summary = `<@${message.user}> dealt ${all_list} by direct message${all_leftover} for ${script.event ? `the *${script.event}*` : 'this'} event.`,
+                all_leftover = items.length == 0 ? '' : ` with *${items.length}* leftover${!validate(script.moderator, script.options) ? '' : ` for <@${gmessage.user}> as the moderator`}`,
+                all_notification = `<@${gmessage.user}> dealt items`,
+                all_summary = `<@${gmessage.user}> dealt ${all_list} by direct message${all_leftover} for ${script.event ? `the *${script.event}*` : 'this'} event.`,
                 all_blocks: Block[] = [
                     <SectionBlock>{
                         type: 'section',
@@ -262,8 +263,8 @@ export const register = ({ app }: { app: App }): void => {
                 const per_list = commas(dealt[user].map(item => `*${item}*`)),
                     per_venue = script.event ? `for the *${script.event}* event` : `from the <#${message.channel}> channel`,
                     per_when = `<!date^${parseInt(message.ts)}^{date_short_pretty} at {time}^${permalink}|${fallback_date(message.ts)}>`,
-                    per_who = message.user != user ? `<@${message.user}>${!validate(script.moderator, script.options) ? '' : ' as the moderator'}` : 'You',
-                    per_whom = message.user != user ? validate(script.moderator, script.options) ? `<@${user}>` : 'you' : 'yourself',
+                    per_who = gmessage.user != user ? `<@${gmessage.user}>${!validate(script.moderator, script.options) ? '' : ' as the moderator'}` : 'You',
+                    per_whom = gmessage.user != user ? validate(script.moderator, script.options) ? `<@${user}>` : 'you' : 'yourself',
                     per_notification = `${per_who} dealt ${per_whom} ${dealt[user].length != 1 ? 'items' : 'an item'}`,
                     per_summary = `${per_who} dealt ${per_whom} ${per_list} ${per_venue} ${per_when}.`,
                     per_blocks: Block[] = [];
@@ -351,7 +352,7 @@ export const register = ({ app }: { app: App }): void => {
                         token: <string> context.botToken,
                         users: !validate(script.moderator, script.options)
                             ? user
-                            : `${user},${message.user}`
+                            : `${user},${gmessage.user}`
                     }) as WebAPICallResult & {
                         channel: {
                             id: string;
@@ -375,7 +376,7 @@ export const register = ({ app }: { app: App }): void => {
             if (items.length > 0 && validate(script.moderator, script.options)) {
                 const dm = (await client.conversations.open({
                     token: <string> context.botToken,
-                    users: message.user
+                    users: gmessage.user
                 }) as WebAPICallResult & {
                     channel: {
                         id: string;

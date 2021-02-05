@@ -91,6 +91,8 @@ export const register = ({ app, store, cache, timers }: { app: App; store: Promi
         });
     });
 
+    // TODO multipoll (select min to max choices)
+
     app.action<BlockAction<ButtonAction>>(/^vote_button_\d+$/, async ({ ack, body, action, context, client }) => {
         await ack();
 

@@ -1,4 +1,4 @@
-import { Context, MessageEvent } from '@slack/bolt';
+import { BotMessageEvent, Context, GenericMessageEvent, MessageEvent } from '@slack/bolt';
 import { ContextBlock, SectionBlock, WebClient } from '@slack/web-api';
 import { MAX_TEXT_SIZE } from '../app';
 import { trunc } from './factory';
@@ -10,7 +10,7 @@ export async function blame ({ error, message, context, client }:
         console.error({ error });
         await client.chat.postEphemeral({
             token: <string> context.botToken,
-            user: message.user,
+            user: (<GenericMessageEvent> message).user,
             channel: message.channel,
             text: 'There was an error',
             blocks: [
@@ -34,11 +34,11 @@ export async function blame ({ error, message, context, client }:
                       },
                       {
                           type: 'mrkdwn',
-                          text: `*Context:* ${<string> message.channel_type}-${message.channel}`
+                          text: `*Context:* ${message.channel} (${(<BotMessageEvent> message).channel_type})`
                       },
                       {
                           type: 'mrkdwn',
-                          text: `*Text:* ${trunc(message.text ?? 'undefined', MAX_TEXT_SIZE)}`
+                          text: `*Text:* ${trunc((<GenericMessageEvent> message).text ?? 'undefined', MAX_TEXT_SIZE)}`
                       }
                   ]
               }
@@ -49,7 +49,7 @@ export async function blame ({ error, message, context, client }:
         console.warn({ error });
         await client.chat.postEphemeral({
             token: <string> context.botToken,
-            user: message.user,
+            user: (<GenericMessageEvent> message).user,
             channel: message.channel,
             text: 'There was an error',
             blocks: [
