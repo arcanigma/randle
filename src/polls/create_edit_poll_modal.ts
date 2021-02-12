@@ -1,10 +1,10 @@
-import { App, ButtonAction, ChannelsSelectAction, CheckboxesAction, Context, MultiUsersSelectAction, StaticSelectAction } from '@slack/bolt';
+import { App, ButtonAction, ChannelsSelectAction, CheckboxesAction, Context, MultiStaticSelectAction, MultiUsersSelectAction, StaticSelectAction } from '@slack/bolt';
 import { InputBlock, SectionBlock, View, WebAPICallResult, WebClient } from '@slack/web-api';
 import { MongoClient, ObjectID, ObjectId } from 'mongodb';
 import { Cache } from '../app';
-import { shuffleInPlace } from '../deck/solving';
+import { shuffleCopy } from '../deck/solving';
 import * as home from '../home';
-import { size } from '../library/factory';
+import { size, trunc } from '../library/factory';
 import { announce, Poll } from './polls';
 
 export const view = async ({ channel, poll, context, client }: { channel?: string | undefined; poll?: Poll; context: Context; client: WebClient }): Promise<View> => ({
@@ -116,6 +116,7 @@ export const view = async ({ channel, poll, context, client }: { channel?: strin
         },
         <InputBlock>{
             type: 'input',
+            optional: true,
             block_id: 'choices',
             label: {
                 type: 'plain_text',
@@ -123,7 +124,7 @@ export const view = async ({ channel, poll, context, client }: { channel?: strin
             },
             hint: {
                 type: 'plain_text',
-                text: 'The choices members vote for (one per line, no formatting, emoji okay).'
+                text: 'The choices members can vote for (one per line, no formatting, emoji okay).'
             },
             element: {
                 type: 'plain_text_input',
@@ -133,8 +134,7 @@ export const view = async ({ channel, poll, context, client }: { channel?: strin
                     type: 'plain_text',
                     text: 'One choice per line'
                 },
-                min_length: 5,
-                max_length: 300,
+                max_length: 10 * 30,
                 ...(poll ? {
                     initial_value: poll.choices.join('\n')
                 } : {})
@@ -142,53 +142,44 @@ export const view = async ({ channel, poll, context, client }: { channel?: strin
         },
         <InputBlock>{
             type: 'input',
-            block_id: 'order',
+            optional: true,
+            block_id: 'presets',
             label: {
                 type: 'plain_text',
-                text: 'Order of Choices'
+                text: 'Preset Choices'
+            },
+            hint: {
+                type: 'plain_text',
+                text: 'Any preset choices members can also vote for (appended to the choices above).'
             },
             element: {
-                type: 'static_select',
+                type: 'multi_static_select',
                 action_id: 'input',
                 placeholder: {
                     type: 'plain_text',
-                    text: 'Select an order'
-                },
-                initial_option: {
-                    text: {
-                        type: 'plain_text',
-                        text: 'Original'
-                    },
-                    value: 'original'
+                    text: 'Select any preset choices'
                 },
                 options: [
                     {
                         text: {
                             type: 'plain_text',
-                            text: 'Original'
+                            text: 'Yes / No / Abstain'
                         },
-                        value: 'original'
+                        value: 'yes-no-abstain'
                     },
                     {
                         text: {
                             type: 'plain_text',
-                            text: 'Sort Ascending'
+                            text: 'Accept / Reject'
                         },
-                        value: 'ascending'
+                        value: 'accept-reject'
                     },
                     {
                         text: {
                             type: 'plain_text',
-                            text: 'Sort Descending'
+                            text: 'Member Names'
                         },
-                        value: 'descending'
-                    },
-                    {
-                        text: {
-                            type: 'plain_text',
-                            text: 'Shuffle'
-                        },
-                        value: 'shuffle'
+                        value: 'member-names'
                     }
                 ]
             }
@@ -267,6 +258,7 @@ export const view = async ({ channel, poll, context, client }: { channel?: strin
             element: {
                 type: 'checkboxes',
                 action_id: 'inputs',
+                // TODO option to forbid changing vote
                 options: [
                     {
                         text: {
@@ -315,8 +307,8 @@ export const register = ({ app, store, cache }: { app: App; store: Promise<Mongo
             audience = (<Input<ChannelsSelectAction>> data.audience).input.selected_channel,
             members = (<Input<MultiUsersSelectAction>> data.members).input.selected_users,
             prompt = (<Input<ButtonAction>> data.prompt).input.value.replace(re_lines, ' ').replace(re_mrkdwn, ''),
-            choices = (<Input<ButtonAction>> data.choices).input.value.trim().split(re_lines).map((choice: string) => choice.trim().replace(re_mrkdwn, '')).filter(Boolean),
-            order = (<Input<StaticSelectAction>> data.order).input.selected_option.value,
+            choices = (<Input<ButtonAction>> data.choices).input.value ? (<Input<ButtonAction>> data.choices).input.value.trim().split(re_lines).map((choice: string) => choice.trim().replace(re_mrkdwn, '')).filter(Boolean) : [],
+            presets = (<Input<MultiStaticSelectAction>> data.presets).input.selected_options.map(preset => preset.value),
             method = (<Input<StaticSelectAction>> data.method).input.selected_option.value as 'anonymous' | 'simultaneous' | 'live',
             features = ((<Inputs<CheckboxesAction>> data.features).inputs.selected_options ?? []).map(checkbox => checkbox.value as string),
             autoclose = features.includes('autoclose');
@@ -325,15 +317,46 @@ export const register = ({ app, store, cache }: { app: App; store: Promise<Mongo
 
         if (members.includes(context.botUserId))
             errors.members = "You can't choose this bot as a member.";
+
         else if (members.length < 2)
             errors.members = 'You must choose at least 2 members.';
 
+        if (presets.includes('yes-no-abstain'))
+            choices.push('Yes', 'No', 'Abstain');
+
+        if (presets.includes('accept-reject'))
+            choices.push('Accept', 'Reject');
+
+        if (presets.includes('member-names')) {
+            const shuffled = shuffleCopy(members);
+
+            for (const member of shuffled) {
+                const profile = (await client.users.profile.get({
+                    token: <string> context.botToken,
+                    user: member
+                }) as WebAPICallResult & {
+                    profile: {
+                        real_name_normalized: string;
+                        display_name_normalized: string;
+                    };
+                }).profile;
+
+                if (profile.display_name_normalized)
+                    choices.push(trunc(profile.display_name_normalized, 30));
+                else
+                    choices.push(trunc(profile.real_name_normalized, 30));
+            }
+        }
+
+        // TODO suffix or otherwise resolve duplicates
         if ([...new Set(choices)].length < choices.length)
             errors.choices = "You can't repeat any choices.";
-        else if (choices.length < 1 || choices.length > 10)
-            errors.choices = 'You must list from 1 to 10 choices.';
 
-        if (choices.some(choice => choice.length > 30))
+        // TODO support more than 10 choices
+        else if (choices.length < 2 || choices.length > 10)
+            errors.choices = 'You must list from 2 to 10 choices.';
+
+        else if (choices.some(choice => choice.length > 30))
             errors.choices = "You can't list a choice longer than 30 characters.";
 
         if (size(errors) > 0)
@@ -343,13 +366,6 @@ export const register = ({ app, store, cache }: { app: App; store: Promise<Mongo
             });
 
         await ack();
-
-        if (order == 'ascending')
-            choices.sort();
-        else if (order == 'descending')
-            choices.sort().reverse();
-        else if (order == 'shuffle')
-            shuffleInPlace(choices);
 
         if (view.private_metadata == 'new') {
             const ipoll: Poll = {
