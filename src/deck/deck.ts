@@ -17,7 +17,9 @@ export type Script = {
     event?: string;
     moderator?: Option;
     limit?: Value;
+    dealFirst?: Items;
     deal?: Items;
+    dealLast?: Items;
     rules?: Rules;
     import?: string | string[];
 } & Defines;

@@ -87,16 +87,24 @@ export const register = ({ app }: { app: App }): void => {
             if (!script.deal)
                 throw `Unexpected deal \`${JSON.stringify(script.deal)}\` in script.`;
 
-            const items = shuffleCopy(build(script.deal, script)),
-                draft = items.filter((item, index) => items.indexOf(item) === index),
-                users = shuffleInPlace((await getMembers(message.channel, context, client))
-                    .filter(user => user != gmessage.user || !validate(script.moderator, script.options)));
+            const items = shuffleCopy(build(script.deal, script));
+
+            if (script.dealFirst)
+                items.unshift(...shuffleCopy(build(script.dealFirst, script)));
+
+            if (script.dealLast)
+                items.push(...shuffleCopy(build(script.dealLast, script)));
+
+            const uniques = items.filter((item, index) => items.indexOf(item) === index);
+
+            const users = shuffleInPlace((await getMembers(message.channel, context, client))
+                .filter(user => user != gmessage.user || !validate(script.moderator, script.options)));
 
             const relays: string[][] = [];
             if (script.rules && listify(script.rules).some(rule => 'relay' in rule)) {
                 let relay: string[] = [];
                 for (const rule of listify(script.rules)) {
-                    if ('relay' in rule && enable(rule, draft, script.options)) {
+                    if ('relay' in rule && enable(rule, uniques, script.options)) {
                         if (rule.relay.service == 'wordnik') {
                             const url = `https://api.wordnik.com/v4/words.json/randomWords?hasDictionaryDef=true&includePartOfSpeech=${rule.relay.parts ? rule.relay.parts.join(',') : ''}&minCorpusCount=${rule.relay.corpus ?? -1}&minDictionaryCount=${rule.relay.dictionary ?? 1}&minLength=${rule.relay.length ?? 1}&limit=${rule.relay.limit ?? 1}&api_key=${process.env.WORDNIK_API_KEY ?? ''}`;
 
@@ -119,9 +127,9 @@ export const register = ({ app }: { app: App }): void => {
 
             const graph: ElementDefinition[] = [];
             if (script.rules && listify(script.rules).some(rule => 'graph' in rule)) {
-                listify(script.rules).filter((rule): rule is GraphRule => 'graph' in rule && enable(rule, draft, script.options)).forEach(rule => {
+                listify(script.rules).filter((rule): rule is GraphRule => 'graph' in rule && enable(rule, uniques, script.options)).forEach(rule => {
                     listify(rule.graph).forEach(node => {
-                        draft.filter(it => matches(it, node, script)).forEach(which => {
+                        uniques.filter(it => matches(it, node, script)).forEach(which => {
                             const edge = graph.find(node => node.data.id == which);
                             if (edge === undefined)
                                 graph.push(<ElementDefinition>{
@@ -138,11 +146,11 @@ export const register = ({ app }: { app: App }): void => {
                 });
 
                 if (graph.length > 0)
-                    listify(script.rules).filter((rule): rule is ShowRule => 'show' in rule && enable(rule, draft, script.options)).forEach(rule => {
+                    listify(script.rules).filter((rule): rule is ShowRule => 'show' in rule && enable(rule, uniques, script.options)).forEach(rule => {
                         listify(rule.to).forEach(to => {
-                            draft.filter(it => matches(it, to, script)).forEach(yours => {
+                            uniques.filter(it => matches(it, to, script)).forEach(yours => {
                                 listify(rule.show).forEach(show => {
-                                    draft.filter(it => matches(it, show, script) && (!rule.loopless || it != yours)).forEach(theirs => {
+                                    uniques.filter(it => matches(it, show, script) && (!rule.loopless || it != yours)).forEach(theirs => {
                                         // TODO merge parallel edges
                                         graph.push(<ElementDefinition>{
                                             group: 'edges',
@@ -189,6 +197,8 @@ export const register = ({ app }: { app: App }): void => {
                 else
                     counts[count].push(user);
             });
+            for (const count in counts)
+                shuffleInPlace(counts[count]);
 
             const all_list = commas(Object.keys(counts).map(Number).sort().reverse().map(count => {
                     return `${count > 0 ? `*${count}* each` : '*none*'} to ${names(counts[count])}`;
@@ -208,7 +218,7 @@ export const register = ({ app }: { app: App }): void => {
 
             let publish: string[] = [];
             if (script.rules) {
-                listify(script.rules).filter((rule): rule is AnnounceRule => 'announce' in rule && enable(rule, draft, script.options)).forEach(rule => {
+                listify(script.rules).filter((rule): rule is AnnounceRule => 'announce' in rule && enable(rule, uniques, script.options)).forEach(rule => {
                     listify(rule.announce).forEach(announce => {
                         Object.keys(dealt).forEach(who => {
                             dealt[who].filter(it => matches(it, announce, script)).forEach(whose => {
@@ -222,7 +232,7 @@ export const register = ({ app }: { app: App }): void => {
 
                 publish = shuffleCopy(publish);
 
-                listify(script.rules).filter((rule): rule is ExplainRule => 'explain' in rule && enable(rule, draft, script.options)).forEach(rule => {
+                listify(script.rules).filter((rule): rule is ExplainRule => 'explain' in rule && enable(rule, uniques, script.options)).forEach(rule => {
                     const text = trunc(`:${!rule.emoji ? 'information_source' : rule.emoji}: ${rule.explain}.`, MAX_TEXT_SIZE);
                     publish.push(text);
                 });
@@ -297,7 +307,7 @@ export const register = ({ app }: { app: App }): void => {
 
                 let shown: string[] = [];
                 if (script.rules) {
-                    listify(script.rules).filter((rule): rule is ShowRule => 'show' in rule && enable(rule, draft, script.options)).forEach(rule => {
+                    listify(script.rules).filter((rule): rule is ShowRule => 'show' in rule && enable(rule, uniques, script.options)).forEach(rule => {
                         listify(rule.to).forEach(to => {
                             dealt[user].filter(it => matches(it, to, script)).forEach(yours => {
                                 listify(rule.show).forEach(show => {
@@ -314,7 +324,7 @@ export const register = ({ app }: { app: App }): void => {
                         });
                     });
 
-                    listify(script.rules).filter((rule): rule is RelayRule => 'relay' in rule && enable(rule, draft, script.options)).forEach((rule, which) => {
+                    listify(script.rules).filter((rule): rule is RelayRule => 'relay' in rule && enable(rule, uniques, script.options)).forEach((rule, which) => {
                         if (relays[which].length > 0) {
                             const results = validate(rule.numbered, script.options)
                                 ? commas(relays[which].map((it, index) => `*${index+1}* \u2022 *${it}*`))
