@@ -311,10 +311,10 @@ export const register = ({ app }: { app: App }): void => {
                         listify(rule.to).forEach(to => {
                             dealt[user].filter(it => matches(it, to, script)).forEach(yours => {
                                 listify(rule.show).forEach(show => {
-                                    Object.keys(dealt).forEach(them => {
+                                    Object.keys(dealt).filter(them => them != user).forEach(them => {
                                         // TODO loopless is an Option, should validate
                                         dealt[them].filter(it => matches(it, show, script) && (!rule.loopless || it != yours)).forEach(theirs => {
-                                            const text = trunc(`:${!rule.as ? 'eye-in-speech-bubble' : 'left_speech_bubble'}: Because you were dealt *${yours}* you see that ${them != user ? `<@${them}> was` : 'you were also'} dealt ${!rule.as ? `*${theirs}*` : `*${rule.as}* as an alias`}.`, MAX_TEXT_SIZE);
+                                            const text = trunc(`:${!rule.as ? 'eye-in-speech-bubble' : 'left_speech_bubble'}: Because you were dealt *${yours}* you see that <@${them}> was dealt ${!rule.as ? `*${theirs}*` : `*${rule.as}* as an alias`}.`, MAX_TEXT_SIZE);
                                             if (!shown.includes(text))
                                                 shown.push(text);
                                         });
