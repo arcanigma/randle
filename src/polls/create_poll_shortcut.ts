@@ -3,7 +3,6 @@ import * as information_modal from '../library/information_modal';
 import * as create_edit_poll_modal from './create_edit_poll_modal';
 
 // TODO create poll from template (clone existing with changes)
-// TODO option to "add participant names to choices"
 
 export const register = ({ app }: { app: App }): void => {
     app.shortcut('create_poll_shortcut', async ({ ack, shortcut, context, client }) => {

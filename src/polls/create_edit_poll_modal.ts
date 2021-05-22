@@ -124,7 +124,7 @@ export const view = async ({ channel, poll, context, client }: { channel?: strin
             },
             hint: {
                 type: 'plain_text',
-                text: 'The choices members can vote for (one per line, no formatting, emoji okay).'
+                text: 'The choices members can vote for (one per line or separated by commas, no formatting, emoji okay).'
             },
             element: {
                 type: 'plain_text_input',
@@ -132,7 +132,7 @@ export const view = async ({ channel, poll, context, client }: { channel?: strin
                 multiline: true,
                 placeholder: {
                     type: 'plain_text',
-                    text: 'One choice per line'
+                    text: 'One choice per line or separated by commas'
                 },
                 max_length: 10 * 30,
                 ...(poll ? {
@@ -259,6 +259,7 @@ export const view = async ({ channel, poll, context, client }: { channel?: strin
                 type: 'checkboxes',
                 action_id: 'inputs',
                 // TODO option to forbid changing vote
+                // TODO automatically pin to audience
                 options: [
                     {
                         text: {
@@ -299,15 +300,15 @@ type Input<T> = { input: T }
 type Inputs<T> = { inputs: T }
 
 export const register = ({ app, store, cache }: { app: App; store: Promise<MongoClient>; cache: Cache }): void => {
-    const re_lines = /\r\n|\r|\n/,
+    const re_choices = /\r\n|\r|\n|,/,
         re_mrkdwn = /([*_~`<>])/g;
     app.view('create_edit_poll_modal', async ({ ack, body, view, context, client }) => {
         const host = body.user.id,
             data = view.state.values,
             audience = (<Input<ChannelsSelectAction>> data.audience).input.selected_channel,
             members = (<Input<MultiUsersSelectAction>> data.members).input.selected_users,
-            prompt = (<Input<ButtonAction>> data.prompt).input.value.replace(re_lines, ' ').replace(re_mrkdwn, ''),
-            choices = (<Input<ButtonAction>> data.choices).input.value ? (<Input<ButtonAction>> data.choices).input.value.trim().split(re_lines).map((choice: string) => choice.trim().replace(re_mrkdwn, '')).filter(Boolean) : [],
+            prompt = (<Input<ButtonAction>> data.prompt).input.value.replace(re_choices, ' ').replace(re_mrkdwn, ''),
+            choices = (<Input<ButtonAction>> data.choices).input.value ? (<Input<ButtonAction>> data.choices).input.value.trim().split(re_choices).map((choice: string) => choice.trim().replace(re_mrkdwn, '')).filter(Boolean) : [],
             presets = (<Input<MultiStaticSelectAction>> data.presets).input.selected_options.map(preset => preset.value),
             method = (<Input<StaticSelectAction>> data.method).input.selected_option.value as 'anonymous' | 'simultaneous' | 'live',
             features = ((<Inputs<CheckboxesAction>> data.features).inputs.selected_options ?? []).map(checkbox => checkbox.value as string),
