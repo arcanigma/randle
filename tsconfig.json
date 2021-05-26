@@ -1,0 +1,10 @@
+{
+    "extends": "@tsconfig/node16/tsconfig.json",
+    "include": [ "./src/app.ts" ],
+    "compilerOptions": {
+        "outDir": "./dist/",
+        "incremental": true,
+        "sourceMap": true,
+        "removeComments": true
+    }
+}

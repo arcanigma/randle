@@ -1,0 +1,35 @@
+{
+    "env": {
+        "node": true
+    },
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+        "ecmaVersion": 2020,
+        "project": ["./tsconfig.json"]
+    },
+    "plugins": [ "@typescript-eslint" ],
+    "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/recommended",
+        "plugin:@typescript-eslint/recommended-requiring-type-checking"
+    ],
+    "rules": {
+        "semi": [ "warn", "always" ],
+        "quotes": [ "warn", "single", { "avoidEscape": true } ],
+        "indent": [ "warn", 4 ],
+        "no-multi-spaces": [ "warn" ],
+        "object-curly-spacing": [ "warn", "always" ],
+        "array-bracket-spacing": [ "warn", "always", { "singleValue": false } ],
+        "no-console": [ "warn", { "allow":
+            [ "debug", "info", "warn", "error" ]
+        } ],
+        "@typescript-eslint/consistent-type-definitions": [ "error", "type" ],
+        "@typescript-eslint/member-delimiter-style": "warn",
+        "@typescript-eslint/no-unnecessary-type-assertion": "error",
+        "@typescript-eslint/prefer-for-of": "warn",
+        "@typescript-eslint/prefer-nullish-coalescing": "warn",
+        "@typescript-eslint/prefer-optional-chain": "warn",
+        "@typescript-eslint/space-before-function-paren": "warn",
+        "@typescript-eslint/type-annotation-spacing": "warn"
+    }
+}
