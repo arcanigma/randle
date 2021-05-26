@@ -1,7 +1,7 @@
 {
-    "name": "randle",
+    "name": "randle-slack",
     "description": "Dice, cards, and polling bot for Slack.",
-    "version": "3.5.0",
+    "version": "3.6.0",
     "main": "./dist/app.js",
     "scripts": {
         "build": "tsc",
@@ -10,7 +10,7 @@
         "dev": "ts-node-dev --inspect --poll --interval 1000 --respawn --rs --transpile-only --watch -r dotenv/config ./src/app.ts"
     },
     "engines": {
-        "node": "^14"
+        "node": "^16"
     },
     "dependencies": {
         "@slack/bolt": "^3.1.1",
@@ -24,7 +24,7 @@
         "playwright-firefox": "^1.8.0"
     },
     "devDependencies": {
-        "@tsconfig/node14": "^1.0.0",
+        "@tsconfig/node16": "^1.0.1",
         "@types/cytoscape": "^3.14.8",
         "@types/mongodb": "^3.5.32",
         "@types/node": "^14.14.6",
@@ -41,6 +41,6 @@
         "email": "randle@arcanigma.org",
         "url": "https://github.com/arcanigma"
     },
-    "repository": "github:arcanigma/randle",
+    "repository": "github:arcanigma/randle-slack",
     "private": true
 }
