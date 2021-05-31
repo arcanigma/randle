@@ -1,8 +1,8 @@
 import { App, BotMessageEvent, GenericMessageEvent, MessageEvent, Middleware, SlackEventMiddlewareArgs } from '@slack/bolt';
 import { Block, ContextBlock, MrkdwnElement, SectionBlock } from '@slack/web-api';
+import { randomInt } from 'crypto';
 import { MongoClient } from 'mongodb';
 import ordinal from 'ordinal';
-import randomInt from 'php-random-int';
 import { MAX_CONTEXT_ELEMENTS, MAX_MESSAGE_BLOCKS, MAX_TEXT_SIZE } from './app';
 import { trunc, wss } from './library/factory';
 import { anywhere } from './library/listeners';
@@ -111,7 +111,7 @@ export const register = ({ app, store }: { app: App; store: Promise<MongoClient>
 
                 const rolls = [];
                 for (let i = 1; i <= count; i++)
-                    rolls.push(randomInt(1, size));
+                    rolls.push(randomInt(size) + 1);
 
                 const strikes: {
                     [key: number]: number;

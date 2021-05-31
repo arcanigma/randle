@@ -5,7 +5,7 @@
     "formation": {
         "web": { "quantity": 1 }
     },
-    "stack": "heroku-18",
+    "stack": "heroku-20",
     "image": "heroku/nodejs",
     "buildpacks": [
         { "url": "https://github.com/mxschmitt/heroku-playwright-buildpack" },

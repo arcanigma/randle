@@ -1,4 +1,4 @@
-import randomInt from 'php-random-int';
+import { randomInt } from 'crypto';
 import { wss } from '../library/factory';
 import { Defines, Items, Matcher, Option, OptionDefines, Rules, Set, SetDefines, Value, ValueDefines } from './deck';
 
@@ -99,7 +99,7 @@ export function shuffleCopy<T> (list: T[]): T[] {
 
 export function shuffleInPlace<T> (list: T[]): T[] {
     for (let i = list.length - 1; i >= 1; i--) {
-        const j = randomInt(0, i);
+        const j = randomInt(0, i + 1);
         [ list[i], list[j] ] = [ list[j], list[i] ];
     }
     return list;
@@ -121,7 +121,7 @@ export function repeat<T> (list: T[], quantity: number): T[] {
 
     const build = [];
     for (let i = 1; i <= quantity; i++)
-        build.push(list[randomInt(0, list.length - 1)]);
+        build.push(list[randomInt(0, list.length)]);
     return build;
 }
 

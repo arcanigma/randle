@@ -51,6 +51,7 @@ export type Value =
     | { times: Value[] }
     | { max: Value[] }
     | { min: Value[] }
+    // TODO add a lookup for the number of members dealt to
 
 export type Option =
     | boolean
