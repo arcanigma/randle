@@ -1,26 +1,30 @@
 import { Client } from 'discord.js';
 import express from 'express';
-import * as pingPong from './events/pingPong';
-import * as ready from './events/ready';
-import * as topicUpdate from './events/topicUpdate';
+import * as echo from './events/echo';
+import * as topicUpdated from './events/topicUpdated';
 import * as logo from './routes/logo';
 import * as status from './routes/status';
 
-const client = new Client();
-const app = express();
+const client = new Client({ intents: [ 'GUILDS', 'GUILD_MESSAGES' ] });
 
-[ ready, pingPong, topicUpdate ].forEach(it => {
+void client.login(process.env.DISCORD_BOT_TOKEN);
+
+[ echo, topicUpdated ].forEach(it => {
     it.register({ client });
 });
+
+client.on('ready', () => {
+    console.debug('Discord ready.');
+});
+
+const app = express();
 
 [ status, logo ].forEach(it => {
     it.register({ app });
 });
 
-if (process.env.DISCORD_BOT_TOKEN)
-    void client.login(process.env.DISCORD_BOT_TOKEN);
+const PORT = Number(process.env.PORT ?? 80);
 
-const port = Number(process.env.PORT ?? 80);
-app.listen(port, () => {
-    console.debug(`Listening on port ${port}...`);
+app.listen(PORT, () => {
+    console.debug(`Express ready on port ${PORT}.`);
 });
