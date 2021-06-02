@@ -2,15 +2,6 @@ import { ApplicationCommandManager, Client, Snowflake } from 'discord.js';
 
 export const register = ({ client }: { client: Client }): void => {
 
-    client.on('interaction', async interaction => {
-        if (!interaction.isCommand() || interaction.commandName !== 'echo') return;
-
-        // TODO map options as in roll command
-        const input = interaction.options[0].value as string;
-
-        await interaction.reply(input, { ephemeral: true });
-    });
-
     client.on('ready', () => {
         // TODO type ApplicationCommandData once exported
         const slash: Parameters<ApplicationCommandManager['create']>[0] = {
@@ -32,6 +23,14 @@ export const register = ({ client }: { client: Client }): void => {
             client.application?.commands.create(slash);
 
         console.debug('Registered echo command.');
+    });
+
+    client.on('interaction', async interaction => {
+        if (!interaction.isCommand() || interaction.commandName !== 'echo') return;
+
+        const input = interaction.options[0].value as string;
+
+        await interaction.reply(input, { ephemeral: true });
     });
 
 };

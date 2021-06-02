@@ -14,7 +14,8 @@
     },
     "dependencies": {
         "discord.js": "github:discordjs/discord.js",
-        "express": "^4.17.1"
+        "express": "^4.17.1",
+        "ordinal": "^1.0.3"
     },
     "devDependencies": {
         "@tsconfig/node16": "^1.0.1",
