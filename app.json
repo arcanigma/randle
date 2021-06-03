@@ -1,6 +1,6 @@
 {
     "name": "Randle for Discord",
-    "description": "Dice, cards, and polling bot for Discord.",
+    "description": "Dice, cards, and polls bot for Discord.",
     "repository": "github:arcanigma/randle-discord",
     "formation": {
         "web": { "quantity": 1 }
