@@ -1,14 +1,15 @@
 import { randomInt } from 'crypto';
-import { ApplicationCommandManager, Client, MessageEmbed, Snowflake } from 'discord.js';
+import { Client, MessageEmbed, Snowflake } from 'discord.js';
 import ordinal from 'ordinal';
 import { MAX_EMBED_FIELDS, MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE, MAX_MESSAGE_EMBEDS } from '../constants';
 import { trunc, wss } from '../library/factory';
 import { blame } from '../library/messages';
+import { ApplicationCommandData } from '../shims';
 
 export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', () => {
-        const slash: Parameters<ApplicationCommandManager['create']>[0] = {
+        const slash: ApplicationCommandData = {
             name: 'roll',
             description: 'Roll dice',
             options: [

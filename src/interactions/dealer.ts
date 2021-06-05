@@ -1,13 +1,14 @@
-import { ApplicationCommandManager, Client, Interaction, Snowflake, TextChannel } from 'discord.js';
+import { Client, Interaction, Snowflake, TextChannel } from 'discord.js';
 import { MAX_EMBED_DESCRIPTION } from '../constants';
 import { commas, trunc, wss } from '../library/factory';
 import { blame } from '../library/messages';
 import { choose, shuffleInPlace } from '../library/solving';
+import { ApplicationCommandData } from '../shims';
 
 export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', () => {
-        const slash: Parameters<ApplicationCommandManager['create']>[0] = {
+        const slash: ApplicationCommandData = {
             name: 'shuffle',
             description: 'Shuffle items',
             options: [
@@ -53,7 +54,7 @@ export const register = ({ client }: { client: Client }): void => {
     });
 
     client.on('ready', () => {
-        const slash: Parameters<ApplicationCommandManager['create']>[0] = {
+        const slash: ApplicationCommandData = {
             name: 'draw',
             description: 'Draw some shuffled items',
             options: [

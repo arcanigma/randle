@@ -1,4 +1,5 @@
-import { ApplicationCommandManager, Client, Snowflake } from 'discord.js';
+import { Client, Snowflake } from 'discord.js';
+import { ApplicationCommandData } from '../shims';
 
 export const dev = true;
 
@@ -6,7 +7,7 @@ export const register = ({ client }: { client: Client }): void => {
     if (process.env.NODE_ENV != 'development') return;
 
     client.on('ready', () => {
-        const slash: Parameters<ApplicationCommandManager['create']>[0] = {
+        const slash: ApplicationCommandData = {
             name: 'echo',
             description: 'Replies by echoing your input',
             options: [
