@@ -1,10 +1,11 @@
 import { ApplicationCommandManager, Client, Snowflake } from 'discord.js';
 
-export const register = ({ client }: { client: Client }): void => {
+export const dev = true;
 
-    // TODO make this dev-only
+export const register = ({ client }: { client: Client }): void => {
+    if (process.env.NODE_ENV != 'development') return;
+
     client.on('ready', () => {
-        // TODO type ApplicationCommandData once exported
         const slash: Parameters<ApplicationCommandManager['create']>[0] = {
             name: 'echo',
             description: 'Replies by echoing your input',
