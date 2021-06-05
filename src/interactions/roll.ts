@@ -36,9 +36,9 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interaction', async interaction => {
         if (!interaction.isCommand() || interaction.commandName !== 'roll') return;
 
-        const text = interaction.options[0].value as string;
-
         try {
+            const text = interaction.options[0].value as string;
+
             const clauses = text.trim().split(re_segments),
                 segments = clauses.length;
 

@@ -1,17 +1,18 @@
 import { Client } from 'discord.js';
 import express from 'express';
 import * as topicUpdated from './events/topicUpdated';
+import * as dealer from './interactions/dealer';
 import * as echo from './interactions/echo';
 import * as roll from './interactions/roll';
 import * as logo from './routes/logo';
 import * as status from './routes/status';
 
 const
-    INTERACTIONS = [ echo, roll ],
+    INTERACTIONS = [ echo, roll, dealer ],
     EVENTS = [topicUpdated],
     ROUTES = [ status, logo ];
 
-const client = new Client({ intents: [ 'GUILDS', 'GUILD_MESSAGES' ] });
+const client = new Client({ intents: [ 'GUILDS', 'GUILD_MESSAGES', 'GUILD_PRESENCES' ] });
 
 void client.login(process.env.DISCORD_BOT_TOKEN);
 

@@ -2,6 +2,7 @@ import { ApplicationCommandManager, Client, Snowflake } from 'discord.js';
 
 export const register = ({ client }: { client: Client }): void => {
 
+    // TODO make this dev-only
     client.on('ready', () => {
         // TODO type ApplicationCommandData once exported
         const slash: Parameters<ApplicationCommandManager['create']>[0] = {
@@ -29,6 +30,8 @@ export const register = ({ client }: { client: Client }): void => {
         if (!interaction.isCommand() || interaction.commandName !== 'echo') return;
 
         const input = interaction.options[0].value as string;
+
+        console.debug(interaction);
 
         await interaction.reply(input, { ephemeral: true });
     });
