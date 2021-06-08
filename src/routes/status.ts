@@ -6,6 +6,6 @@ export const register = ({ app }: { app: Express }): void => {
         res.sendStatus(200);
     });
 
-    console.debug('Registered status route.');
+    console.debug('Registered status route in server.');
 
 };

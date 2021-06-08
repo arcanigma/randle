@@ -1,5 +1,6 @@
-import { Client, Interaction, Snowflake, TextChannel } from 'discord.js';
+import { Client, Interaction, TextChannel } from 'discord.js';
 import { MAX_EMBED_DESCRIPTION } from '../constants';
+import { registerSlashCommand } from '../library/backend';
 import { commas, trunc, wss } from '../library/factory';
 import { blame } from '../library/messages';
 import { choose, shuffleInPlace } from '../library/solving';
@@ -7,7 +8,7 @@ import { ApplicationCommandData } from '../shims';
 
 export const register = ({ client }: { client: Client }): void => {
 
-    client.on('ready', () => {
+    client.on('ready', async () => {
         const slash: ApplicationCommandData = {
             name: 'shuffle',
             description: 'Shuffle items',
@@ -21,19 +22,14 @@ export const register = ({ client }: { client: Client }): void => {
             ]
         };
 
-        if (process.env.DISCORD_GUILD_ID)
-            client.guilds.cache.get(process.env.DISCORD_GUILD_ID as Snowflake)?.commands.create(slash);
-        else
-            client.application?.commands.create(slash);
-
-        console.debug('Registered shuffle command.');
+        await registerSlashCommand(slash, client);
     });
 
     client.on('interaction', async interaction => {
         if (!interaction.isCommand() || interaction.commandName !== 'shuffle') return;
 
         try {
-            const raw_items = interaction.options[0].value as string;
+            const raw_items = interaction.options.get('items')?.value as string;
 
             const items = shuffleInPlace(itemize(raw_items, interaction));
 
@@ -53,7 +49,7 @@ export const register = ({ client }: { client: Client }): void => {
         }
     });
 
-    client.on('ready', () => {
+    client.on('ready', async () => {
         const slash: ApplicationCommandData = {
             name: 'draw',
             description: 'Draw some shuffled items',
@@ -73,20 +69,15 @@ export const register = ({ client }: { client: Client }): void => {
             ]
         };
 
-        if (process.env.DISCORD_GUILD_ID)
-            client.guilds.cache.get(process.env.DISCORD_GUILD_ID as Snowflake)?.commands.create(slash);
-        else
-            client.application?.commands.create(slash);
-
-        console.debug('Registered draw command.');
+        await registerSlashCommand(slash, client);
     });
 
     client.on('interaction', async interaction => {
         if (!interaction.isCommand() || interaction.commandName !== 'draw') return;
 
         try {
-            const raw_items = interaction.options[0].value as string,
-                quantity = interaction.options[1]?.value as number ?? 1;
+            const raw_items = interaction.options.get('items')?.value as string,
+                quantity = interaction.options.get('quantity')?.value as number ?? 1;
 
             if (quantity < 1)
                 throw 'Quantity must be at least 1.';
@@ -122,7 +113,7 @@ function itemize (text: string, interaction: Interaction): string[] {
             if (interaction.channel instanceof TextChannel)
                 members = interaction.channel.members;
             else
-                throw `Unsupported mention <${interaction.channel?.toString() ?? 'undefined'}>.`;
+                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
             items = members.filter(them => !them.user.bot).map(them => them.toString());
         }
         // TODO support macro source

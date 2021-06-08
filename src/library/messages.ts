@@ -1,5 +1,5 @@
 import { CommandInteraction, MessageEmbed } from 'discord.js';
-import { MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants';
+import { MAX_EMBED_FIELDS, MAX_FIELD_NAME, MAX_FIELD_VALUE, MAX_MESSAGE_EMBEDS } from '../constants';
 import { trunc } from './factory';
 
 export function blame ({ error, interaction }: {
@@ -59,4 +59,27 @@ export function blame ({ error, interaction }: {
         ];
 
     }
+}
+
+export function truncEmbeds (embeds: unknown[], label: string): unknown[] {
+    if (embeds.length >= MAX_MESSAGE_EMBEDS) {
+        embeds = embeds.slice(0, MAX_MESSAGE_EMBEDS - 1);
+        embeds[MAX_MESSAGE_EMBEDS - 1] = {
+            title: '⚠️ Warning',
+            description: `Too many ${label} to show (limit of ${MAX_MESSAGE_EMBEDS}).`
+        };
+    }
+    return embeds;
+}
+
+export function truncFields (fields: unknown[], label: string): unknown[] {
+    if (fields.length >= MAX_EMBED_FIELDS) {
+        fields = fields.slice(0, MAX_EMBED_FIELDS - 1);
+        fields[MAX_EMBED_FIELDS - 1] = {
+            name: '⚠️ Warning',
+            value: `Too many ${label} to show (limit of ${MAX_EMBED_FIELDS}).`,
+            inline: false
+        };
+    }
+    return fields;
 }

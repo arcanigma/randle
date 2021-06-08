@@ -1,4 +1,5 @@
-import { Client, Snowflake } from 'discord.js';
+import { Client } from 'discord.js';
+import { registerSlashCommand } from '../library/backend';
 import { ApplicationCommandData } from '../shims';
 
 export const dev = true;
@@ -6,7 +7,7 @@ export const dev = true;
 export const register = ({ client }: { client: Client }): void => {
     if (process.env.NODE_ENV != 'development') return;
 
-    client.on('ready', () => {
+    client.on('ready', async () => {
         const slash: ApplicationCommandData = {
             name: 'echo',
             description: 'Replies by echoing your input',
@@ -20,18 +21,13 @@ export const register = ({ client }: { client: Client }): void => {
             ],
         };
 
-        if (process.env.DISCORD_GUILD_ID)
-            client.guilds.cache.get(process.env.DISCORD_GUILD_ID as Snowflake)?.commands.create(slash);
-        else
-            client.application?.commands.create(slash);
-
-        console.debug('Registered echo command.');
+        await registerSlashCommand(slash, client);
     });
 
     client.on('interaction', async interaction => {
         if (!interaction.isCommand() || interaction.commandName !== 'echo') return;
 
-        const input = interaction.options[0].value as string;
+        const input = interaction.options.get('input')?.value as string;
 
         console.debug(interaction);
 

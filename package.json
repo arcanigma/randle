@@ -15,6 +15,8 @@
     "dependencies": {
         "discord.js": "github:discordjs/discord.js",
         "express": "^4.17.1",
+        "got": "^11.8.2",
+        "json5": "^2.2.0",
         "ordinal": "^1.0.3"
     },
     "devDependencies": {

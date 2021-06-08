@@ -1,3 +1,5 @@
+import { GuildMember } from 'discord.js';
+
 export function commas (list: (string | undefined)[], separator=', ', conjunction='and'): string {
     const flist = <string[]>list.filter(it => it !== undefined);
     if (flist.length == 1)
@@ -10,8 +12,8 @@ export function commas (list: (string | undefined)[], separator=', ', conjunctio
         return '';
 }
 
-export function names (list: string[], separator?: string, conjunction?: string): string {
-    return commas(list.map(u => `<@${u}>`), separator, conjunction) || 'nobody';
+export function names (members: GuildMember[], separator?: string, conjunction?: string): string {
+    return commas(members.map(them => `${them.toString()}`), separator, conjunction) || 'nobody';
 }
 
 export function size (object: {[key: string]: unknown}): number {

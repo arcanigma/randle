@@ -1,14 +1,15 @@
 import { randomInt } from 'crypto';
-import { Client, MessageEmbed, Snowflake } from 'discord.js';
+import { Client, MessageEmbed } from 'discord.js';
 import ordinal from 'ordinal';
 import { MAX_EMBED_FIELDS, MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE, MAX_MESSAGE_EMBEDS } from '../constants';
+import { registerSlashCommand } from '../library/backend';
 import { trunc, wss } from '../library/factory';
 import { blame } from '../library/messages';
 import { ApplicationCommandData } from '../shims';
 
 export const register = ({ client }: { client: Client }): void => {
 
-    client.on('ready', () => {
+    client.on('ready', async () => {
         const slash: ApplicationCommandData = {
             name: 'roll',
             description: 'Roll dice',
@@ -22,12 +23,7 @@ export const register = ({ client }: { client: Client }): void => {
             ]
         };
 
-        if (process.env.DISCORD_GUILD_ID)
-            client.guilds.cache.get(process.env.DISCORD_GUILD_ID as Snowflake)?.commands.create(slash);
-        else
-            client.application?.commands.create(slash);
-
-        console.debug('Registered roll command.');
+        await registerSlashCommand(slash, client);
     });
 
     // TODO refactor into parser
@@ -38,7 +34,7 @@ export const register = ({ client }: { client: Client }): void => {
         if (!interaction.isCommand() || interaction.commandName !== 'roll') return;
 
         try {
-            const text = interaction.options[0].value as string;
+            const text = interaction.options.get('text')?.value as string;
 
             const clauses = text.trim().split(re_segments),
                 segments = clauses.length;
@@ -192,6 +188,7 @@ function rollDice (clauses: string[]): MessageEmbed[] {
         }
     }
 
+    // TODO use truncation of embeds and fields
     if (embeds.length == MAX_MESSAGE_EMBEDS)
         embeds[MAX_MESSAGE_EMBEDS - 1] = <MessageEmbed>{
             title: '⚠️ Warning',

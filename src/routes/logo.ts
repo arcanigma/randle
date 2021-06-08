@@ -11,6 +11,6 @@ export const register = ({ app }: { app: Express }): void => {
         res.sendFile(path.join(__dirname, `../../assets/${LOGO_FILE}`));
     });
 
-    console.debug('Registered logo route.');
+    console.debug('Registered logo route in server.');
 
 };
