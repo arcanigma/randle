@@ -21,7 +21,9 @@ export function size (object: {[key: string]: unknown}): number {
 }
 
 export function trunc (text: string, limit: number): string {
-    if (text.length <= limit)
+    if (text === undefined)
+        return 'undefined';
+    else if (text.length <= limit)
         return text;
     else
         return text.substring(0, limit-3) + '...';

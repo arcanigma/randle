@@ -4,11 +4,12 @@ import * as topicUpdated from './events/topicUpdated';
 import * as dealer from './interactions/dealer';
 import * as echo from './interactions/echo';
 import * as roll from './interactions/roll';
+import * as scripts from './interactions/scripts';
 import * as logo from './routes/logo';
 import * as status from './routes/status';
 
 const
-    INTERACTIONS = [ echo, roll, dealer ],
+    INTERACTIONS = [ echo, roll, dealer, scripts ],
     EVENTS = [topicUpdated],
     ROUTES = [ status, logo ];
 
@@ -29,5 +30,5 @@ ROUTES.forEach(it => it.register({ app }) );
 const PORT = Number(process.env.PORT ?? 80);
 
 app.listen(PORT, () =>
-    console.debug(`Express ready (port ${PORT}).`)
+    console.debug(`Express ready on port <${PORT}>.`)
 );
