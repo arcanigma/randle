@@ -1,7 +1,9 @@
 export type Script = {
     event?: string;
-    requireModerator?: Option;
-    limit?: Value;
+    requireModerator?: boolean;
+    minMembers?: number;
+    maxMembers?: number;
+    limit?: number;
     dealFirst?: Items;
     deal?: Items;
     dealLast?: Items;
@@ -30,13 +32,12 @@ export type Set =
 
 export type Value =
     | number
-    | string
+    | string | 'members'
     | { plus: Value[] }
     | { minus: Value[] }
     | { times: Value[] }
     | { max: Value[] }
     | { min: Value[] }
-    // TODO add a lookup for the number of members dealt to
 
 export type Option =
     | boolean

@@ -3,10 +3,10 @@ import got from 'got';
 import JSON5 from 'json5';
 import { MAX_EMBED_DESCRIPTION, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants';
 import { registerSlashCommand } from '../library/backend';
-import { AnnounceRule, ExplainRule, Items, Rules, Script, ShowRule } from '../library/deck';
 import { commas, names, trunc } from '../library/factory';
-import { blame, truncEmbeds, truncFields } from '../library/messages';
-import { build, enable, evaluate, listify, matches, shuffleCopy, shuffleInPlace, validate } from '../library/solving';
+import { blame, truncEmbeds, truncFields } from '../library/message';
+import { AnnounceRule, ExplainRule, Items, Rules, Script, ShowRule } from '../library/script';
+import { build, enable, listify, matches, shuffleCopy, shuffleInPlace, validate } from '../library/solve';
 import { ApplicationCommandData } from '../shims';
 
 export const MAX_IMPORTS = 5;
@@ -46,7 +46,24 @@ export const register = ({ client }: { client: Client }): void => {
             const url = interaction.options.get('url')?.value as string,
                 moderator = interaction.channel.members.get(interaction.options.get('moderator')?.value as Snowflake);
 
+            const members = shuffleInPlace(
+                interaction.channel.members
+                    .filter(them => !them.user.bot)
+                    .filter(them => !moderator || them != moderator)
+                    .array()
+            );
+
             const script = await scriptFromURL(url, interaction);
+
+            if (script.values) {
+                if (script.values.members === undefined)
+                    script.values.members = members.length;
+            }
+            else {
+                script.values = {
+                    members: members.length
+                };
+            }
 
             if (script.import) {
                 const imports = listify(script.import);
@@ -78,13 +95,25 @@ export const register = ({ client }: { client: Client }): void => {
 
                     if ('requireModerator' in i_script)
                         script.requireModerator =
-                            validate(script.requireModerator, script.options) ||
-                            validate(i_script.requireModerator, script.options);
+                            (script.requireModerator ?? false)
+                            || (i_script.requireModerator ?? false);
+
+                    if ('minMembers' in i_script)
+                        script.minMembers = Math.max(
+                            script.minMembers ?? Number.MIN_SAFE_INTEGER,
+                            i_script.minMembers ?? Number.MIN_SAFE_INTEGER
+                        );
+
+                    if ('maxMembers' in i_script)
+                        script.maxMembers = Math.min(
+                            script.maxMembers ?? Number.MAX_SAFE_INTEGER,
+                            i_script.maxMembers ?? Number.MAX_SAFE_INTEGER
+                        );
 
                     if ('limit' in i_script)
-                        script.limit = Math.max(
-                            evaluate(script.limit, script.values),
-                            evaluate(i_script.limit, script.values)
+                        script.limit = Math.min(
+                            script.limit ?? Number.MAX_SAFE_INTEGER,
+                            i_script.limit ?? Number.MAX_SAFE_INTEGER
                         );
 
                     if ('deal' in i_script)
@@ -95,8 +124,14 @@ export const register = ({ client }: { client: Client }): void => {
                 }
             }
 
-            if (validate(script.requireModerator, script.options) && !moderator)
+            if (script.requireModerator && !moderator)
                 throw 'Script requires a moderator.';
+
+            if (script.minMembers && members.length < script.minMembers)
+                throw `Too few members for script (${members.length}, minimum of ${script.minMembers}).`;
+
+            if (script.maxMembers && members.length > script.maxMembers)
+                throw `Too many members for script (${members.length}, maximum of ${script.maxMembers}).`;
 
             if (!script.deal)
                 throw 'Script requires a deal.';
@@ -111,19 +146,12 @@ export const register = ({ client }: { client: Client }): void => {
 
             const uniques = items.filter((item, index) => items.indexOf(item) === index);
 
-            const members = interaction.channel.members
-                .filter(them => !them.user.bot)
-                .filter(them => !moderator || them != moderator)
-                .array();
-            shuffleInPlace(members);
-
             // TODO build graph
 
             const dealt: Map<GuildMember, string[]> = new Map();
-            const limit = evaluate(script.limit, script.values),
-                rounds = !limit
-                    ? Math.ceil(items.length / members.length)
-                    : Math.min(limit, Math.floor(items.length / members.length));
+            const rounds = !script.limit
+                ? Math.ceil(items.length / members.length)
+                : Math.min(script.limit, Math.floor(items.length / members.length));
             for (let round = 1; round <= rounds; round++)
                 members.forEach(them => {
                     if (items.length > 0) {

@@ -4,7 +4,7 @@ import ordinal from 'ordinal';
 import { MAX_EMBED_FIELDS, MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE, MAX_MESSAGE_EMBEDS } from '../constants';
 import { registerSlashCommand } from '../library/backend';
 import { trunc, wss } from '../library/factory';
-import { blame } from '../library/messages';
+import { blame } from '../library/message';
 import { ApplicationCommandData } from '../shims';
 
 export const register = ({ client }: { client: Client }): void => {

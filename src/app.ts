@@ -4,12 +4,16 @@ import * as topicUpdated from './events/topicUpdated';
 import * as dealer from './interactions/dealer';
 import * as echo from './interactions/echo';
 import * as roll from './interactions/roll';
-import * as scripts from './interactions/scripts';
+import * as run from './interactions/run';
 import * as logo from './routes/logo';
 import * as status from './routes/status';
 
+// TODO slash commands for macros
+// TODO slash commands for role opt-ins/outs
+// TODO slash commands for tracking reactions etc
+
 const
-    INTERACTIONS = [ echo, roll, dealer, scripts ],
+    INTERACTIONS = [ echo, roll, dealer, run ],
     EVENTS = [topicUpdated],
     ROUTES = [ status, logo ];
 
@@ -19,9 +23,9 @@ void client.login(process.env.DISCORD_BOT_TOKEN);
 
 [ ...INTERACTIONS, ...EVENTS ].forEach(it => it.register({ client }) );
 
-client.on('ready', () =>
-    console.debug('Discord ready.')
-);
+client.on('ready', () => {
+    console.debug('Discord ready.');
+});
 
 const app = express();
 

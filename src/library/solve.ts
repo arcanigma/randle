@@ -1,6 +1,6 @@
 import { randomInt } from 'crypto';
-import { wss } from '../library/factory';
-import { Defines, Items, Matcher, Option, OptionDefines, Rules, Set, SetDefines, Value, ValueDefines } from './deck';
+import { wss } from './factory';
+import { Defines, Items, Matcher, Option, OptionDefines, Rules, Set, SetDefines, Value, ValueDefines } from './script';
 
 export function build (items: Items, defines: Defines): string[] {
     if (Array.isArray(items))

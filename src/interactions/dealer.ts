@@ -2,8 +2,8 @@ import { Client, Interaction, TextChannel } from 'discord.js';
 import { MAX_EMBED_DESCRIPTION } from '../constants';
 import { registerSlashCommand } from '../library/backend';
 import { commas, trunc, wss } from '../library/factory';
-import { blame } from '../library/messages';
-import { choose, shuffleInPlace } from '../library/solving';
+import { blame } from '../library/message';
+import { choose, shuffleInPlace } from '../library/solve';
 import { ApplicationCommandData } from '../shims';
 
 export const register = ({ client }: { client: Client }): void => {
@@ -116,7 +116,7 @@ function itemize (text: string, interaction: Interaction): string[] {
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
             items = members.filter(them => !them.user.bot).map(them => them.toString());
         }
-        // TODO support macro source
+        // TODO support macros
     }
     else if (items.length < 1) {
         throw 'Number of items must be at least 1.';
