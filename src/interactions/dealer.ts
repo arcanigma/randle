@@ -1,4 +1,4 @@
-import { Client, Interaction, TextChannel } from 'discord.js';
+import { Client, Interaction, Snowflake } from 'discord.js';
 import { MAX_EMBED_DESCRIPTION } from '../constants';
 import { registerSlashCommand } from '../library/backend';
 import { commas, trunc, wss } from '../library/factory';
@@ -16,7 +16,7 @@ export const register = ({ client }: { client: Client }): void => {
                 {
                     name: 'items',
                     type: 'STRING',
-                    description: 'A list of items, a counting number, or the @everyone mention',
+                    description: 'A list of items, a range size, or an @everyone, @here, or @role mention',
                     required: true
                 },
             ]
@@ -31,7 +31,7 @@ export const register = ({ client }: { client: Client }): void => {
         try {
             const raw_items = interaction.options.get('items')?.value as string;
 
-            const items = shuffleInPlace(itemize(raw_items, interaction));
+            const items = shuffleInPlace(await itemize(raw_items, interaction));
 
             await interaction.reply({
                 content: `${interaction.user.toString()} shuffled ${items.length != 1 ? 'items' : 'an item'}`,
@@ -57,7 +57,7 @@ export const register = ({ client }: { client: Client }): void => {
                 {
                     name: 'items',
                     type: 'STRING',
-                    description: 'A list of items, a counting number, or the @everyone mention',
+                    description: 'A list of items, a range size, or an @everyone, @here, or @role mention',
                     required: true
                 },
                 {
@@ -79,10 +79,15 @@ export const register = ({ client }: { client: Client }): void => {
             const raw_items = interaction.options.get('items')?.value as string,
                 quantity = interaction.options.get('quantity')?.value as number ?? 1;
 
-            if (quantity < 1)
-                throw 'Quantity must be at least 1.';
+            let items = await itemize(raw_items, interaction);
 
-            const items = choose(itemize(raw_items, interaction), quantity);
+            if (items.length < 1)
+                throw 'At least 1 item is required.';
+
+            if (items.length < quantity)
+                throw 'Quantity must not exceed the number of items.';
+
+            items = choose(items, quantity);
 
             await interaction.reply({
                 content: `${interaction.user.toString()} drew ${items.length != 1 ? 'items' : 'an item'}`,
@@ -102,19 +107,32 @@ export const register = ({ client }: { client: Client }): void => {
 
 };
 
-function itemize (text: string, interaction: Interaction): string[] {
-    let items = text.split(',').map(it => it.trim()).filter(Boolean);
+const re_role = /^<@&(\d+)>$/;
+async function itemize (text: string, interaction: Interaction): Promise<string[]> {
+    let items = text.split(',').map(it => it.trim()).filter(Boolean),
+        match;
     if (items.length == 1) {
         if (Number(items[0]) >= 1 && Number(items[0]) % 1 == 0) {
             items = (<number[]> Array(Number(items[0])).fill(1)).map((v, i) => String(v + i));
         }
-        else if (items[0] == '@everyone') {
-            let members;
-            if (interaction.channel instanceof TextChannel)
-                members = interaction.channel.members;
-            else
-                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
-            items = members.filter(them => !them.user.bot).map(them => them.toString());
+        else if (items[0] == '@everyone' || items[0] == '@here') {
+            const role = interaction.guild?.roles.everyone;
+            if (!role)
+                throw `Unsupported mention <${items[0]}>.`;
+
+            items = role.members
+                .filter(them => !them.user.bot)
+                .filter(them => items[0] != '@here' || them.user.presence.status == 'online')
+                .map(them => them.toString());
+        }
+        else if ((match = re_role.exec(items[0]))) {
+            const role = await interaction.guild?.roles.fetch(match[1] as Snowflake);
+            if (!role)
+                throw `Unsupported role <${match[1]}>.`;
+
+            items = role.members
+                .filter(them => !them.user.bot)
+                .map(them => them.toString());
         }
         // TODO support macros
     }
