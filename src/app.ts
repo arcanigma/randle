@@ -5,19 +5,24 @@ import * as dealer from './interactions/dealer';
 import * as echo from './interactions/echo';
 import * as roll from './interactions/roll';
 import * as run from './interactions/run';
+import * as who from './interactions/who';
 import * as logo from './routes/logo';
 import * as status from './routes/status';
+
+// TODO avoid mentions in embeds
 
 // TODO slash commands for macros
 // TODO slash commands for role opt-ins/outs
 // TODO slash commands for tracking reactions etc
 
 const
-    INTERACTIONS = [ echo, roll, dealer, run ],
+    INTERACTIONS = [ echo, roll, dealer, run, who ],
     EVENTS = [topicUpdated],
     ROUTES = [ status, logo ];
 
-const client = new Client({ intents: [ 'GUILDS', 'GUILD_MESSAGES', 'GUILD_PRESENCES' ] });
+const client = new Client({ intents: [
+    'GUILDS', 'GUILD_MESSAGES', 'GUILD_MEMBERS', 'GUILD_PRESENCES'
+] });
 
 void client.login(process.env.DISCORD_BOT_TOKEN);
 

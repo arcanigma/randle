@@ -24,6 +24,7 @@ export const register = ({ client }: { client: Client }): void => {
                     description: 'A URL to a message, attachment, or external file containing a JSON script',
                     required: true
                 },
+                // TODO include and exclude members
                 {
                     name: 'moderator',
                     type: 'USER',
@@ -46,6 +47,7 @@ export const register = ({ client }: { client: Client }): void => {
             const url = interaction.options.get('url')?.value as string,
                 moderator = interaction.channel.members.get(interaction.options.get('moderator')?.value as Snowflake);
 
+            // TODO deal with always-present admins/owners
             const members = shuffleInPlace(
                 interaction.channel.members
                     .filter(them => !them.user.bot)
