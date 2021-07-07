@@ -9,7 +9,7 @@ import * as who from './interactions/who';
 import * as logo from './routes/logo';
 import * as status from './routes/status';
 
-// TODO avoid mentions in embeds
+// TODO refactor embed layouts, handle mention caching
 
 // TODO slash commands for macros
 // TODO slash commands for role opt-ins/outs

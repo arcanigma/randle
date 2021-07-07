@@ -1,9 +1,8 @@
-import { Client, Snowflake, TextChannel } from 'discord.js';
+import { ApplicationCommandData, Client, Snowflake, TextChannel } from 'discord.js';
 import { registerSlashCommand } from '../library/backend';
 import { names } from '../library/factory';
 import { blame } from '../library/message';
 import { shuffleInPlace } from '../library/solve';
-import { ApplicationCommandData } from '../shims';
 
 export const dev = true;
 
@@ -44,7 +43,7 @@ export const register = ({ client }: { client: Client }): void => {
 
             let members = [...role.members.values()];
 
-            if (!everyone && !members.some(it => it.user.id == interaction.applicationID))
+            if (!everyone && !members.some(it => it.user.id == interaction.applicationId))
                 throw `Missing bot in mentionable role ${role.toString()}.`;
 
             members = shuffleInPlace(members.filter(it => !it.user.bot));

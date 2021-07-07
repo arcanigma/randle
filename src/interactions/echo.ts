@@ -1,6 +1,5 @@
-import { Client } from 'discord.js';
+import { ApplicationCommandData, Client } from 'discord.js';
 import { registerSlashCommand } from '../library/backend';
-import { ApplicationCommandData } from '../shims';
 
 export const dev = true;
 
@@ -31,7 +30,10 @@ export const register = ({ client }: { client: Client }): void => {
 
         console.debug(interaction);
 
-        await interaction.reply(input, { ephemeral: true });
+        await interaction.reply({
+            content: input,
+            ephemeral: true
+        });
     });
 
 };

@@ -82,7 +82,7 @@ export type ExplainRule = {
     as: string;
 } & Conditional
 
-// TODO GraphRule
+// TODO combined GraphRule/embed coloring
 
 // TODO RelayRule and RelayService
 

@@ -1,4 +1,4 @@
-import { Client, CommandInteraction, GuildMember, MessageEmbed, Snowflake, TextChannel } from 'discord.js';
+import { ApplicationCommandData, Client, CommandInteraction, EmbedField, GuildMember, MessageEmbed, Snowflake, TextChannel } from 'discord.js';
 import got from 'got';
 import JSON5 from 'json5';
 import { MAX_EMBED_DESCRIPTION, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants';
@@ -7,7 +7,6 @@ import { commas, names, trunc } from '../library/factory';
 import { blame, truncEmbeds, truncFields } from '../library/message';
 import { AnnounceRule, ExplainRule, Items, Rules, Script, ShowRule } from '../library/script';
 import { build, enable, listify, matches, shuffleCopy, shuffleInPlace, validate } from '../library/solve';
-import { ApplicationCommandData } from '../shims';
 
 export const MAX_IMPORTS = 5;
 
@@ -24,7 +23,6 @@ export const register = ({ client }: { client: Client }): void => {
                     description: 'A URL to a message, attachment, or external file containing a JSON script',
                     required: true
                 },
-                // TODO include and exclude members
                 {
                     name: 'moderator',
                     type: 'USER',
@@ -47,7 +45,7 @@ export const register = ({ client }: { client: Client }): void => {
             const url = interaction.options.get('url')?.value as string,
                 moderator = interaction.channel.members.get(interaction.options.get('moderator')?.value as Snowflake);
 
-            // TODO deal with always-present admins/owners
+            // TODO option to include/exclude, re: admins/owners
             const members = shuffleInPlace(
                 interaction.channel.members
                     .filter(them => !them.user.bot)
@@ -180,7 +178,7 @@ export const register = ({ client }: { client: Client }): void => {
             for (const count in counts)
                 shuffleInPlace(counts[count]);
 
-            let global_content = interaction.user.toString();
+            let global_content = `${interaction.user.toString()}`;
             if (moderator)
                 if (moderator == interaction.member)
                     global_content = `${global_content} (**moderator**)`;
@@ -190,9 +188,9 @@ export const register = ({ client }: { client: Client }): void => {
             if (script.event)
                 global_content = `${global_content} for the **${script.event}** event`;
 
-            const global_embeds = [];
+            const global_embeds: MessageEmbed[] = [];
 
-            global_embeds.push({
+            global_embeds.push(<MessageEmbed> {
                 title: 'Dealt...',
                 fields: [
                     ...Object.keys(counts).map(Number).sort().reverse().map(count => ({
@@ -209,7 +207,7 @@ export const register = ({ client }: { client: Client }): void => {
             });
 
             if (script.rules) {
-                const announce_fields: MessageEmbed['fields'] = [];
+                const announce_fields: EmbedField[] = [];
 
                 listify(script.rules).filter((rule): rule is AnnounceRule => 'announce' in rule && enable(rule, uniques, script.options)).forEach(rule =>
                     listify(rule.announce).forEach(announce =>
@@ -231,13 +229,13 @@ export const register = ({ client }: { client: Client }): void => {
                 if (announce_fields.length > 0) {
                     shuffleInPlace(announce_fields);
 
-                    global_embeds.push({
+                    global_embeds.push(<MessageEmbed> {
                         title: 'Announced...',
                         fields: truncFields(announce_fields, 'announce rules')
                     });
                 }
 
-                const explain_fields: MessageEmbed['fields'] = [];
+                const explain_fields: EmbedField[] = [];
 
                 listify(script.rules).filter((rule): rule is ExplainRule => 'explain' in rule && enable(rule, uniques, script.options)).forEach(rule =>
                     explain_fields.push({
@@ -248,7 +246,7 @@ export const register = ({ client }: { client: Client }): void => {
                 );
 
                 if (explain_fields.length > 0)
-                    global_embeds.push({
+                    global_embeds.push(<MessageEmbed> {
                         title: 'Explained...',
                         fields: truncFields(explain_fields, 'explain rules')
                     });
@@ -259,7 +257,8 @@ export const register = ({ client }: { client: Client }): void => {
                 embeds: truncEmbeds(global_embeds, 'rules')
             });
 
-            const mod_fields: MessageEmbed['fields'] = [];
+            const mod_embeds: MessageEmbed[] = [],
+                mod_fields: EmbedField[] = [];
 
             for (const [ member, items ] of dealt) {
                 let proxy_content = interaction.member != member ? interaction.user.toString() : 'You';
@@ -272,9 +271,9 @@ export const register = ({ client }: { client: Client }): void => {
                 if (script.event)
                     proxy_content = `${proxy_content} for the **${script.event}** event in ${interaction.channel.toString()}`;
 
-                const per_embeds = [];
+                const per_embeds: MessageEmbed[] = [];
 
-                per_embeds.push({
+                per_embeds.push(<MessageEmbed> {
                     title: 'You were dealt...',
                     description: trunc(commas(items.map(it => `**${it}**`)), MAX_EMBED_DESCRIPTION)
                     // TODO reveal button
@@ -288,7 +287,7 @@ export const register = ({ client }: { client: Client }): void => {
                     });
 
                 if (script.rules) {
-                    const show_fields: MessageEmbed['fields'] = [];
+                    const show_fields: EmbedField[] = [];
 
                     listify(script.rules).filter((rule): rule is ShowRule => 'show' in rule && enable(rule, uniques, script.options)).forEach(rule =>
                         listify(rule.to).forEach(to =>
@@ -316,27 +315,18 @@ export const register = ({ client }: { client: Client }): void => {
                     if (show_fields.length > 0) {
                         shuffleInPlace(show_fields);
 
-                        per_embeds.push({
+                        per_embeds.push(<MessageEmbed> {
                             title: 'You were shown...',
                             fields: truncFields(show_fields, 'show rules')
                         });
                     }
                 }
 
-                if (per_embeds.length > 0) {
-                    // TODO send all embeds in one message when API allows
-                    per_embeds.forEach((embed, index) => {
-                        if (index == 0)
-                            void member.send({
-                                content: proxy_content,
-                                embed: <MessageEmbed> <unknown> embed
-                            });
-                        else
-                            void member.send({
-                                embed: <MessageEmbed> <unknown> embed
-                            });
+                if (per_embeds.length > 0)
+                    await member.send({
+                        content: proxy_content,
+                        embeds: truncEmbeds(per_embeds, 'rules')
                     });
-                }
             }
 
             if (moderator) {
@@ -357,13 +347,17 @@ export const register = ({ client }: { client: Client }): void => {
                         inline: false
                     });
 
-                void moderator.send({
-                    content: mod_content,
-                    embed: {
+                if (mod_fields.length > 0)
+                    mod_embeds.push(<MessageEmbed> {
                         title: 'Dealt...',
                         fields: mod_fields
-                    }
-                });
+                    });
+
+                if (mod_embeds.length > 0)
+                    await moderator.send({
+                        content: mod_content,
+                        embeds: mod_embeds
+                    });
             }
 
             // TODO upload graph
@@ -379,7 +373,10 @@ export const register = ({ client }: { client: Client }): void => {
 };
 
 async function scriptFromURL (url: string, interaction: CommandInteraction): Promise<Script> {
-    const re_message_url = new RegExp(`^https?://(.+)/channels/${interaction.guildID?.toString() ?? ''}/${interaction.channelID?.toString() ?? ''}/(\\d+)/?$`),
+    if (interaction.channel == null)
+        throw `Unsupported channel when accessing \`${url}\` script.`;
+
+    const re_message_url = new RegExp(`^https?://(.+)/channels/${interaction.guildId as string}/${interaction.channelId as string}/(\\d+)/?$`),
         match_message = re_message_url.exec(url);
 
     let data: string;

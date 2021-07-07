@@ -1,10 +1,9 @@
-import { Client, Interaction, Snowflake } from 'discord.js';
+import { ApplicationCommandData, Client, Interaction, Snowflake } from 'discord.js';
 import { MAX_EMBED_DESCRIPTION } from '../constants';
 import { registerSlashCommand } from '../library/backend';
 import { commas, trunc, wss } from '../library/factory';
 import { blame } from '../library/message';
 import { choose, shuffleInPlace } from '../library/solve';
-import { ApplicationCommandData } from '../shims';
 
 export const register = ({ client }: { client: Client }): void => {
 
@@ -122,7 +121,7 @@ async function itemize (text: string, interaction: Interaction): Promise<string[
 
             items = role.members
                 .filter(them => !them.user.bot)
-                .filter(them => items[0] != '@here' || them.user.presence.status == 'online')
+                .filter(them => items[0] != '@here' || them.presence?.status == 'online')
                 .map(them => them.toString());
         }
         else if ((match = re_role.exec(items[0]))) {

@@ -1,11 +1,11 @@
 import { randomInt } from 'crypto';
-import { Client, MessageEmbed } from 'discord.js';
+import { ApplicationCommandData, Client, EmbedField, MessageEmbed } from 'discord.js';
 import ordinal from 'ordinal';
-import { MAX_EMBED_FIELDS, MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE, MAX_MESSAGE_EMBEDS } from '../constants';
+import { MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants';
 import { registerSlashCommand } from '../library/backend';
 import { trunc, wss } from '../library/factory';
-import { blame } from '../library/message';
-import { ApplicationCommandData } from '../shims';
+import { blame, truncEmbeds, truncFields } from '../library/message';
+import { } from '../library/parser';
 
 export const register = ({ client }: { client: Client }): void => {
 
@@ -91,12 +91,12 @@ function expandRepeats (clause: string) {
 }
 
 function rollDice (clauses: string[]): MessageEmbed[] {
-    const embeds = [];
+    const embeds: MessageEmbed[] = [];
 
     for (let i = 0; i < clauses.length; i++) {
         clauses[i] = evaluateArithmetic(clauses[i]);
 
-        const fields = [];
+        const fields: EmbedField[] = [];
 
         const re_dice_code = /\b([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?\b/ig;
         const outcome = clauses[i].replace(re_dice_code, (code, count, size, hilo, keep, modifier) => {
@@ -158,44 +158,28 @@ function rollDice (clauses: string[]): MessageEmbed[] {
             else if (total == size * (!hilo ? count : keep) + parseInt(modifier))
                 emoji = '🔺';
 
-            if (fields.length < MAX_EMBED_FIELDS)
-                fields.push({
-                    name: trunc(`${code} ${emoji ?? ''}`, MAX_FIELD_NAME),
-                    value: trunc(`${atoms.join(' ')}`, MAX_FIELD_VALUE),
-                    inline: true
-                });
+            fields.push({
+                name: trunc(`${code} ${emoji ?? ''}`, MAX_FIELD_NAME),
+                value: trunc(`${atoms.join(' ')}`, MAX_FIELD_VALUE),
+                inline: true
+            });
 
             return `${total}`;
         });
-
-        if (fields.length == MAX_EMBED_FIELDS)
-            fields[MAX_EMBED_FIELDS - 1] = {
-                name: '⚠️ Warning',
-                value: `Too many rolls to show (limit of ${MAX_EMBED_FIELDS}).`,
-                inline: false
-            };
 
         if (outcome != clauses[i]) {
             clauses[i] = outcome;
             clauses[i] = evaluateArithmetic(clauses[i]);
             clauses[i] = prettifyMarkdown(clauses[i]);
 
-            if (embeds.length < MAX_MESSAGE_EMBEDS)
-                embeds.push(<MessageEmbed>{
-                    title: trunc(`${embeds.length == 0 ? 'Rolled' : 'Then rolled' } ${clauses[i]}.`, MAX_EMBED_TITLE),
-                    fields
-                });
+            embeds.push(<MessageEmbed>{
+                title: trunc(`${embeds.length == 0 ? 'Rolled' : 'Then rolled' } ${clauses[i]}.`, MAX_EMBED_TITLE),
+                fields: truncFields(fields, 'rolls')
+            });
         }
     }
 
-    // TODO use truncation of embeds and fields
-    if (embeds.length == MAX_MESSAGE_EMBEDS)
-        embeds[MAX_MESSAGE_EMBEDS - 1] = <MessageEmbed>{
-            title: '⚠️ Warning',
-            description: `Too many groups to show (limit of ${MAX_MESSAGE_EMBEDS}).`
-        };
-
-    return embeds;
+    return truncEmbeds(embeds, 'groups');
 }
 
 const re_number = /\b(?<![:_~*])[1-9][0-9]*(?![:_~*])\b/g,

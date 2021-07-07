@@ -7,6 +7,7 @@ export const register = ({ client }: { client: Client }): void => {
             const oldTextChannel = oldChannel as TextChannel,
                 newTextChannel = newChannel as TextChannel;
 
+            // TODO improve the text
             if (newTextChannel.topic && newTextChannel.topic != oldTextChannel.topic) {
                 const content = `_new channel topic:_ ${newTextChannel.topic}`;
                 await newTextChannel.send(content);
