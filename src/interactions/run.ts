@@ -6,7 +6,7 @@ import { registerSlashCommand } from '../library/backend';
 import { commas, names, trunc } from '../library/factory';
 import { blame, truncEmbeds, truncFields } from '../library/message';
 import { AnnounceRule, ExplainRule, Items, Rules, Script, ShowRule } from '../library/script';
-import { build, enable, listify, matches, shuffleCopy, shuffleInPlace, validate } from '../library/solve';
+import { build, enable, listify, matches, shuffleInPlace, validate } from '../library/solve';
 
 export const MAX_IMPORTS = 5;
 
@@ -136,13 +136,13 @@ export const register = ({ client }: { client: Client }): void => {
             if (!script.deal)
                 throw 'Script requires a deal.';
 
-            const items = shuffleCopy(build(script.deal, script));
+            const items = shuffleInPlace(build(script.deal, script));
 
             if (script.dealFirst)
-                items.unshift(...shuffleCopy(build(script.dealFirst, script)));
+                items.unshift(...shuffleInPlace(build(script.dealFirst, script)));
 
             if (script.dealLast)
-                items.push(...shuffleCopy(build(script.dealLast, script)));
+                items.push(...shuffleInPlace(build(script.dealLast, script)));
 
             const uniques = items.filter((item, index) => items.indexOf(item) === index);
 
@@ -241,7 +241,7 @@ export const register = ({ client }: { client: Client }): void => {
                     explain_fields.push({
                         name: trunc(rule.explain, MAX_FIELD_NAME),
                         value: trunc(rule.as, MAX_FIELD_VALUE),
-                        inline: false
+                        inline: true
                     })
                 );
 
@@ -283,7 +283,7 @@ export const register = ({ client }: { client: Client }): void => {
                     mod_fields.push({
                         name: trunc(`${commas(items)} to...`, MAX_FIELD_NAME),
                         value: trunc(member.toString(), MAX_FIELD_VALUE),
-                        inline: false
+                        inline: true
                     });
 
                 if (script.rules) {
@@ -296,13 +296,13 @@ export const register = ({ client }: { client: Client }): void => {
                                     dealt.forEach((theirs, them) => {
                                         if (them != member) {
                                             theirs.filter(it => matches(it, show, script) && (!validate(rule.distinctive, script.options) || it != yours)).forEach(their => {
-                                                const name = trunc(`Because you were dealt ${yours}...`, MAX_FIELD_NAME),
+                                                const name = trunc(`Via ${yours}...`, MAX_FIELD_NAME),
                                                     value = trunc(`${them.toString()} was dealt **${rule.as ?? their}**`, MAX_FIELD_VALUE);
                                                 if (!show_fields.some(it => it.name == name && it.value == value))
                                                     show_fields.push({
                                                         name,
                                                         value,
-                                                        inline: false
+                                                        inline: true
                                                     });
                                             });
                                         }
@@ -344,7 +344,7 @@ export const register = ({ client }: { client: Client }): void => {
                     mod_fields.push({
                         name: `${items.length} leftover for you...`,
                         value: trunc(commas(items.map(it => `**${it}**`)), MAX_FIELD_VALUE),
-                        inline: false
+                        inline: true
                     });
 
                 if (mod_fields.length > 0)
