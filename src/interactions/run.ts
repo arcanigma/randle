@@ -146,8 +146,6 @@ export const register = ({ client }: { client: Client }): void => {
 
             const uniques = items.filter((item, index) => items.indexOf(item) === index);
 
-            // TODO build graph
-
             const dealt: Map<GuildMember, string[]> = new Map();
             const rounds = !script.limit
                 ? Math.ceil(items.length / members.length)
@@ -359,8 +357,6 @@ export const register = ({ client }: { client: Client }): void => {
                         embeds: mod_embeds
                     });
             }
-
-            // TODO upload graph
         }
         catch (error: unknown) {
             await interaction.reply({

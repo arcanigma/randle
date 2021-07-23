@@ -82,10 +82,6 @@ export type ExplainRule = {
     as: string;
 } & Conditional
 
-// TODO combined GraphRule/embed coloring
-
-// TODO RelayRule and RelayService
-
 export type Conditional = {
     if?: Option;
     ifIncluded?: string | string[];
@@ -104,5 +100,6 @@ export type Matcher =
     | { excludes: string }
     | { matches: string }
     | { all: true }
+    // TODO matcher for member dealt order
     | { set: Set; union?: Set; intersect?: Set; except?: Set }
     | Matcher[]

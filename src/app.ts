@@ -11,6 +11,8 @@ import * as status from './routes/status';
 
 // TODO handle mention caching
 
+// TODO anonymous DM send-and-reply
+
 // TODO slash commands for macros
 // TODO slash commands for role opt-ins/outs
 // TODO slash commands for tracking reactions etc
