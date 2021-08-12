@@ -1,4 +1,4 @@
-import { ApplicationCommandData, Client, Snowflake, TextChannel } from 'discord.js';
+import { ApplicationCommandData, Client, TextChannel } from 'discord.js';
 import { registerSlashCommand } from '../library/backend';
 import { names } from '../library/factory';
 import { blame } from '../library/message';
@@ -35,7 +35,7 @@ export const register = ({ client }: { client: Client }): void => {
         try {
             const role_id = interaction.options.get('role')?.value as string;
 
-            const role = await interaction.guild?.roles.fetch(role_id as Snowflake),
+            const role = await interaction.guild?.roles.fetch(role_id),
                 everyone = role?.name == '@everyone';
 
             if (!role || (!everyone && !role.mentionable))

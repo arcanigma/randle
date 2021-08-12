@@ -46,12 +46,12 @@ export const register = ({ client }: { client: Client }): void => {
                 moderator = interaction.channel.members.get(interaction.options.get('moderator')?.value as Snowflake);
 
             // TODO option to include/exclude, re: admins/owners
-            const members = shuffleInPlace(
-                interaction.channel.members
+            const members = shuffleInPlace([
+                ...interaction.channel.members
                     .filter(them => !them.user.bot)
                     .filter(them => !moderator || them != moderator)
-                    .array()
-            );
+                    .values()
+            ]);
 
             const script = await scriptFromURL(url, interaction);
 
@@ -372,12 +372,12 @@ async function scriptFromURL (url: string, interaction: CommandInteraction): Pro
     if (interaction.channel == null)
         throw `Unsupported channel when accessing \`${url}\` script.`;
 
-    const re_message_url = new RegExp(`^https?://(.+)/channels/${interaction.guildId as string}/${interaction.channelId as string}/(\\d+)/?$`),
+    const re_message_url = new RegExp(`^https?://(.+)/channels/${interaction.guildId as string}/${interaction.channelId }/(\\d+)/?$`),
         match_message = re_message_url.exec(url);
 
     let data: string;
     if (match_message) {
-        const message = await interaction.channel.messages.fetch(match_message[2] as Snowflake);
+        const message = await interaction.channel.messages.fetch(match_message[2] );
 
         if (message.attachments.size == 0) {
             if (message.content.length > 0)

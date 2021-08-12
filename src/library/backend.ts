@@ -1,8 +1,8 @@
-import { ApplicationCommand, ApplicationCommandData, Client, Snowflake } from 'discord.js';
+import { ApplicationCommand, ApplicationCommandData, Client } from 'discord.js';
 
 export async function registerSlashCommand (slash: ApplicationCommandData, client: Client): Promise<ApplicationCommand> {
     if (process.env.DISCORD_GUILD_ID) {
-        const guild = client.guilds.cache.get(process.env.DISCORD_GUILD_ID as Snowflake);
+        const guild = client.guilds.cache.get(process.env.DISCORD_GUILD_ID);
         if (!guild)
             throw `Unavailable guild <${process.env.DISCORD_GUILD_ID}>.`;
 

@@ -1,4 +1,4 @@
-import { ApplicationCommandData, Client, Interaction, Snowflake } from 'discord.js';
+import { ApplicationCommandData, Client, Interaction } from 'discord.js';
 import { MAX_EMBED_DESCRIPTION } from '../constants';
 import { registerSlashCommand } from '../library/backend';
 import { commas, trunc, wss } from '../library/factory';
@@ -125,7 +125,7 @@ async function itemize (text: string, interaction: Interaction): Promise<string[
                 .map(them => them.toString());
         }
         else if ((match = re_role.exec(items[0]))) {
-            const role = await interaction.guild?.roles.fetch(match[1] as Snowflake);
+            const role = await interaction.guild?.roles.fetch(match[1]);
             if (!role)
                 throw `Unsupported role <${match[1]}>.`;
 
