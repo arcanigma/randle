@@ -38,6 +38,8 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interaction', async interaction => {
         if (!interaction.isCommand() || interaction.commandName !== 'run') return;
 
+        await interaction.deferReply();
+
         if (!(interaction.channel instanceof TextChannel))
             throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
@@ -250,7 +252,7 @@ export const register = ({ client }: { client: Client }): void => {
                     });
             }
 
-            await interaction.reply({
+            await interaction.editReply({
                 content: global_content,
                 embeds: truncEmbeds(global_embeds, 'rules')
             });
@@ -359,7 +361,9 @@ export const register = ({ client }: { client: Client }): void => {
             }
         }
         catch (error: unknown) {
-            await interaction.reply({
+            await interaction.deleteReply();
+
+            await interaction.followUp({
                 embeds: blame({ error, interaction }),
                 ephemeral: true
             });
