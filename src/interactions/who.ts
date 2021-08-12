@@ -4,8 +4,6 @@ import { names } from '../library/factory';
 import { blame } from '../library/message';
 import { shuffleInPlace } from '../library/solve';
 
-export const dev = true;
-
 export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {

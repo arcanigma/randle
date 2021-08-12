@@ -1,5 +1,6 @@
 import { Client } from 'discord.js';
 import express from 'express';
+import { Sequelize } from 'sequelize';
 import * as topicUpdated from './events/topicUpdated';
 import * as dealer from './interactions/dealer';
 import * as echo from './interactions/echo';
@@ -11,16 +12,11 @@ import * as status from './routes/status';
 
 // TODO handle mention caching
 
-// TODO anonymous DM send-and-reply
-
+// TODO slash commands for polls
+// TODO slash commands for anonymous send-and-reply
 // TODO slash commands for macros
 // TODO slash commands for role opt-ins/outs
 // TODO slash commands for tracking reactions etc
-
-const
-    INTERACTIONS = [ echo, roll, dealer, run, who ],
-    EVENTS = [topicUpdated],
-    ROUTES = [ status, logo ];
 
 const client = new Client({ intents: [
     'GUILDS', 'GUILD_MESSAGES', 'GUILD_MEMBERS', 'GUILD_PRESENCES'
@@ -28,15 +24,37 @@ const client = new Client({ intents: [
 
 void client.login(process.env.DISCORD_BOT_TOKEN);
 
-[ ...INTERACTIONS, ...EVENTS ].forEach(it => it.register({ client }) );
+const db = new Sequelize(process.env.DATABASE_URL ?? '', {
+    dialect: 'postgres',
+    logging: false,
+    dialectOptions: {
+        ssl: {
+            rejectUnauthorized: false
+        }
+    }
+});
 
-client.on('ready', () => {
+void db.sync();
+
+if (process.env.NODE_ENV == 'development') {
+    echo.register({ client });
+}
+
+roll.register({ client });
+dealer.register({ client });
+run.register({ client });
+who.register({ client });
+
+topicUpdated.register({ client });
+
+client.once('ready', () => {
     console.debug('Discord ready.');
 });
 
 const app = express();
 
-ROUTES.forEach(it => it.register({ app }) );
+status.register({ app });
+logo.register({ app });
 
 const PORT = Number(process.env.PORT ?? 80);
 
