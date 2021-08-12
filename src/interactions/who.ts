@@ -7,7 +7,6 @@ import { shuffleInPlace } from '../library/solve';
 export const dev = true;
 
 export const register = ({ client }: { client: Client }): void => {
-    if (process.env.NODE_ENV != 'development') return;
 
     client.on('ready', async () => {
         const slash: ApplicationCommandData = {
