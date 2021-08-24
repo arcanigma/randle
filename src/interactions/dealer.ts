@@ -1,4 +1,4 @@
-import { ApplicationCommandData, Client, Interaction } from 'discord.js';
+import { ApplicationCommandData, Client, Interaction, TextChannel } from 'discord.js';
 import { MAX_EMBED_DESCRIPTION } from '../constants';
 import { registerSlashCommand } from '../library/backend';
 import { commas, trunc, wss } from '../library/factory';
@@ -115,11 +115,10 @@ async function itemize (text: string, interaction: Interaction): Promise<string[
             items = (<number[]> Array(Number(items[0])).fill(1)).map((v, i) => String(v + i));
         }
         else if (items[0] == '@everyone' || items[0] == '@here') {
-            const role = interaction.guild?.roles.everyone;
-            if (!role)
-                throw `Unsupported mention <${items[0]}>.`;
+            if (!(interaction.channel instanceof TextChannel))
+                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
-            items = role.members
+            items = interaction.channel.members
                 .filter(them => !them.user.bot)
                 .filter(them => items[0] != '@here' || them.presence?.status == 'online')
                 .map(them => them.toString());

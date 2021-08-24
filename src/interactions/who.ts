@@ -32,15 +32,24 @@ export const register = ({ client }: { client: Client }): void => {
         try {
             const role_id = interaction.options.get('role')?.value as string;
 
-            const role = await interaction.guild?.roles.fetch(role_id);
-            if (!role)
-                throw `Unknown role <${role_id}>.`;
+            if (role_id == interaction.guild?.roles.everyone.id) {
+                const members = shuffleInPlace([...interaction.channel.members.values()]);
 
-            const members = shuffleInPlace([...role.members.values()]);
+                await interaction.reply({
+                    content: `Everyone in ${interaction.channel?.toString()} includes ${names(members)}.`
+                });
+            }
+            else {
+                const role = await interaction.guild?.roles.fetch(role_id);
+                if (!role)
+                    throw `Unsupported role <${role_id}>.`;
 
-            await interaction.reply({
-                content: `The role ${role.toString()} includes ${names(members)}.`
-            });
+                const members = shuffleInPlace([...role.members.values()]);
+
+                await interaction.reply({
+                    content: `The role ${role.toString()} includes ${names(members)}.`
+                });
+            }
         }
         catch (error: unknown) {
             await interaction.reply({
