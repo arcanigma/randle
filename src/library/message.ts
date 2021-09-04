@@ -1,10 +1,10 @@
-import { CommandInteraction, EmbedField, MessageEmbed } from 'discord.js';
+import { ButtonInteraction, CommandInteraction, EmbedField, MessageEmbed } from 'discord.js';
 import { MAX_EMBED_FIELDS, MAX_FIELD_NAME, MAX_FIELD_VALUE, MAX_MESSAGE_EMBEDS } from '../constants';
 import { trunc } from './factory';
 
 export function blame ({ error, interaction }: {
     error: unknown;
-    interaction: CommandInteraction;
+    interaction: CommandInteraction | ButtonInteraction;
 }): MessageEmbed[] {
     if (error instanceof Error) {
         console.error({ error });
@@ -28,16 +28,21 @@ export function blame ({ error, interaction }: {
                         value: trunc(`${interaction.channel?.toString() ?? 'unknown'}`, MAX_FIELD_VALUE),
                         inline: true
                     },
-                    {
-                        name: 'Command',
-                        value: trunc(interaction.commandName, MAX_FIELD_VALUE),
-                        inline: true
-                    },
-                    {
-                        name: 'Options',
-                        value: trunc(JSON.stringify(interaction.options), MAX_FIELD_VALUE),
-                        inline: true
-                    }
+                    ... ( interaction instanceof CommandInteraction
+                        ? [
+                            {
+                                name: 'Command',
+                                value: trunc(interaction.commandName, MAX_FIELD_VALUE),
+                                inline: true
+                            },
+                            {
+                                name: 'Options',
+                                value: trunc(JSON.stringify(interaction.options), MAX_FIELD_VALUE),
+                                inline: true
+                            }
+                        ]
+                        : []
+                    )
                 ]
             }
         ];

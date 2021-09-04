@@ -23,7 +23,7 @@ export const register = ({ client }: { client: Client }): void => {
         await registerSlashCommand(slash, client);
     });
 
-    client.on('interaction', async interaction => {
+    client.on('interactionCreate', async interaction => {
         if (!interaction.isCommand() || interaction.commandName !== 'who') return;
 
         if (!(interaction.channel instanceof TextChannel))

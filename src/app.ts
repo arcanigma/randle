@@ -4,6 +4,7 @@ import { Sequelize } from 'sequelize';
 import * as topicUpdated from './events/topicUpdated';
 import * as dealer from './interactions/dealer';
 import * as echo from './interactions/echo';
+import * as poll from './interactions/poll';
 import * as roll from './interactions/roll';
 import * as run from './interactions/run';
 import * as who from './interactions/who';
@@ -12,10 +13,9 @@ import * as status from './routes/status';
 
 // TODO handle mention caching
 
-// TODO slash commands for polls
+// TODO message command to ~~strike~~ a message
 // TODO slash commands for anonymous send-and-reply
 // TODO slash commands for macros
-// TODO slash commands for role opt-ins/outs
 // TODO slash commands for tracking reactions etc
 
 const client = new Client({ intents: [
@@ -23,6 +23,8 @@ const client = new Client({ intents: [
 ] });
 
 void client.login(process.env.DISCORD_BOT_TOKEN);
+
+client.setMaxListeners(25);
 
 const db = new Sequelize(process.env.DATABASE_URL ?? '', {
     dialect: 'postgres',
@@ -43,6 +45,7 @@ if (process.env.NODE_ENV == 'development') {
 roll.register({ client });
 dealer.register({ client });
 run.register({ client });
+poll.register({ client });
 who.register({ client });
 
 topicUpdated.register({ client });

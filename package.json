@@ -1,7 +1,7 @@
 {
     "name": "randle-discord",
     "description": "Dice, cards, and polls bot for Discord.",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "main": "./dist/app.js",
     "scripts": {
         "build": "tsc",

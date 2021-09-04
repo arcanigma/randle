@@ -30,7 +30,7 @@ export const register = ({ client }: { client: Client }): void => {
     // TODO support macros
 
     const re_segments = /\s*;\s*/;
-    client.on('interaction', async interaction => {
+    client.on('interactionCreate', async interaction => {
         if (!interaction.isCommand() || interaction.commandName !== 'roll') return;
 
         try {

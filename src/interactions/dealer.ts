@@ -1,7 +1,7 @@
-import { ApplicationCommandData, Client, Interaction, TextChannel } from 'discord.js';
+import { ApplicationCommandData, Client } from 'discord.js';
 import { MAX_EMBED_DESCRIPTION } from '../constants';
 import { registerSlashCommand } from '../library/backend';
-import { commas, trunc, wss } from '../library/factory';
+import { commas, itemize, trunc, wss } from '../library/factory';
 import { blame } from '../library/message';
 import { choose, shuffleInPlace } from '../library/solve';
 
@@ -24,7 +24,7 @@ export const register = ({ client }: { client: Client }): void => {
         await registerSlashCommand(slash, client);
     });
 
-    client.on('interaction', async interaction => {
+    client.on('interactionCreate', async interaction => {
         if (!interaction.isCommand() || interaction.commandName !== 'shuffle') return;
 
         try {
@@ -71,7 +71,7 @@ export const register = ({ client }: { client: Client }): void => {
         await registerSlashCommand(slash, client);
     });
 
-    client.on('interaction', async interaction => {
+    client.on('interactionCreate', async interaction => {
         if (!interaction.isCommand() || interaction.commandName !== 'draw') return;
 
         try {
@@ -105,37 +105,3 @@ export const register = ({ client }: { client: Client }): void => {
     });
 
 };
-
-const re_role = /^<@&(\d+)>$/;
-async function itemize (text: string, interaction: Interaction): Promise<string[]> {
-    let items = text.split(',').map(it => it.trim()).filter(Boolean),
-        match;
-    if (items.length == 1) {
-        if (Number(items[0]) >= 1 && Number(items[0]) % 1 == 0) {
-            items = (<number[]> Array(Number(items[0])).fill(1)).map((v, i) => String(v + i));
-        }
-        else if (items[0] == '@everyone' || items[0] == '@here') {
-            if (!(interaction.channel instanceof TextChannel))
-                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
-
-            items = interaction.channel.members
-                .filter(them => !them.user.bot)
-                .filter(them => items[0] != '@here' || them.presence?.status == 'online')
-                .map(them => them.toString());
-        }
-        else if ((match = re_role.exec(items[0]))) {
-            const role = await interaction.guild?.roles.fetch(match[1]);
-            if (!role)
-                throw `Unsupported role <${match[1]}>.`;
-
-            items = role.members
-                .filter(them => !them.user.bot)
-                .map(them => them.toString());
-        }
-        // TODO support macros
-    }
-    else if (items.length < 1) {
-        throw 'Number of items must be at least 1.';
-    }
-    return items;
-}
