@@ -139,12 +139,15 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interactionCreate', async interaction => {
         if (!interaction.isButton() || !interaction.customId.startsWith('unseal_')) return;
 
+        if (!(interaction.channel instanceof ThreadChannel))
+            throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
+
         try {
             const choice = (interaction.component as MessageButton).customId?.slice(7),
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
 
-            if (isPermitted(interaction, whose)) {
+            if (isAuthor(interaction, whose) || isThreadModerator(interaction)) {
                 await interaction.update({
                     content: `${whose} voted for **${choice}**`,
                     components: [
@@ -173,12 +176,15 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interactionCreate', async interaction => {
         if (!interaction.isButton() || !interaction.customId.startsWith('reseal_')) return;
 
+        if (!(interaction.channel instanceof ThreadChannel))
+            throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
+
         try {
             const choice = (interaction.component as MessageButton).customId?.slice(7),
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
 
-            if (isPermitted(interaction, whose)) {
+            if (isAuthor(interaction, whose) || isThreadModerator(interaction)) {
                 await interaction.update({
                     content: `${whose} voted`,
                     components: [
@@ -207,12 +213,15 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interactionCreate', async interaction => {
         if (!interaction.isButton() || !interaction.customId.startsWith('peek_')) return;
 
+        if (!(interaction.channel instanceof ThreadChannel))
+            throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
+
         try {
             const choice = (interaction.component as MessageButton).customId?.slice(5),
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
 
-            if (isPermitted(interaction, whose)) {
+            if (isAuthor(interaction, whose) || isThreadModerator(interaction)) {
                 await interaction.reply({
                     content: `${interaction.user.toString() == whose ? 'You' : whose} voted for **${choice}**`,
                     ephemeral: true
@@ -236,12 +245,15 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interactionCreate', async interaction => {
         if (!interaction.isButton() || !interaction.customId.startsWith('discard_')) return;
 
+        if (!(interaction.channel instanceof ThreadChannel))
+            throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
+
         try {
             const choice = (interaction.component as MessageButton).customId?.slice(8),
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
 
-            if (isPermitted(interaction, whose)) {
+            if (isAuthor(interaction, whose) || isThreadModerator(interaction)) {
                 await interaction.update({
                     content: `${whose} discarded a vote`,
                     components: [
@@ -278,7 +290,7 @@ export const register = ({ client }: { client: Client }): void => {
             const action = (interaction.component as MessageButton).customId?.slice(4);
             if (!action) return;
 
-            if (isPermitted(interaction)) {
+            if (isThreadModerator(interaction)) {
                 const messages = await interaction.channel.messages.fetch();
 
                 if (action == 'unseal') {
@@ -463,9 +475,13 @@ export const register = ({ client }: { client: Client }): void => {
         ];
     }
 
-    function isPermitted (interaction: Interaction, whose?: string) {
-        return interaction.user.toString() == whose
-            || (interaction.member?.permissions as Readonly<Permissions>).has(Permissions.FLAGS.MANAGE_THREADS);
+    function isThreadModerator (interaction: Interaction): boolean {
+        const permissions = (interaction.channel as ThreadChannel).permissionsFor(interaction.user);
+        return permissions?.has(Permissions.FLAGS.MANAGE_MESSAGES) ?? false;
+    }
+
+    function isAuthor (interaction: Interaction, whose?: string): boolean {
+        return interaction.user.toString() == whose;
     }
 
 };
