@@ -1,4 +1,4 @@
-import { ApplicationCommandData, Client, Interaction, MessageActionRowComponentResolvable, MessageActionRowOptions, MessageButton, Permissions, TextChannel } from 'discord.js';
+import { ApplicationCommandData, Client, Interaction, MessageActionRowComponentResolvable, MessageActionRowOptions, MessageButton, Permissions, TextChannel, ThreadChannel } from 'discord.js';
 import { MAX_ACTION_ROWS, MAX_BUTTON_LABEL, MAX_ROW_COMPONENTS } from '../constants';
 import { registerSlashCommand } from '../library/backend';
 import { itemize, trunc } from '../library/factory';
@@ -78,8 +78,18 @@ export const register = ({ client }: { client: Client }): void => {
             }
 
             await thread.send({
-                content: '**Vote Choices**',
+                content: '**Vote Here**',
                 components: rows
+            });
+
+            await thread.send({
+                content: '**Moderate Votes**',
+                components: [
+                    {
+                        type: 'ACTION_ROW',
+                        components: buildModComponents()
+                    }
+                ]
             });
 
             // TODO moderator button: unseal all
@@ -134,7 +144,7 @@ export const register = ({ client }: { client: Client }): void => {
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
 
-            if (isPermitted(whose, interaction)) {
+            if (isPermitted(interaction, whose)) {
                 await interaction.update({
                     content: `${whose} voted for **${choice}**`,
                     components: [
@@ -168,7 +178,7 @@ export const register = ({ client }: { client: Client }): void => {
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
 
-            if (isPermitted(whose, interaction)) {
+            if (isPermitted(interaction, whose)) {
                 await interaction.update({
                     content: `${whose} voted`,
                     components: [
@@ -202,7 +212,7 @@ export const register = ({ client }: { client: Client }): void => {
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
 
-            if (isPermitted(whose, interaction)) {
+            if (isPermitted(interaction, whose)) {
                 await interaction.reply({
                     content: `${interaction.user.toString() == whose ? 'You' : whose} voted for **${choice}**`,
                     ephemeral: true
@@ -231,7 +241,7 @@ export const register = ({ client }: { client: Client }): void => {
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
 
-            if (isPermitted(whose, interaction)) {
+            if (isPermitted(interaction, whose)) {
                 await interaction.update({
                     content: `${whose} discarded a vote`,
                     components: [
@@ -258,6 +268,109 @@ export const register = ({ client }: { client: Client }): void => {
         }
     });
 
+    client.on('interactionCreate', async interaction => {
+        if (!interaction.isButton() || !interaction.customId.startsWith('mod_')) return;
+
+        if (!(interaction.channel instanceof ThreadChannel))
+            throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
+
+        try {
+            const action = (interaction.component as MessageButton).customId?.slice(4);
+            if (!action) return;
+
+            if (isPermitted(interaction)) {
+                const messages = await interaction.channel.messages.fetch();
+
+                if (action == 'unseal') {
+                    const results: string[] = messages.filter(message => message.author.bot).map(message => {
+                        const header = (message?.components[0]?.components[0] as MessageButton)?.label;
+                        if (header == 'Unseal') {
+                            const whose = message?.content?.match(re_user)?.[0],
+                                choice = (message?.components[0]?.components[0] as MessageButton)?.customId?.slice(7);
+                            if (!whose || !choice) return;
+
+                            void message.edit({
+                                content: `${whose} voted for **${choice}**`,
+                                components: [
+                                    {
+                                        type: 'ACTION_ROW',
+                                        components: buildUnsealedComponents(choice)
+                                    }
+                                ]
+                            });
+
+                            return `${whose} voted for **${choice}**`;
+                        }
+                    }).filter(Boolean).map(String);
+
+                    results.unshift(`You unsealed **${results.length}** votes`);
+                    await interaction.reply({
+                        content: results.join('\n'),
+                        ephemeral: true
+                    });
+                }
+                else if (action == 'reseal') {
+                    const results: string[] = messages.filter(message => message.author.bot).map(message => {
+                        const header = (message?.components[0]?.components[0] as MessageButton)?.label;
+                        if (header == 'Reseal') {
+                            const whose = message?.content?.match(re_user)?.[0],
+                                choice = (message?.components[0]?.components[0] as MessageButton)?.customId?.slice(7);
+                            if (!whose || !choice) return;
+
+                            void message.edit({
+                                content: `${whose} voted`,
+                                components: [
+                                    {
+                                        type: 'ACTION_ROW',
+                                        components: buildSealedComponents(choice)
+                                    }
+                                ]
+                            });
+
+                            return `${whose} voted`;
+                        }
+                    }).filter(Boolean).map(String);
+
+                    results.unshift(`You resealed **${results.length}** votes`);
+                    await interaction.reply({
+                        content: results.join('\n'),
+                        ephemeral: true
+                    });
+                }
+                else if (action == 'peek') {
+                    const results: string[] = messages.filter(message => message.author.bot).map(message => {
+                        const header = (message?.components[0]?.components[0] as MessageButton)?.label;
+                        if (header == 'Unseal' || header == 'Reseal') {
+                            const whose = message?.content?.match(re_user)?.[0],
+                                choice = (message?.components[0]?.components[0] as MessageButton)?.customId?.slice(7);
+                            if (!whose || !choice) return;
+
+                            return `${whose} voted for **${choice}**`;
+                        }
+                    }).filter(Boolean).map(String);
+
+                    results.unshift(`You peeked **${results.length}** votes`);
+                    await interaction.reply({
+                        content: results.join('\n'),
+                        ephemeral: true
+                    });
+                }
+            }
+            else {
+                await interaction.reply({
+                    content: `Only a moderator can ${action} all votes.`,
+                    ephemeral: true
+                });
+            }
+        }
+        catch (error: unknown) {
+            await interaction.reply({
+                embeds: blame({ error, interaction }),
+                ephemeral: true
+            });
+        }
+    });
+
     function buildButtonEmoji (choice: string): string | undefined {
         const match = choice.match(re_user);
         if (match)
@@ -270,6 +383,32 @@ export const register = ({ client }: { client: Client }): void => {
         return choice.replaceAll(re_user, (_, id) =>
             client.users.cache.get(id)?.username ?? 'Unknown'
         );
+    }
+
+    function buildModComponents (): MessageActionRowComponentResolvable[] {
+        return [
+            {
+                type: 'BUTTON',
+                customId: 'mod_unseal',
+                emoji: '🗳️',
+                label: 'Unseal All',
+                style: 'DANGER'
+            },
+            {
+                type: 'BUTTON',
+                customId: 'mod_reseal',
+                emoji: '🗳️',
+                label: 'Reseal All',
+                style: 'DANGER'
+            },
+            {
+                type: 'BUTTON',
+                customId: 'mod_peek',
+                emoji: '🔍',
+                label: 'Peek All',
+                style: 'DANGER'
+            }
+        ];
     }
 
     function buildSealedComponents (choice: string): MessageActionRowComponentResolvable[] {
@@ -298,6 +437,8 @@ export const register = ({ client }: { client: Client }): void => {
         ];
     }
 
+
+
     function buildUnsealedComponents (choice: string): MessageActionRowComponentResolvable[] {
         return [
             {
@@ -322,7 +463,7 @@ export const register = ({ client }: { client: Client }): void => {
         ];
     }
 
-    function isPermitted (whose: string, interaction: Interaction) {
+    function isPermitted (interaction: Interaction, whose?: string) {
         return interaction.user.toString() == whose
             || (interaction.member?.permissions as Readonly<Permissions>).has(Permissions.FLAGS.MANAGE_THREADS);
     }
