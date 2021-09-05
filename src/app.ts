@@ -1,6 +1,5 @@
 import { Client } from 'discord.js';
 import express from 'express';
-import { Sequelize } from 'sequelize';
 import * as topicUpdated from './events/topicUpdated';
 import * as dealer from './interactions/dealer';
 import * as echo from './interactions/echo';
@@ -14,6 +13,7 @@ import * as status from './routes/status';
 // TODO handle mention caching
 
 // TODO message command to ~~strike~~ a message
+
 // TODO slash commands for anonymous send-and-reply
 // TODO slash commands for macros
 // TODO slash commands for tracking reactions etc
@@ -26,17 +26,17 @@ void client.login(process.env.DISCORD_BOT_TOKEN);
 
 client.setMaxListeners(25);
 
-const db = new Sequelize(process.env.DATABASE_URL ?? '', {
-    dialect: 'postgres',
-    logging: false,
-    dialectOptions: {
-        ssl: {
-            rejectUnauthorized: false
-        }
-    }
-});
+// const db = new Sequelize(process.env.DATABASE_URL ?? '', {
+//     dialect: 'postgres',
+//     logging: false,
+//     dialectOptions: {
+//         ssl: {
+//             rejectUnauthorized: false
+//         }
+//     }
+// });
 
-void db.sync();
+// void db.sync();
 
 if (process.env.NODE_ENV == 'development') {
     echo.register({ client });
