@@ -1,8 +1,8 @@
-import { ApplicationCommandData, Client, Collection, GuildMember, Interaction, MessageActionRow, MessageActionRowComponentResolvable, MessageActionRowOptions, MessageButton, Permissions, TextChannel, ThreadChannel } from 'discord.js';
+import { ApplicationCommandData, Client, Collection, EmbedField, GuildMember, Interaction, Message, MessageActionRow, MessageActionRowComponentResolvable, MessageActionRowOptions, MessageButton, Permissions, TextChannel, ThreadChannel } from 'discord.js';
 import emojiRegex from 'emoji-regex';
-import { MAX_ACTION_ROWS, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } from '../constants';
+import { MAX_ACTION_ROWS, MAX_FIELD_NAME, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } from '../constants';
 import { registerSlashCommand } from '../library/backend';
-import { itemize, trunc, wss } from '../library/factory';
+import { commas, itemize, trunc, wss } from '../library/factory';
 import { blame } from '../library/message';
 import { shuffleCopy } from '../library/solve';
 
@@ -40,9 +40,6 @@ export const register = ({ client }: { client: Client }): void => {
         await registerSlashCommand(slash, client);
     });
 
-
-    // TODO moderator action: public ascribed results
-    // TODO moderator action: public anonymous tally
     client.on('interactionCreate', async interaction => {
         if (!interaction.isCommand() || interaction.commandName !== 'poll') return;
 
@@ -78,11 +75,11 @@ export const register = ({ client }: { client: Client }): void => {
                 await thread.join();
 
 
-            const emojis = shuffleCopy(ABSTRACT_EMOJIS),
+            const components: MessageActionRowOptions[] = [],
+                emojis = shuffleCopy(ABSTRACT_EMOJIS),
                 members = interaction.channel.members;
-            const rows: MessageActionRowOptions[] = [];
             while (choices.length > 0) {
-                rows.push({
+                components.push({
                     type: 'ACTION_ROW',
                     components: choices.splice(0, MAX_ROW_COMPONENTS).map(it => {
                         const emoji = buildEmoji(it) ?? emojis.pop() as string,
@@ -98,14 +95,14 @@ export const register = ({ client }: { client: Client }): void => {
                     })
                 });
             }
-            rows.push({
+            components.push({
                 type: 'ACTION_ROW',
-                components: buildModComponents()
+                components: buildPollActionComponents()
             });
 
             await thread.send({
-                content: '**Vote for Choices**',
-                components: rows
+                content: '**Votes and Poll Actions**',
+                components: components
             });
         }
         catch (error: unknown) {
@@ -309,12 +306,28 @@ export const register = ({ client }: { client: Client }): void => {
             if (isThreadModerator(interaction)) {
                 const messages = await interaction.channel.messages.fetch();
 
-                if (action == 'unseal') {
+                // TODO track by member
+                if (action == 'peek') {
+                    const results = getVoteResults(messages),
+                        total = getVoteTotal(results);
+
+                    await interaction.followUp({
+                        content: 'You peeked at all votes',
+                        embeds: [{
+                            title: `Votes (${total})`,
+                            fields: buildResultFields(results, true)
+                        }],
+                        ephemeral: true
+                    });
+                }
+                else if (action == 'unseal') {
                     messages.filter(message => message.author.bot).forEach(message => {
-                        const header = (message?.components[0]?.components[0] as MessageButton)?.label;
-                        if (header == 'Unseal') {
-                            const whose = message?.content?.match(re_user)?.[0],
-                                choice = (message?.components[0]?.components[0] as MessageButton)?.customId?.slice(7);
+                        const button = (message.components[0]?.components[0] as MessageButton);
+                        if (!button) return;
+
+                        if (button.label == 'Unseal') {
+                            const whose = message.content.match(re_user)?.[0],
+                                choice = button.customId?.slice(7);
                             if (!whose || !choice) return;
 
                             void message.edit({
@@ -331,10 +344,12 @@ export const register = ({ client }: { client: Client }): void => {
                 }
                 else if (action == 'reseal') {
                     messages.filter(message => message.author.bot).forEach(message => {
-                        const header = (message?.components[0]?.components[0] as MessageButton)?.label;
-                        if (header == 'Reseal') {
-                            const whose = message?.content?.match(re_user)?.[0],
-                                choice = (message?.components[0]?.components[0] as MessageButton)?.customId?.slice(7);
+                        const button = (message.components[0]?.components[0] as MessageButton);
+                        if (!button) return;
+
+                        if (button.label == 'Reseal') {
+                            const whose = message.content.match(re_user)?.[0],
+                                choice = button.customId?.slice(7);
                             if (!whose || !choice) return;
 
                             void message.edit({
@@ -349,28 +364,34 @@ export const register = ({ client }: { client: Client }): void => {
                         }
                     });
                 }
-                else if (action == 'peek') {
-                    const results: string[] = messages.filter(message => message.author.bot).map(message => {
-                        const header = (message?.components[0]?.components[0] as MessageButton)?.label;
-                        if (header == 'Unseal' || header == 'Reseal') {
-                            const whose = message?.content?.match(re_user)?.[0],
-                                choice = (message?.components[0]?.components[0] as MessageButton)?.customId?.slice(7);
-                            if (!whose || !choice) return;
+                else if (action == 'tally') {
+                    const results = getVoteResults(messages),
+                        total = getVoteTotal(results);
 
-                            return `${whose} voted for **${choice}**`;
-                        }
-                    }).filter(Boolean).map(String);
-
-                    results.unshift(`You peeked at **${results.length}** votes`);
                     await interaction.followUp({
-                        content: results.join('\n> '),
-                        ephemeral: true
+                        content: `${interaction.user.toString()} tallied all votes`,
+                        embeds: [{
+                            title: `Votes (${total})`,
+                            fields: buildResultFields(results, false)
+                        }]
+                    });
+                }
+                else if (action == 'show') {
+                    const results = getVoteResults(messages),
+                        total = getVoteTotal(results);
+
+                    await interaction.followUp({
+                        content: `${interaction.user.toString()} showed all votes`,
+                        embeds: [{
+                            title: `Votes (${total})`,
+                            fields: buildResultFields(results, true)
+                        }]
                     });
                 }
             }
             else {
                 await interaction.reply({
-                    content: `Only a moderator can ${action} all votes.`,
+                    content: `Only a moderator can ${action}.`,
                     ephemeral: true
                 });
             }
@@ -409,32 +430,51 @@ function buildChoice (choice: string, members: Collection<string, GuildMember>):
     )}`;
 }
 
-function buildModComponents (): MessageActionRowComponentResolvable[] {
+function buildPollActionComponents (): MessageActionRowComponentResolvable[] {
     return [
         {
             type: 'SELECT_MENU',
             customId: 'mod_poll',
-            placeholder: 'Select a Moderator Action',
+            emoji: '🗳️',
+            placeholder: 'Select a Poll Action',
             minValues: 1,
             maxValues: 1,
             options: [
                 {
-                    value: 'unseal',
-                    emoji: '📤',
-                    label: 'Unseal',
-                    description: 'Unseal all votes'
-                },
-                {
-                    value: 'reseal',
-                    emoji: '📥',
-                    label: 'Reseal',
-                    description: 'Reseal all votes'
+                    value: 'track',
+                    emoji: '🧾',
+                    label: 'Track',
+                    description: 'Track who voted (ephemeral, any member)'
                 },
                 {
                     value: 'peek',
                     emoji: '🔍',
                     label: 'Peek',
-                    description: 'Peek at all votes'
+                    description: 'Peek at all votes (ephemeral, moderator only)'
+                },
+                {
+                    value: 'unseal',
+                    emoji: '📤',
+                    label: 'Unseal',
+                    description: 'Unseal any sealed votes (moderator only)'
+                },
+                {
+                    value: 'reseal',
+                    emoji: '📥',
+                    label: 'Reseal',
+                    description: 'Reseal any unsealed votes (moderator only)'
+                },
+                {
+                    value: 'tally',
+                    emoji: '🧮',
+                    label: 'Tally',
+                    description: 'Tally vote counts (moderator only)'
+                },
+                {
+                    value: 'show',
+                    emoji: '📊',
+                    label: 'Show',
+                    description: 'Show all votes (moderator only)'
                 }
             ]
         }
@@ -491,4 +531,58 @@ function buildDiscardedComponents (choice: string): MessageActionRowComponentRes
             style: 'SECONDARY'
         }
     ];
+}
+
+function getVoteResults (messages: Collection<string, Message>): Record<string, Record<string, number>> {
+    const results: Record<string, Record<string, number>> = {};
+    messages.filter(message => message.author.bot).forEach(message => {
+        const firstButton = message?.components[0]?.components[0] as MessageButton;
+        if (!firstButton) return;
+
+        if (firstButton.label == 'Unseal' || firstButton.label == 'Reseal') {
+            const whose = message.content.match(re_user)?.[0],
+                choice = firstButton.customId?.slice(7);
+            if (!whose || !choice) return;
+
+            if (results[choice])
+                if (results[choice][whose])
+                    results[choice][whose]++;
+                else
+                    results[choice][whose] = 1;
+            else
+                results[choice] = { [whose]: 1 } ;
+        }
+    });
+    return results;
+}
+
+function getVoteTotal (results: Record<string, Record<string, number>>): number {
+    let total = 0;
+    for (const choice in results) {
+        for (const whose in results[choice]) {
+            total += results[choice][whose];
+        }
+    }
+    return total;
+}
+
+function buildResultFields (results: Record<string, Record<string, number>>, ascribed: boolean): EmbedField[] {
+    return Object.keys(results).map(choice => {
+        const count = Object.keys(results[choice])
+            .map(whose => results[choice][whose])
+            .reduce((a, b) => a + b, 0);
+
+        return {
+            name: trunc(`${choice} (${count})`, MAX_FIELD_NAME),
+            value: ascribed
+                ? commas(Object.keys(results[choice]).map(whose => {
+                    if (results[choice][whose] == 1)
+                        return whose;
+                    else
+                        return `${whose} (**${results[choice][whose]}**)`;
+                }))
+                : `by **${Object.keys(results[choice]).length}** members`,
+            inline: true
+        };
+    });
 }
