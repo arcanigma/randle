@@ -322,7 +322,7 @@ export const register = ({ client }: { client: Client }): void => {
                 }
                 else if (action == 'unseal') {
                     messages.filter(message => message.author.bot).forEach(message => {
-                        const button = (message.components[0]?.components[0] as MessageButton);
+                        const button = message.components[0]?.components[0] as MessageButton;
                         if (!button) return;
 
                         if (button.label == 'Unseal') {
@@ -344,7 +344,7 @@ export const register = ({ client }: { client: Client }): void => {
                 }
                 else if (action == 'reseal') {
                     messages.filter(message => message.author.bot).forEach(message => {
-                        const button = (message.components[0]?.components[0] as MessageButton);
+                        const button = message.components[0]?.components[0] as MessageButton;
                         if (!button) return;
 
                         if (button.label == 'Reseal') {
@@ -440,12 +440,12 @@ function buildPollActionComponents (): MessageActionRowComponentResolvable[] {
             minValues: 1,
             maxValues: 1,
             options: [
-                {
-                    value: 'track',
-                    emoji: '🧾',
-                    label: 'Track',
-                    description: 'Track who voted (ephemeral, any member)'
-                },
+                // {
+                //     value: 'track',
+                //     emoji: '🧾',
+                //     label: 'Track',
+                //     description: 'Track who voted (ephemeral, any member)'
+                // },
                 {
                     value: 'peek',
                     emoji: '🔍',
@@ -582,7 +582,8 @@ function buildResultFields (results: Record<string, Record<string, number>>, asc
                         return `${whose} (**${results[choice][whose]}**)`;
                 }))
                 : `by **${Object.keys(results[choice]).length}** members`,
-            inline: true
+            inline: true,
+            count: count
         };
-    });
+    }).sort((a, b) => (b.count - a.count) || (Math.random() < 0.5 ? -1 : 1)).map(({ name, value, inline }) => ({ name, value, inline }));
 }
