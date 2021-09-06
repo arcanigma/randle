@@ -1,8 +1,12 @@
 import { ApplicationCommandData, Client, Interaction, MessageActionRowComponentResolvable, MessageActionRowOptions, MessageButton, Permissions, TextChannel, ThreadChannel } from 'discord.js';
-import { MAX_ACTION_ROWS, MAX_BUTTON_LABEL, MAX_ROW_COMPONENTS } from '../constants';
+import emojiRegex from 'emoji-regex';
+import { MAX_ACTION_ROWS, MAX_ROW_COMPONENTS } from '../constants';
 import { registerSlashCommand } from '../library/backend';
-import { itemize, trunc } from '../library/factory';
+import { itemize, trunc, wss } from '../library/factory';
 import { blame } from '../library/message';
+import { shuffleCopy } from '../library/solve';
+
+const MAX_CHOICE_LABEL = 25;
 
 export const register = ({ client }: { client: Client }): void => {
 
@@ -42,12 +46,12 @@ export const register = ({ client }: { client: Client }): void => {
             if (choices.length < 1)
                 throw 'At least 1 choice is required.';
 
-            const MAX_CHOICES = MAX_ACTION_ROWS * MAX_ROW_COMPONENTS;
+            const MAX_CHOICES = (MAX_ACTION_ROWS - 1) * MAX_ROW_COMPONENTS;
             if (choices.length > MAX_CHOICES)
                 throw `At most ${MAX_CHOICES} choices are allowed.`;
 
-            if (choices.some(choice => choice.length > MAX_BUTTON_LABEL))
-                throw `A choice must be at most ${MAX_BUTTON_LABEL} characters.`;
+            if (choices.some(choice => choice.length > MAX_CHOICE_LABEL))
+                throw `A choice must be at most ${MAX_CHOICE_LABEL} characters.`;
 
             const reply = await interaction.reply({
                 content: `${interaction.user.toString()} made a poll`,
@@ -63,38 +67,38 @@ export const register = ({ client }: { client: Client }): void => {
             if (thread.joinable)
                 await thread.join();
 
+
+            const emojis = shuffleCopy(ABSTRACT_EMOJIS);
             const rows: MessageActionRowOptions[] = [];
             while (choices.length > 0) {
                 rows.push({
                     type: 'ACTION_ROW',
-                    components: choices.splice(0, MAX_ROW_COMPONENTS).map(choice => ({
-                        type: 'BUTTON',
-                        customId: `vote_${choice}`,
-                        emoji: buildButtonEmoji(choice),
-                        label: trunc(buildButtonChoice(choice), MAX_BUTTON_LABEL),
-                        style: 'PRIMARY'
-                    }))
+                    components: choices.splice(0, MAX_ROW_COMPONENTS).map(it => {
+                        const emoji = buildEmoji(it) ?? emojis.pop() as string,
+                            choice = buildChoice(it);
+
+                        return {
+                            type: 'BUTTON',
+                            customId: `vote_${emoji} ${choice}`,
+                            emoji: emoji,
+                            label: trunc(choice, MAX_CHOICE_LABEL),
+                            style: 'PRIMARY'
+                        };
+                    })
                 });
             }
+            rows.push({
+                type: 'ACTION_ROW',
+                components: buildModComponents()
+            });
 
             await thread.send({
-                content: '**Vote Here**',
+                content: '**Vote for Choices**',
                 components: rows
             });
 
-            await thread.send({
-                content: '**Moderate Votes**',
-                components: [
-                    {
-                        type: 'ACTION_ROW',
-                        components: buildModComponents()
-                    }
-                ]
-            });
-
-            // TODO moderator button: unseal all
-            // TODO moderator button: peek all
-            // TODO moderator button: tally
+            // TODO moderator button: public reveal all
+            // TODO moderator button: public tally all
         }
         catch (error: unknown) {
             await interaction.reply({
@@ -281,13 +285,13 @@ export const register = ({ client }: { client: Client }): void => {
     });
 
     client.on('interactionCreate', async interaction => {
-        if (!interaction.isButton() || !interaction.customId.startsWith('mod_')) return;
+        if (!interaction.isSelectMenu() || interaction.customId != 'mod_poll') return;
 
         if (!(interaction.channel instanceof ThreadChannel))
             throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
         try {
-            const action = (interaction.component as MessageButton).customId?.slice(4);
+            const action = interaction.values[0];
             if (!action) return;
 
             if (isThreadModerator(interaction)) {
@@ -317,7 +321,7 @@ export const register = ({ client }: { client: Client }): void => {
 
                     results.unshift(`You unsealed **${results.length}** votes`);
                     await interaction.reply({
-                        content: results.join('\n'),
+                        content: results.join('\n> '),
                         ephemeral: true
                     });
                 }
@@ -345,7 +349,7 @@ export const register = ({ client }: { client: Client }): void => {
 
                     results.unshift(`You resealed **${results.length}** votes`);
                     await interaction.reply({
-                        content: results.join('\n'),
+                        content: results.join('\n> '),
                         ephemeral: true
                     });
                 }
@@ -363,7 +367,7 @@ export const register = ({ client }: { client: Client }): void => {
 
                     results.unshift(`You peeked **${results.length}** votes`);
                     await interaction.reply({
-                        content: results.join('\n'),
+                        content: results.join('\n> '),
                         ephemeral: true
                     });
                 }
@@ -383,42 +387,52 @@ export const register = ({ client }: { client: Client }): void => {
         }
     });
 
-    function buildButtonEmoji (choice: string): string | undefined {
-        const match = choice.match(re_user);
-        if (match)
-            return match.length == 1 ? '👤' : '👥';
-        else
-            return undefined;
+    const ABSTRACT_EMOJIS = [
+        '⬛', '⬜', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '🟫',
+        '⚫', '⚪', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '🟤',
+        '🖤', '🤍', '❤️', '🧡', '💛', '💚', '💙', '💜', '🤎'
+    ];
+    function buildEmoji (choice: string): string | undefined {
+        return emojiRegex().exec(choice)?.[0];
     }
 
-    function buildButtonChoice (choice: string): string {
-        return choice.replaceAll(re_user, (_, id) =>
-            client.users.cache.get(id)?.username ?? 'Unknown'
-        );
+    const re_markdown = /[_~*]+/g;
+    function buildChoice (choice: string): string {
+        return `${wss(choice
+            .replaceAll(re_user, (_, id) => client.users.cache.get(id)?.username ?? 'Unknown')
+            .replaceAll(emojiRegex(), '')
+            .replaceAll(re_markdown, '')
+        )}`;
     }
 
     function buildModComponents (): MessageActionRowComponentResolvable[] {
         return [
             {
-                type: 'BUTTON',
-                customId: 'mod_unseal',
-                emoji: '🗳️',
-                label: 'Unseal All',
-                style: 'DANGER'
-            },
-            {
-                type: 'BUTTON',
-                customId: 'mod_reseal',
-                emoji: '🗳️',
-                label: 'Reseal All',
-                style: 'DANGER'
-            },
-            {
-                type: 'BUTTON',
-                customId: 'mod_peek',
-                emoji: '🔍',
-                label: 'Peek All',
-                style: 'DANGER'
+                type: 'SELECT_MENU',
+                customId: 'mod_poll',
+                placeholder: 'Select a Moderator Action',
+                minValues: 1,
+                maxValues: 1,
+                options: [
+                    {
+                        value: 'unseal',
+                        emoji: '📤',
+                        label: 'Unseal',
+                        description: 'Unseal any sealed votes'
+                    },
+                    {
+                        value: 'reseal',
+                        emoji: '📥',
+                        label: 'Reseal',
+                        description: 'Reseal any unsealed votes'
+                    },
+                    {
+                        value: 'peek',
+                        emoji: '🔍',
+                        label: 'Peek',
+                        description: 'Peek at all votes'
+                    }
+                ]
             }
         ];
     }
@@ -428,7 +442,7 @@ export const register = ({ client }: { client: Client }): void => {
             {
                 type: 'BUTTON',
                 customId: `unseal_${choice}`,
-                emoji: '🗳️',
+                emoji: '📤',
                 label: 'Unseal',
                 style: 'SECONDARY'
             },
@@ -456,7 +470,7 @@ export const register = ({ client }: { client: Client }): void => {
             {
                 type: 'BUTTON',
                 customId: `reseal_${choice}`,
-                emoji: '🗳️',
+                emoji: '📥',
                 label: 'Reseal',
                 style: 'SECONDARY'
             }
