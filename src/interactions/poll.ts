@@ -1,12 +1,19 @@
-import { ApplicationCommandData, Client, Interaction, MessageActionRowComponentResolvable, MessageActionRowOptions, MessageButton, Permissions, TextChannel, ThreadChannel } from 'discord.js';
+import { ApplicationCommandData, Client, Collection, GuildMember, Interaction, MessageActionRow, MessageActionRowComponentResolvable, MessageActionRowOptions, MessageButton, Permissions, TextChannel, ThreadChannel } from 'discord.js';
 import emojiRegex from 'emoji-regex';
-import { MAX_ACTION_ROWS, MAX_ROW_COMPONENTS } from '../constants';
+import { MAX_ACTION_ROWS, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } from '../constants';
 import { registerSlashCommand } from '../library/backend';
 import { itemize, trunc, wss } from '../library/factory';
 import { blame } from '../library/message';
 import { shuffleCopy } from '../library/solve';
 
-const MAX_CHOICE_LABEL = 25;
+const MAX_CHOICE_LABEL = 25,
+    DURATION_ONE_DAY = 1440;
+
+const ABSTRACT_EMOJIS = [
+    '⬛', '⬜', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '🟫',
+    '⚫', '⚪', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '🟤',
+    '🖤', '🤍', '❤️', '🧡', '💛', '💚', '💙', '💜', '🤎'
+];
 
 export const register = ({ client }: { client: Client }): void => {
 
@@ -24,7 +31,7 @@ export const register = ({ client }: { client: Client }): void => {
                 {
                     name: 'choices',
                     type: 'STRING',
-                    description: 'A list of vote choices',
+                    description: 'A list of choices, a range size, or an @everyone, @here, or @role mention',
                     required: true
                 },
             ]
@@ -33,6 +40,9 @@ export const register = ({ client }: { client: Client }): void => {
         await registerSlashCommand(slash, client);
     });
 
+
+    // TODO moderator action: public ascribed results
+    // TODO moderator action: public anonymous tally
     client.on('interactionCreate', async interaction => {
         if (!interaction.isCommand() || interaction.commandName !== 'poll') return;
 
@@ -60,22 +70,23 @@ export const register = ({ client }: { client: Client }): void => {
 
             const thread = await interaction.channel.threads.create({
                 startMessage: reply.id,
-                name: `${prompt}`,
-                autoArchiveDuration: 1440
+                name: trunc(prompt, MAX_THREAD_NAME),
+                autoArchiveDuration: DURATION_ONE_DAY
             });
 
             if (thread.joinable)
                 await thread.join();
 
 
-            const emojis = shuffleCopy(ABSTRACT_EMOJIS);
+            const emojis = shuffleCopy(ABSTRACT_EMOJIS),
+                members = interaction.channel.members;
             const rows: MessageActionRowOptions[] = [];
             while (choices.length > 0) {
                 rows.push({
                     type: 'ACTION_ROW',
                     components: choices.splice(0, MAX_ROW_COMPONENTS).map(it => {
                         const emoji = buildEmoji(it) ?? emojis.pop() as string,
-                            choice = buildChoice(it);
+                            choice = buildChoice(it, members);
 
                         return {
                             type: 'BUTTON',
@@ -96,9 +107,6 @@ export const register = ({ client }: { client: Client }): void => {
                 content: '**Vote for Choices**',
                 components: rows
             });
-
-            // TODO moderator button: public reveal all
-            // TODO moderator button: public tally all
         }
         catch (error: unknown) {
             await interaction.reply({
@@ -108,7 +116,7 @@ export const register = ({ client }: { client: Client }): void => {
         }
     });
 
-    // TODO too many listeners
+    // TODO combine listeners when possible
     client.on('interactionCreate', async interaction => {
         if (!interaction.isButton() || !interaction.customId.startsWith('vote_')) return;
 
@@ -139,7 +147,6 @@ export const register = ({ client }: { client: Client }): void => {
         }
     });
 
-    const re_user = /<@!?(\d+)>/g;
     client.on('interactionCreate', async interaction => {
         if (!interaction.isButton() || !interaction.customId.startsWith('unseal_')) return;
 
@@ -294,11 +301,16 @@ export const register = ({ client }: { client: Client }): void => {
             const action = interaction.values[0];
             if (!action) return;
 
+            await interaction.update({
+                content: interaction.message.content,
+                components: interaction.message.components as MessageActionRow[]
+            });
+
             if (isThreadModerator(interaction)) {
                 const messages = await interaction.channel.messages.fetch();
 
                 if (action == 'unseal') {
-                    const results: string[] = messages.filter(message => message.author.bot).map(message => {
+                    messages.filter(message => message.author.bot).forEach(message => {
                         const header = (message?.components[0]?.components[0] as MessageButton)?.label;
                         if (header == 'Unseal') {
                             const whose = message?.content?.match(re_user)?.[0],
@@ -314,19 +326,11 @@ export const register = ({ client }: { client: Client }): void => {
                                     }
                                 ]
                             });
-
-                            return `${whose} voted for **${choice}**`;
                         }
-                    }).filter(Boolean).map(String);
-
-                    results.unshift(`You unsealed **${results.length}** votes`);
-                    await interaction.reply({
-                        content: results.join('\n> '),
-                        ephemeral: true
                     });
                 }
                 else if (action == 'reseal') {
-                    const results: string[] = messages.filter(message => message.author.bot).map(message => {
+                    messages.filter(message => message.author.bot).forEach(message => {
                         const header = (message?.components[0]?.components[0] as MessageButton)?.label;
                         if (header == 'Reseal') {
                             const whose = message?.content?.match(re_user)?.[0],
@@ -342,15 +346,7 @@ export const register = ({ client }: { client: Client }): void => {
                                     }
                                 ]
                             });
-
-                            return `${whose} voted`;
                         }
-                    }).filter(Boolean).map(String);
-
-                    results.unshift(`You resealed **${results.length}** votes`);
-                    await interaction.reply({
-                        content: results.join('\n> '),
-                        ephemeral: true
                     });
                 }
                 else if (action == 'peek') {
@@ -365,8 +361,8 @@ export const register = ({ client }: { client: Client }): void => {
                         }
                     }).filter(Boolean).map(String);
 
-                    results.unshift(`You peeked **${results.length}** votes`);
-                    await interaction.reply({
+                    results.unshift(`You peeked at **${results.length}** votes`);
+                    await interaction.followUp({
                         content: results.join('\n> '),
                         ephemeral: true
                     });
@@ -387,115 +383,112 @@ export const register = ({ client }: { client: Client }): void => {
         }
     });
 
-    const ABSTRACT_EMOJIS = [
-        '⬛', '⬜', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '🟫',
-        '⚫', '⚪', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '🟤',
-        '🖤', '🤍', '❤️', '🧡', '💛', '💚', '💙', '💜', '🤎'
-    ];
-    function buildEmoji (choice: string): string | undefined {
-        return emojiRegex().exec(choice)?.[0];
-    }
-
-    const re_markdown = /[_~*]+/g;
-    function buildChoice (choice: string): string {
-        return `${wss(choice
-            .replaceAll(re_user, (_, id) => client.users.cache.get(id)?.username ?? 'Unknown')
-            .replaceAll(emojiRegex(), '')
-            .replaceAll(re_markdown, '')
-        )}`;
-    }
-
-    function buildModComponents (): MessageActionRowComponentResolvable[] {
-        return [
-            {
-                type: 'SELECT_MENU',
-                customId: 'mod_poll',
-                placeholder: 'Select a Moderator Action',
-                minValues: 1,
-                maxValues: 1,
-                options: [
-                    {
-                        value: 'unseal',
-                        emoji: '📤',
-                        label: 'Unseal',
-                        description: 'Unseal any sealed votes'
-                    },
-                    {
-                        value: 'reseal',
-                        emoji: '📥',
-                        label: 'Reseal',
-                        description: 'Reseal any unsealed votes'
-                    },
-                    {
-                        value: 'peek',
-                        emoji: '🔍',
-                        label: 'Peek',
-                        description: 'Peek at all votes'
-                    }
-                ]
-            }
-        ];
-    }
-
-    function buildSealedComponents (choice: string): MessageActionRowComponentResolvable[] {
-        return [
-            {
-                type: 'BUTTON',
-                customId: `unseal_${choice}`,
-                emoji: '📤',
-                label: 'Unseal',
-                style: 'SECONDARY'
-            },
-            {
-                type: 'BUTTON',
-                customId: `peek_${choice}`,
-                emoji: '🔍',
-                label: 'Peek',
-                style: 'SECONDARY'
-            },
-            {
-                type: 'BUTTON',
-                customId: `discard_${choice}`,
-                emoji: '🗑️',
-                label: 'Discard',
-                style: 'SECONDARY'
-            }
-        ];
-    }
-
-
-
-    function buildUnsealedComponents (choice: string): MessageActionRowComponentResolvable[] {
-        return [
-            {
-                type: 'BUTTON',
-                customId: `reseal_${choice}`,
-                emoji: '📥',
-                label: 'Reseal',
-                style: 'SECONDARY'
-            }
-        ];
-    }
-
-    function buildDiscardedComponents (choice: string): MessageActionRowComponentResolvable[] {
-        return [
-            {
-                type: 'BUTTON',
-                customId: `reseal_${choice}`,
-                emoji: '🗑️',
-                label: 'Restore',
-                style: 'SECONDARY'
-            }
-        ];
-    }
-
-    function isThreadModerator (interaction: Interaction): boolean {
-        const permissions = (interaction.channel as ThreadChannel).permissionsFor(interaction.user);
-        return permissions?.has(Permissions.FLAGS.MANAGE_MESSAGES) ?? false;
-    }
-
-    function isAuthor (interaction: Interaction, whose?: string): boolean {
-        return interaction.user.toString() == whose;
-    }
-
 };
+
+function isAuthor (interaction: Interaction, whose?: string): boolean {
+    return interaction.user.toString() == whose;
+}
+
+function isThreadModerator (interaction: Interaction): boolean {
+    const permissions = (interaction.channel as ThreadChannel).permissionsFor(interaction.user);
+    return permissions?.has(Permissions.FLAGS.MANAGE_MESSAGES) ?? false;
+}
+
+const re_emoji = emojiRegex();
+function buildEmoji (choice: string): string | undefined {
+    return re_emoji.exec(choice)?.[0];
+}
+
+const re_user = /<@!?(\d+)>/g,
+    re_markdown = /[_~*]+/g;
+function buildChoice (choice: string, members: Collection<string, GuildMember>): string {
+    return `${wss(choice
+        .replaceAll(re_user, (_, id) => members.get(id)?.nickname ?? members.get(id)?.user.username ?? 'Unknown')
+        .replaceAll(re_emoji, '')
+        .replaceAll(re_markdown, '')
+    )}`;
+}
+
+function buildModComponents (): MessageActionRowComponentResolvable[] {
+    return [
+        {
+            type: 'SELECT_MENU',
+            customId: 'mod_poll',
+            placeholder: 'Select a Moderator Action',
+            minValues: 1,
+            maxValues: 1,
+            options: [
+                {
+                    value: 'unseal',
+                    emoji: '📤',
+                    label: 'Unseal',
+                    description: 'Unseal all votes'
+                },
+                {
+                    value: 'reseal',
+                    emoji: '📥',
+                    label: 'Reseal',
+                    description: 'Reseal all votes'
+                },
+                {
+                    value: 'peek',
+                    emoji: '🔍',
+                    label: 'Peek',
+                    description: 'Peek at all votes'
+                }
+            ]
+        }
+    ];
+}
+
+function buildSealedComponents (choice: string): MessageActionRowComponentResolvable[] {
+    return [
+        {
+            type: 'BUTTON',
+            customId: `unseal_${choice}`,
+            emoji: '📤',
+            label: 'Unseal',
+            style: 'SECONDARY'
+        },
+        {
+            type: 'BUTTON',
+            customId: `peek_${choice}`,
+            emoji: '🔍',
+            label: 'Peek',
+            style: 'SECONDARY'
+        },
+        {
+            type: 'BUTTON',
+            customId: `discard_${choice}`,
+            emoji: '🗑️',
+            label: 'Discard',
+            style: 'SECONDARY'
+        }
+    ];
+}
+
+
+
+function buildUnsealedComponents (choice: string): MessageActionRowComponentResolvable[] {
+    return [
+        {
+            type: 'BUTTON',
+            customId: `reseal_${choice}`,
+            emoji: '📥',
+            label: 'Reseal',
+            style: 'SECONDARY'
+        }
+    ];
+}
+
+function buildDiscardedComponents (choice: string): MessageActionRowComponentResolvable[] {
+    return [
+        {
+            type: 'BUTTON',
+            customId: `reseal_${choice}`,
+            emoji: '🗑️',
+            label: 'Restore',
+            style: 'SECONDARY'
+        }
+    ];
+}
