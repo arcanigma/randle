@@ -11,7 +11,6 @@ import { shuffleCopy } from '../library/solve';
 const MAX_CHOICE_LABEL = 25,
     DURATION_ONE_DAY = 1440;
 
-// TODO don't allow manual emojis to collide with abstract emojis
 const ABSTRACT_EMOJIS = [
     '⬛', '⬜', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '🟫',
     '⚫', '⚪', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '🟤',
@@ -51,7 +50,12 @@ export const register = ({ client }: { client: Client }): void => {
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
             const prompt = interaction.options.get('prompt')?.value as string,
-                choices = await itemize(interaction.options.get('choices')?.value as string, interaction);
+                members = interaction.channel.members,
+                choices = (await itemize(interaction.options.get('choices')?.value as string, interaction)).map(it => ({
+                    emoji: buildEmoji(it),
+                    label: buildChoice(it, members)
+                })),
+                emojis = shuffleCopy(ABSTRACT_EMOJIS.filter(emoji => !choices.some(choice => choice.emoji == emoji)));
 
             if (choices.length < 1)
                 throw 'At least 1 choice is required.';
@@ -59,9 +63,6 @@ export const register = ({ client }: { client: Client }): void => {
             const MAX_CHOICES = (MAX_ACTION_ROWS - 1) * MAX_ROW_COMPONENTS;
             if (choices.length > MAX_CHOICES)
                 throw `At most ${MAX_CHOICES} choices are allowed.`;
-
-            if (choices.some(choice => choice.length > MAX_CHOICE_LABEL))
-                throw `A choice must be at most ${MAX_CHOICE_LABEL} characters.`;
 
             const reply = await interaction.reply({
                 content: `${interaction.user.toString()} made a poll`,
@@ -77,25 +78,18 @@ export const register = ({ client }: { client: Client }): void => {
             if (thread.joinable)
                 await thread.join();
 
-
-            const components: MessageActionRowOptions[] = [],
-                emojis = shuffleCopy(ABSTRACT_EMOJIS),
-                members = interaction.channel.members;
+            const components: MessageActionRowOptions[] = [];
             while (choices.length > 0) {
                 components.push({
                     type: 'ACTION_ROW',
-                    components: choices.splice(0, MAX_ROW_COMPONENTS).map(it => {
-                        const emoji = buildEmoji(it) ?? emojis.pop() as string,
-                            choice = buildChoice(it, members);
+                    components: choices.splice(0, MAX_ROW_COMPONENTS).map(it => ({
+                        type: 'BUTTON',
+                        emoji: it.emoji ?? (it.emoji = emojis.pop() as string),
+                        label: (it.label = trunc(it.label, MAX_CHOICE_LABEL)),
+                        customId: `vote_${it.emoji} ${it.label}`,
+                        style: 'PRIMARY'
+                    }))
 
-                        return {
-                            type: 'BUTTON',
-                            customId: `vote_${emoji} ${choice}`,
-                            emoji: emoji,
-                            label: trunc(choice, MAX_CHOICE_LABEL),
-                            style: 'PRIMARY'
-                        };
-                    })
                 });
             }
             components.push({
