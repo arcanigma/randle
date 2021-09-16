@@ -40,10 +40,10 @@ export const register = ({ client }: { client: Client }): void => {
 
         await interaction.deferReply();
 
-        if (!(interaction.channel instanceof TextChannel))
-            throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
-
         try {
+            if (!(interaction.channel instanceof TextChannel))
+                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
+
             const url = interaction.options.get('url')?.value as string,
                 moderator = interaction.channel.members.get(interaction.options.get('moderator')?.value as Snowflake);
 

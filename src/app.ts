@@ -12,11 +12,12 @@ import * as status from './routes/status';
 
 // TODO handle mention caching
 
-// TODO message command to ~~strike~~ a message
-
-// TODO slash commands for anonymous send-and-reply
-// TODO slash commands for macros
-// TODO slash commands for tracking reactions etc
+// TODO menu command: ~~strike~~ a message
+// TODO menu command: run as script
+// TODO deck threads
+// TODO anonymous send-and-reply
+// TODO support for macros
+// TODO tracking reactions etc in topic
 
 const client = new Client({ intents: [
     'GUILDS', 'GUILD_MESSAGES', 'GUILD_MEMBERS', 'GUILD_PRESENCES'

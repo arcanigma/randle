@@ -6,9 +6,12 @@ import { commas, itemize, trunc, wss } from '../library/factory';
 import { blame } from '../library/message';
 import { shuffleCopy } from '../library/solve';
 
+// TODO support private thread polls
+
 const MAX_CHOICE_LABEL = 25,
     DURATION_ONE_DAY = 1440;
 
+// TODO don't allow manual emojis to collide with abstract emojis
 const ABSTRACT_EMOJIS = [
     '⬛', '⬜', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '🟫',
     '⚫', '⚪', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '🟤',
@@ -43,10 +46,10 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interactionCreate', async interaction => {
         if (!interaction.isCommand() || interaction.commandName !== 'poll') return;
 
-        if (!(interaction.channel instanceof TextChannel))
-            throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
-
         try {
+            if (!(interaction.channel instanceof TextChannel))
+                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
+
             const prompt = interaction.options.get('prompt')?.value as string,
                 choices = await itemize(interaction.options.get('choices')?.value as string, interaction);
 
@@ -121,6 +124,7 @@ export const register = ({ client }: { client: Client }): void => {
             const choice = (interaction.component as MessageButton).customId?.slice(5);
             if (!choice) return;
 
+            // TODO don't reply, just send standalone
             await interaction.reply({
                 content: `${interaction.user.toString()} voted`,
                 components: [
@@ -147,10 +151,10 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interactionCreate', async interaction => {
         if (!interaction.isButton() || !interaction.customId.startsWith('unseal_')) return;
 
-        if (!(interaction.channel instanceof ThreadChannel))
-            throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
-
         try {
+            if (!(interaction.channel instanceof ThreadChannel))
+                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
+
             const choice = (interaction.component as MessageButton).customId?.slice(7),
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
@@ -184,10 +188,10 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interactionCreate', async interaction => {
         if (!interaction.isButton() || !interaction.customId.startsWith('reseal_')) return;
 
-        if (!(interaction.channel instanceof ThreadChannel))
-            throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
-
         try {
+            if (!(interaction.channel instanceof ThreadChannel))
+                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
+
             const choice = (interaction.component as MessageButton).customId?.slice(7),
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
@@ -221,10 +225,10 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interactionCreate', async interaction => {
         if (!interaction.isButton() || !interaction.customId.startsWith('peek_')) return;
 
-        if (!(interaction.channel instanceof ThreadChannel))
-            throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
-
         try {
+            if (!(interaction.channel instanceof ThreadChannel))
+                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
+
             const choice = (interaction.component as MessageButton).customId?.slice(5),
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
@@ -253,10 +257,10 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interactionCreate', async interaction => {
         if (!interaction.isButton() || !interaction.customId.startsWith('discard_')) return;
 
-        if (!(interaction.channel instanceof ThreadChannel))
-            throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
-
         try {
+            if (!(interaction.channel instanceof ThreadChannel))
+                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
+
             const choice = (interaction.component as MessageButton).customId?.slice(8),
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
@@ -291,10 +295,10 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interactionCreate', async interaction => {
         if (!interaction.isSelectMenu() || interaction.customId != 'mod_poll') return;
 
-        if (!(interaction.channel instanceof ThreadChannel))
-            throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
-
         try {
+            if (!(interaction.channel instanceof ThreadChannel))
+                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
+
             const action = interaction.values[0];
             if (!action) return;
 
@@ -575,6 +579,7 @@ function buildResultFields (results: Record<string, Record<string, number>>, asc
         return {
             name: trunc(`${choice} (${count})`, MAX_FIELD_NAME),
             value: ascribed
+                // TODO deterministic member order
                 ? commas(Object.keys(results[choice]).map(whose => {
                     if (results[choice][whose] == 1)
                         return whose;

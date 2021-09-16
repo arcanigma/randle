@@ -26,10 +26,10 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interactionCreate', async interaction => {
         if (!interaction.isCommand() || interaction.commandName !== 'who') return;
 
-        if (!(interaction.channel instanceof TextChannel))
-            throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
-
         try {
+            if (!(interaction.channel instanceof TextChannel))
+                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
+
             const role_id = interaction.options.get('role')?.value as string;
 
             if (role_id == interaction.guild?.roles.everyone.id) {
