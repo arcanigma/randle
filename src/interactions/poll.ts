@@ -4,7 +4,7 @@ import { MAX_ACTION_ROWS, MAX_FIELD_NAME, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } 
 import { registerSlashCommand } from '../library/backend';
 import { commas, itemize, trunc, wss } from '../library/factory';
 import { blame } from '../library/message';
-import { shuffleCopy } from '../library/solve';
+import { shuffleCopy, shuffleInPlace } from '../library/solve';
 
 // TODO support private thread polls
 
@@ -118,7 +118,6 @@ export const register = ({ client }: { client: Client }): void => {
             const choice = (interaction.component as MessageButton).customId?.slice(5);
             if (!choice) return;
 
-            // TODO don't reply, just send standalone
             await interaction.reply({
                 content: `${interaction.user.toString()} voted`,
                 components: [
@@ -304,7 +303,7 @@ export const register = ({ client }: { client: Client }): void => {
             if (isThreadModerator(interaction)) {
                 const messages = await interaction.channel.messages.fetch();
 
-                // TODO track by member
+                // TODO track which eligible members have/n't voted
                 if (action == 'peek') {
                     const results = getVoteResults(messages),
                         total = getVoteTotal(results);
@@ -573,8 +572,7 @@ function buildResultFields (results: Record<string, Record<string, number>>, asc
         return {
             name: trunc(`${choice} (${count})`, MAX_FIELD_NAME),
             value: ascribed
-                // TODO deterministic member order
-                ? commas(Object.keys(results[choice]).map(whose => {
+                ? commas(shuffleInPlace(Object.keys(results[choice])).map(whose => {
                     if (results[choice][whose] == 1)
                         return whose;
                     else
