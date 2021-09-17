@@ -7,12 +7,12 @@ export function blame ({ error, interaction }: { error: unknown; interaction: In
         console.error({ error });
         return <MessageEmbed[]>[
             {
-                title: '⚠️ Warning',
-                description: 'Your message caused an error. Please report these details to the developer.',
+                title: '🛑 Error',
+                description: 'Your action caused an error.',
                 fields: [
                     {
-                        name: trunc(error.name, MAX_FIELD_NAME),
-                        value: trunc(error.message, MAX_FIELD_VALUE),
+                        name: trunc(error.name || 'Error', MAX_FIELD_NAME),
+                        value: trunc(error.message || 'unspecified', MAX_FIELD_VALUE),
                         inline: true
                     },
                     {
@@ -29,12 +29,12 @@ export function blame ({ error, interaction }: { error: unknown; interaction: In
                         ? [
                             {
                                 name: 'Command',
-                                value: trunc(interaction.commandName, MAX_FIELD_VALUE),
+                                value: trunc(interaction.commandName || 'unknown', MAX_FIELD_VALUE),
                                 inline: true
                             },
                             {
                                 name: 'Options',
-                                value: trunc(JSON.stringify(interaction.options), MAX_FIELD_VALUE),
+                                value: trunc(JSON.stringify(interaction.options.data.map(({ name, value }) => ({ name, value }))) || 'none', MAX_FIELD_VALUE),
                                 inline: true
                             }
                         ]
@@ -49,10 +49,10 @@ export function blame ({ error, interaction }: { error: unknown; interaction: In
         return <MessageEmbed[]>[
             {
                 title: '⚠️ Warning',
-                description: 'Your command has a problem. Please correct the problem before trying again.',
+                description: 'Your action caused a warning.',
                 fields: [
                     {
-                        name: 'User Error',
+                        name: 'User Warning',
                         value: trunc(error as string, MAX_FIELD_VALUE),
                         inline: true
                     },
