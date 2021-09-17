@@ -49,6 +49,9 @@ export const register = ({ client }: { client: Client }): void => {
             if (!(interaction.channel instanceof TextChannel))
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
+            if (!canMakePoll(interaction))
+                throw "You don't have permission to make a poll in this channel";
+
             const prompt = interaction.options.get('prompt')?.value as string,
                 members = interaction.channel.members,
                 choices = (await itemize(interaction.options.get('choices')?.value as string, interaction)).map(it => ({
@@ -115,6 +118,9 @@ export const register = ({ client }: { client: Client }): void => {
         if (!interaction.isButton() || !interaction.customId.startsWith('vote_')) return;
 
         try {
+            if (!canVote(interaction))
+                throw "You don't have permission to vote in this poll";
+
             const choice = (interaction.component as MessageButton).customId?.slice(5);
             if (!choice) return;
 
@@ -152,23 +158,18 @@ export const register = ({ client }: { client: Client }): void => {
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
 
-            if (isAuthor(interaction, whose) || isThreadModerator(interaction)) {
-                await interaction.update({
-                    content: `${whose} voted for **${choice}**`,
-                    components: [
-                        {
-                            type: 'ACTION_ROW',
-                            components: buildUnsealedComponents(choice)
-                        }
-                    ]
-                });
-            }
-            else {
-                await interaction.reply({
-                    content: `Only ${whose} or a moderator can unseal their vote.`,
-                    ephemeral: true
-                });
-            }
+            if (!isAuthor(interaction, whose) && !canModeratePoll(interaction))
+                throw "You don't have permission to unseal that vote";
+
+            await interaction.update({
+                content: `${whose} voted for **${choice}**`,
+                components: [
+                    {
+                        type: 'ACTION_ROW',
+                        components: buildUnsealedComponents(choice)
+                    }
+                ]
+            });
         }
         catch (error: unknown) {
             await interaction.reply({
@@ -189,23 +190,18 @@ export const register = ({ client }: { client: Client }): void => {
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
 
-            if (isAuthor(interaction, whose) || isThreadModerator(interaction)) {
-                await interaction.update({
-                    content: `${whose} voted`,
-                    components: [
-                        {
-                            type: 'ACTION_ROW',
-                            components: buildSealedComponents(choice)
-                        }
-                    ]
-                });
-            }
-            else {
-                await interaction.reply({
-                    content: `Only ${whose} or a moderator can reseal their vote.`,
-                    ephemeral: true
-                });
-            }
+            if (!isAuthor(interaction, whose) && !canModeratePoll(interaction))
+                throw "You don't have permission to reseal that vote";
+
+            await interaction.update({
+                content: `${whose} voted`,
+                components: [
+                    {
+                        type: 'ACTION_ROW',
+                        components: buildSealedComponents(choice)
+                    }
+                ]
+            });
         }
         catch (error: unknown) {
             await interaction.reply({
@@ -226,18 +222,13 @@ export const register = ({ client }: { client: Client }): void => {
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
 
-            if (isAuthor(interaction, whose) || isThreadModerator(interaction)) {
-                await interaction.reply({
-                    content: `${interaction.user.toString() == whose ? 'You' : whose} voted for **${choice}**`,
-                    ephemeral: true
-                });
-            }
-            else {
-                await interaction.reply({
-                    content: `Only ${whose} or a moderator can peek at their vote.`,
-                    ephemeral: true
-                });
-            }
+            if (!isAuthor(interaction, whose) && !canModeratePoll(interaction))
+                throw "You don't have permission to peek at that vote";
+
+            await interaction.reply({
+                content: `${interaction.user.toString() == whose ? 'You' : whose} voted for **${choice}**`,
+                ephemeral: true
+            });
         }
         catch (error: unknown) {
             await interaction.reply({
@@ -258,24 +249,19 @@ export const register = ({ client }: { client: Client }): void => {
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
 
-            if (isAuthor(interaction, whose) || isThreadModerator(interaction)) {
-                await interaction.update({
-                    content: `${whose} discarded a vote`,
-                    components: [
-                        {
-                            type: 'ACTION_ROW',
-                            components: buildDiscardedComponents(choice)
-                        }
-                    ]
+            if (!isAuthor(interaction, whose) && !canModeratePoll(interaction))
+                throw "You don't have permission to discard that vote";
 
-                });
-            }
-            else {
-                await interaction.reply({
-                    content: `Only ${whose} or a moderator can discard their vote.`,
-                    ephemeral: true
-                });
-            }
+            await interaction.update({
+                content: `${whose} discarded a vote`,
+                components: [
+                    {
+                        type: 'ACTION_ROW',
+                        components: buildDiscardedComponents(choice)
+                    }
+                ]
+
+            });
         }
         catch (error: unknown) {
             await interaction.reply({
@@ -292,6 +278,9 @@ export const register = ({ client }: { client: Client }): void => {
             if (!(interaction.channel instanceof ThreadChannel))
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
+            if (!canModeratePoll(interaction))
+                throw "You don't have permission to moderate this poll";
+
             const action = interaction.values[0];
             if (!action) return;
 
@@ -300,96 +289,88 @@ export const register = ({ client }: { client: Client }): void => {
                 components: interaction.message.components as MessageActionRow[]
             });
 
-            if (isThreadModerator(interaction)) {
-                const messages = await interaction.channel.messages.fetch();
+            const messages = await interaction.channel.messages.fetch();
 
-                // TODO track which eligible members have/n't voted
-                if (action == 'peek') {
-                    const results = getVoteResults(messages),
-                        total = getVoteTotal(results);
+            // TODO track which eligible members have/n't voted
+            if (action == 'peek') {
+                const results = getVoteResults(messages),
+                    total = getVoteTotal(results);
 
-                    await interaction.followUp({
-                        content: 'You peeked at all votes',
-                        embeds: [{
-                            title: `Votes (${total})`,
-                            fields: buildResultFields(results, true)
-                        }],
-                        ephemeral: true
-                    });
-                }
-                else if (action == 'unseal') {
-                    messages.filter(message => message.author.bot).forEach(message => {
-                        const button = message.components[0]?.components[0] as MessageButton;
-                        if (!button) return;
-
-                        if (button.label == 'Unseal') {
-                            const whose = message.content.match(re_user)?.[0],
-                                choice = button.customId?.slice(7);
-                            if (!whose || !choice) return;
-
-                            void message.edit({
-                                content: `${whose} voted for **${choice}**`,
-                                components: [
-                                    {
-                                        type: 'ACTION_ROW',
-                                        components: buildUnsealedComponents(choice)
-                                    }
-                                ]
-                            });
-                        }
-                    });
-                }
-                else if (action == 'reseal') {
-                    messages.filter(message => message.author.bot).forEach(message => {
-                        const button = message.components[0]?.components[0] as MessageButton;
-                        if (!button) return;
-
-                        if (button.label == 'Reseal') {
-                            const whose = message.content.match(re_user)?.[0],
-                                choice = button.customId?.slice(7);
-                            if (!whose || !choice) return;
-
-                            void message.edit({
-                                content: `${whose} voted`,
-                                components: [
-                                    {
-                                        type: 'ACTION_ROW',
-                                        components: buildSealedComponents(choice)
-                                    }
-                                ]
-                            });
-                        }
-                    });
-                }
-                else if (action == 'tally') {
-                    const results = getVoteResults(messages),
-                        total = getVoteTotal(results);
-
-                    await interaction.followUp({
-                        content: `${interaction.user.toString()} tallied all votes`,
-                        embeds: [{
-                            title: `Votes (${total})`,
-                            fields: buildResultFields(results, false)
-                        }]
-                    });
-                }
-                else if (action == 'show') {
-                    const results = getVoteResults(messages),
-                        total = getVoteTotal(results);
-
-                    await interaction.followUp({
-                        content: `${interaction.user.toString()} showed all votes`,
-                        embeds: [{
-                            title: `Votes (${total})`,
-                            fields: buildResultFields(results, true)
-                        }]
-                    });
-                }
-            }
-            else {
-                await interaction.reply({
-                    content: `Only a moderator can ${action}.`,
+                await interaction.followUp({
+                    content: 'You peeked at all votes',
+                    embeds: [{
+                        title: `Votes (${total})`,
+                        fields: buildResultFields(results, true)
+                    }],
                     ephemeral: true
+                });
+            }
+            else if (action == 'unseal') {
+                messages.filter(message => message.author.bot).forEach(message => {
+                    const button = message.components[0]?.components[0] as MessageButton;
+                    if (!button) return;
+
+                    if (button.label == 'Unseal') {
+                        const whose = message.content.match(re_user)?.[0],
+                            choice = button.customId?.slice(7);
+                        if (!whose || !choice) return;
+
+                        void message.edit({
+                            content: `${whose} voted for **${choice}**`,
+                            components: [
+                                {
+                                    type: 'ACTION_ROW',
+                                    components: buildUnsealedComponents(choice)
+                                }
+                            ]
+                        });
+                    }
+                });
+            }
+            else if (action == 'reseal') {
+                messages.filter(message => message.author.bot).forEach(message => {
+                    const button = message.components[0]?.components[0] as MessageButton;
+                    if (!button) return;
+
+                    if (button.label == 'Reseal') {
+                        const whose = message.content.match(re_user)?.[0],
+                            choice = button.customId?.slice(7);
+                        if (!whose || !choice) return;
+
+                        void message.edit({
+                            content: `${whose} voted`,
+                            components: [
+                                {
+                                    type: 'ACTION_ROW',
+                                    components: buildSealedComponents(choice)
+                                }
+                            ]
+                        });
+                    }
+                });
+            }
+            else if (action == 'tally') {
+                const results = getVoteResults(messages),
+                    total = getVoteTotal(results);
+
+                await interaction.followUp({
+                    content: `${interaction.user.toString()} tallied all votes`,
+                    embeds: [{
+                        title: `Votes (${total})`,
+                        fields: buildResultFields(results, false)
+                    }]
+                });
+            }
+            else if (action == 'show') {
+                const results = getVoteResults(messages),
+                    total = getVoteTotal(results);
+
+                await interaction.followUp({
+                    content: `${interaction.user.toString()} showed all votes`,
+                    embeds: [{
+                        title: `Votes (${total})`,
+                        fields: buildResultFields(results, true)
+                    }]
                 });
             }
         }
@@ -403,13 +384,27 @@ export const register = ({ client }: { client: Client }): void => {
 
 };
 
-function isAuthor (interaction: Interaction, whose?: string): boolean {
+function isAuthor (interaction: Interaction, whose: string): boolean {
     return interaction.user.toString() == whose;
 }
 
-function isThreadModerator (interaction: Interaction): boolean {
+function canVote (interaction: Interaction): boolean {
     const permissions = (interaction.channel as ThreadChannel).permissionsFor(interaction.user);
-    return permissions?.has(Permissions.FLAGS.MANAGE_MESSAGES) ?? false;
+
+    // TODO refactor SEND_MESSAGES_IN_THREADS in new API version
+    return permissions?.has(Permissions.FLAGS.SEND_MESSAGES) ?? false;
+}
+
+function canMakePoll (interaction: Interaction): boolean {
+    const permissions = (interaction.channel as ThreadChannel).permissionsFor(interaction.user);
+
+    // TODO refactor CREATE_PUBLIC_THREADS in new API version
+    return permissions?.has(Permissions.FLAGS.USE_PUBLIC_THREADS) ?? false;
+}
+
+function canModeratePoll (interaction: Interaction): boolean {
+    const permissions = (interaction.channel as ThreadChannel).permissionsFor(interaction.user);
+    return permissions?.has(Permissions.FLAGS.MANAGE_THREADS) ?? false;
 }
 
 const re_emoji = emojiRegex();
