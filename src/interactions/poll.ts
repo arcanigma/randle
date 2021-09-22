@@ -1,4 +1,4 @@
-import { ApplicationCommandData, Client, Collection, EmbedField, GuildMember, Interaction, Message, MessageActionRow, MessageActionRowComponentResolvable, MessageActionRowOptions, MessageButton, Permissions, TextChannel, ThreadChannel } from 'discord.js';
+import { ApplicationCommandData, Client, Collection, EmbedField, GuildMember, Interaction, Message, MessageActionRow, MessageActionRowComponentResolvable, MessageActionRowOptions, MessageButton, Permissions, TextChannel, ThreadChannel, UserMention } from 'discord.js';
 import emojiRegex from 'emoji-regex';
 import { MAX_ACTION_ROWS, MAX_FIELD_NAME, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } from '../constants';
 import { registerSlashCommand } from '../library/backend';
@@ -278,11 +278,15 @@ export const register = ({ client }: { client: Client }): void => {
             if (!(interaction.channel instanceof ThreadChannel))
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
-            if (!canModeratePoll(interaction))
-                throw "You don't have permission to moderate this poll";
-
             const action = interaction.values[0];
             if (!action) return;
+
+            if (action == 'check') {
+                if (!canVote(interaction))
+                    throw "You don't have permission to check this poll";
+            }
+            else if (!canModeratePoll(interaction))
+                throw "You don't have permission to moderate this poll";
 
             await interaction.update({
                 content: interaction.message.content,
@@ -291,8 +295,35 @@ export const register = ({ client }: { client: Client }): void => {
 
             const messages = await interaction.channel.messages.fetch();
 
-            // TODO track which eligible members have/n't voted
-            if (action == 'peek') {
+            if (action == 'check') {
+                const results = getVoteResults(messages),
+                    voted = getVotedMembers(results),
+                    everyone = [...(interaction.channel.parent as TextChannel).members.values()].filter(member => !member.user.bot).map(member => member.user.toString()),
+                    unvoted = everyone.filter(member => !voted.includes(member));
+
+                await interaction.followUp({
+                    content: 'You checked member participation',
+                    embeds: [
+                        {
+                            title: `Can Vote (${voted.length + unvoted.length})`,
+                            fields: [
+                                {
+                                    name: `Voted (${voted.length})`,
+                                    value: voted.length > 0 ? commas(voted) : 'nobody',
+                                    inline: true
+                                },
+                                {
+                                    name: `Not Voted (${unvoted.length})`,
+                                    value: unvoted.length > 0 ? commas(unvoted) : 'nobody',
+                                    inline: true
+                                }
+                            ]
+                        }
+                    ],
+                    ephemeral: true
+                });
+            }
+            else if (action == 'peek') {
                 const results = getVoteResults(messages),
                     total = getVoteTotal(results);
 
@@ -432,12 +463,12 @@ function buildPollActionComponents (): MessageActionRowComponentResolvable[] {
             minValues: 1,
             maxValues: 1,
             options: [
-                // {
-                //     value: 'track',
-                //     emoji: '🧾',
-                //     label: 'Track',
-                //     description: 'Track who voted (ephemeral, any member)'
-                // },
+                {
+                    value: 'check',
+                    emoji: '👥',
+                    label: 'Check',
+                    description: 'Check member participation (ephemeral)'
+                },
                 {
                     value: 'peek',
                     emoji: '🔍',
@@ -525,14 +556,14 @@ function buildDiscardedComponents (choice: string): MessageActionRowComponentRes
     ];
 }
 
-function getVoteResults (messages: Collection<string, Message>): Record<string, Record<string, number>> {
+function getVoteResults (messages: Collection<string, Message>): Record<string, Record<UserMention, number>> {
     const results: Record<string, Record<string, number>> = {};
     messages.filter(message => message.author.bot).forEach(message => {
         const firstButton = message?.components[0]?.components[0] as MessageButton;
         if (!firstButton) return;
 
         if (firstButton.label == 'Unseal' || firstButton.label == 'Reseal') {
-            const whose = message.content.match(re_user)?.[0],
+            const whose = message.content.match(re_user)?.[0] as UserMention,
                 choice = firstButton.customId?.slice(7);
             if (!whose || !choice) return;
 
@@ -548,30 +579,41 @@ function getVoteResults (messages: Collection<string, Message>): Record<string, 
     return results;
 }
 
-function getVoteTotal (results: Record<string, Record<string, number>>): number {
+function getVoteTotal (results: Record<string, Record<UserMention, number>>): number {
     let total = 0;
     for (const choice in results) {
         for (const whose in results[choice]) {
-            total += results[choice][whose];
+            total += results[choice][whose as UserMention];
         }
     }
     return total;
 }
 
-function buildResultFields (results: Record<string, Record<string, number>>, ascribed: boolean): EmbedField[] {
+function getVotedMembers (results: Record<string, Record<UserMention, number>>): UserMention[] {
+    const members: UserMention[] = [];
+    for (const choice in results) {
+        for (const whose in results[choice]) {
+            if (!members.includes(whose as UserMention))
+                members.push(whose as UserMention);
+        }
+    }
+    return shuffleInPlace(members);
+}
+
+function buildResultFields (results: Record<string, Record<UserMention, number>>, ascribed: boolean): EmbedField[] {
     return Object.keys(results).map(choice => {
         const count = Object.keys(results[choice])
-            .map(whose => results[choice][whose])
+            .map(whose => results[choice][whose as UserMention])
             .reduce((a, b) => a + b, 0);
 
         return {
             name: trunc(`${choice} (${count})`, MAX_FIELD_NAME),
             value: ascribed
                 ? commas(shuffleInPlace(Object.keys(results[choice])).map(whose => {
-                    if (results[choice][whose] == 1)
+                    if (results[choice][whose as UserMention] == 1)
                         return whose;
                     else
-                        return `${whose} (**${results[choice][whose]}**)`;
+                        return `${whose} (**${results[choice][whose as UserMention]}**)`;
                 }))
                 : `by **${Object.keys(results[choice]).length}** members`,
             inline: true,
