@@ -1,10 +1,11 @@
 import { ApplicationCommandData, Client } from 'discord.js';
-import { registerSlashCommand } from '../library/backend';
+import { registerApplicationCommand } from '../library/backend';
 
 export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {
         const slash: ApplicationCommandData = {
+            type: 'CHAT_INPUT',
             name: 'echo',
             description: 'Replies by echoing your input',
             options: [
@@ -17,7 +18,7 @@ export const register = ({ client }: { client: Client }): void => {
             ],
         };
 
-        await registerSlashCommand(slash, client);
+        await registerApplicationCommand(slash, client);
     });
 
     client.on('interactionCreate', async interaction => {

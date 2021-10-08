@@ -2,7 +2,7 @@ import { randomInt } from 'crypto';
 import { ApplicationCommandData, Client, EmbedField, MessageEmbed } from 'discord.js';
 import ordinal from 'ordinal';
 import { MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants';
-import { registerSlashCommand } from '../library/backend';
+import { registerApplicationCommand } from '../library/backend';
 import { trunc, wss } from '../library/factory';
 import { blame, truncEmbeds, truncFields } from '../library/message';
 import { } from '../library/parser';
@@ -11,6 +11,7 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {
         const slash: ApplicationCommandData = {
+            type: 'CHAT_INPUT',
             name: 'roll',
             description: 'Roll dice',
             options: [
@@ -23,7 +24,7 @@ export const register = ({ client }: { client: Client }): void => {
             ]
         };
 
-        await registerSlashCommand(slash, client);
+        await registerApplicationCommand(slash, client);
     });
 
     // TODO refactor into parser

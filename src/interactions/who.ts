@@ -1,5 +1,5 @@
 import { ApplicationCommandData, Client, TextChannel } from 'discord.js';
-import { registerSlashCommand } from '../library/backend';
+import { registerApplicationCommand } from '../library/backend';
 import { names } from '../library/factory';
 import { blame } from '../library/message';
 import { shuffleInPlace } from '../library/solve';
@@ -8,6 +8,7 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {
         const slash: ApplicationCommandData = {
+            type: 'CHAT_INPUT',
             name: 'who',
             description: 'List the members of a role', // TODO or channel
             options: [
@@ -20,7 +21,7 @@ export const register = ({ client }: { client: Client }): void => {
             ],
         };
 
-        await registerSlashCommand(slash, client);
+        await registerApplicationCommand(slash, client);
     });
 
     client.on('interactionCreate', async interaction => {

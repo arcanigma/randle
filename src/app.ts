@@ -12,7 +12,6 @@ import * as status from './routes/status';
 
 // TODO handle mention caching
 
-// TODO menu command: ~~strike~~ a message
 // TODO menu command: run as script
 
 // TODO deck threads

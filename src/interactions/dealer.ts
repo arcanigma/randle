@@ -1,6 +1,6 @@
 import { ApplicationCommandData, Client } from 'discord.js';
 import { MAX_EMBED_DESCRIPTION } from '../constants';
-import { registerSlashCommand } from '../library/backend';
+import { registerApplicationCommand } from '../library/backend';
 import { commas, itemize, trunc, wss } from '../library/factory';
 import { blame } from '../library/message';
 import { choose, shuffleInPlace } from '../library/solve';
@@ -9,6 +9,7 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {
         const slash: ApplicationCommandData = {
+            type: 'CHAT_INPUT',
             name: 'shuffle',
             description: 'Shuffle items',
             options: [
@@ -21,7 +22,7 @@ export const register = ({ client }: { client: Client }): void => {
             ]
         };
 
-        await registerSlashCommand(slash, client);
+        await registerApplicationCommand(slash, client);
     });
 
     client.on('interactionCreate', async interaction => {
@@ -50,6 +51,7 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {
         const slash: ApplicationCommandData = {
+            type: 'CHAT_INPUT',
             name: 'draw',
             description: 'Draw some shuffled items',
             options: [
@@ -68,7 +70,7 @@ export const register = ({ client }: { client: Client }): void => {
             ]
         };
 
-        await registerSlashCommand(slash, client);
+        await registerApplicationCommand(slash, client);
     });
 
     client.on('interactionCreate', async interaction => {

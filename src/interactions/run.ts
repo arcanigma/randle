@@ -2,7 +2,7 @@ import { ApplicationCommandData, Client, CommandInteraction, EmbedField, GuildMe
 import got from 'got';
 import JSON5 from 'json5';
 import { MAX_EMBED_DESCRIPTION, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants';
-import { registerSlashCommand } from '../library/backend';
+import { registerApplicationCommand } from '../library/backend';
 import { commas, names, trunc } from '../library/factory';
 import { blame, truncEmbeds, truncFields } from '../library/message';
 import { AnnounceRule, ExplainRule, Items, Rules, Script, ShowRule } from '../library/script';
@@ -14,6 +14,7 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {
         const slash: ApplicationCommandData = {
+            type: 'CHAT_INPUT',
             name: 'run',
             description: 'Run a script',
             options: [
@@ -32,7 +33,7 @@ export const register = ({ client }: { client: Client }): void => {
             ]
         };
 
-        await registerSlashCommand(slash, client);
+        await registerApplicationCommand(slash, client);
     });
 
     client.on('interactionCreate', async interaction => {

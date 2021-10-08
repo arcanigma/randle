@@ -1,7 +1,7 @@
 import { ApplicationCommandData, Client, Collection, EmbedField, GuildMember, Interaction, Message, MessageActionRow, MessageActionRowComponentResolvable, MessageButton, MessageOptions, Permissions, TextChannel, ThreadChannel, UserMention } from 'discord.js';
 import emojiRegex from 'emoji-regex';
 import { MAX_ACTION_ROWS, MAX_FIELD_NAME, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } from '../constants';
-import { registerSlashCommand } from '../library/backend';
+import { registerApplicationCommand } from '../library/backend';
 import { commas, itemize, trunc, wss } from '../library/factory';
 import { blame } from '../library/message';
 import { shuffleCopy, shuffleInPlace } from '../library/solve';
@@ -23,6 +23,7 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {
         const slash: ApplicationCommandData = {
+            type: 'CHAT_INPUT',
             name: 'poll',
             description: 'Create a poll',
             options: [
@@ -41,7 +42,7 @@ export const register = ({ client }: { client: Client }): void => {
             ]
         };
 
-        await registerSlashCommand(slash, client);
+        await registerApplicationCommand(slash, client);
     });
 
     client.on('interactionCreate', async interaction => {
