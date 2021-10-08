@@ -1,4 +1,4 @@
-import { ApplicationCommandData, Client, Collection, EmbedField, GuildMember, Interaction, Message, MessageActionRow, MessageActionRowComponentResolvable, MessageActionRowOptions, MessageButton, Permissions, TextChannel, ThreadChannel, UserMention } from 'discord.js';
+import { ApplicationCommandData, Client, Collection, EmbedField, GuildMember, Interaction, Message, MessageActionRow, MessageActionRowComponentResolvable, MessageButton, MessageOptions, Permissions, TextChannel, ThreadChannel, UserMention } from 'discord.js';
 import emojiRegex from 'emoji-regex';
 import { MAX_ACTION_ROWS, MAX_FIELD_NAME, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } from '../constants';
 import { registerSlashCommand } from '../library/backend';
@@ -7,6 +7,8 @@ import { blame } from '../library/message';
 import { shuffleCopy, shuffleInPlace } from '../library/solve';
 
 // TODO support private thread polls
+
+// TODO toggle auto-unseal
 
 const MAX_CHOICE_LABEL = 25,
     DURATION_ONE_DAY = 1440;
@@ -81,7 +83,7 @@ export const register = ({ client }: { client: Client }): void => {
             if (thread.joinable)
                 await thread.join();
 
-            const components: MessageActionRowOptions[] = [];
+            const components: MessageOptions['components'] = [];
             while (choices.length > 0) {
                 components.push({
                     type: 'ACTION_ROW',
@@ -92,7 +94,6 @@ export const register = ({ client }: { client: Client }): void => {
                         customId: `vote_${it.emoji} ${it.label}`,
                         style: 'PRIMARY'
                     }))
-
                 });
             }
             components.push({
