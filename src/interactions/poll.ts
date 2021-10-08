@@ -423,15 +423,13 @@ function isAuthor (interaction: Interaction, whose: string): boolean {
 function canVote (interaction: Interaction): boolean {
     const permissions = (interaction.channel as ThreadChannel).permissionsFor(interaction.user);
 
-    // TODO refactor SEND_MESSAGES_IN_THREADS in new API version
-    return permissions?.has(Permissions.FLAGS.SEND_MESSAGES) ?? false;
+    return permissions?.has(Permissions.FLAGS.SEND_MESSAGES_IN_THREADS) ?? false;
 }
 
 function canMakePoll (interaction: Interaction): boolean {
     const permissions = (interaction.channel as ThreadChannel).permissionsFor(interaction.user);
 
-    // TODO refactor CREATE_PUBLIC_THREADS in new API version
-    return permissions?.has(Permissions.FLAGS.USE_PUBLIC_THREADS) ?? false;
+    return permissions?.has(Permissions.FLAGS.CREATE_PUBLIC_THREADS) ?? false;
 }
 
 function canModeratePoll (interaction: Interaction): boolean {
