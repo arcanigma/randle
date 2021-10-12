@@ -3,6 +3,7 @@ import express from 'express';
 import * as topicUpdated from './events/topicUpdated';
 import * as dealer from './interactions/dealer';
 import * as echo from './interactions/echo';
+import * as panic from './interactions/panic';
 import * as poll from './interactions/poll';
 import * as roll from './interactions/roll';
 import * as run from './interactions/run';
@@ -43,10 +44,11 @@ if (process.env.NODE_ENV == 'development') {
     echo.register({ client });
 }
 
-roll.register({ client });
 dealer.register({ client });
-run.register({ client });
+panic.register({ client });
 poll.register({ client });
+roll.register({ client });
+run.register({ client });
 who.register({ client });
 
 topicUpdated.register({ client });
