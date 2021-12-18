@@ -6,7 +6,7 @@ import { registerApplicationCommand } from '../library/backend';
 import { commas, names, trunc } from '../library/factory';
 import { blame, truncEmbeds, truncFields } from '../library/message';
 import { AnnounceRule, ExplainRule, Items, Rules, Script, ShowRule } from '../library/script';
-import { build, enable, listify, matches, shuffleInPlace, validate } from '../library/solve';
+import { build, choose, enable, evaluate, listify, matches, shuffleInPlace, validate } from '../library/solve';
 
 export const MAX_IMPORTS = 5;
 
@@ -211,20 +211,28 @@ export const register = ({ client }: { client: Client }): void => {
                 const announce_fields: EmbedField[] = [];
 
                 listify(script.rules).filter((rule): rule is AnnounceRule => 'announce' in rule && enable(rule, uniques, script.options)).forEach(rule =>
-                    listify(rule.announce).forEach(announce =>
-                        dealt.forEach((whose, who) =>
+                    listify(rule.announce).forEach(announce => {
+                        const these_fields: EmbedField[] = [];
+                        const limit = evaluate(rule.limit, script.values);
+
+                        dealt.forEach((whose, who) => {
                             whose.filter(it => matches(it, announce, script)).forEach(which => {
                                 const name = trunc(rule.as ?? which, MAX_FIELD_NAME),
                                     value = trunc(who.toString(), MAX_FIELD_VALUE);
-                                if (!announce_fields.some(it => it.name == name && it.value == value))
-                                    announce_fields.push({
+                                if (![ ...announce_fields, ...these_fields ].some(it => it.name == name && it.value == value))
+                                    these_fields.push({
                                         name,
                                         value,
                                         inline: true
                                     });
-                            })
-                        )
-                    )
+                            });
+                        });
+
+                        if (limit)
+                            announce_fields.push(...choose(these_fields, limit, true));
+                        else
+                            announce_fields.push(...these_fields);
+                    })
                 );
 
                 if (announce_fields.length > 0) {
@@ -277,7 +285,6 @@ export const register = ({ client }: { client: Client }): void => {
                 per_embeds.push(<MessageEmbed> {
                     title: 'You were dealt...',
                     description: trunc(commas(items.map(it => `**${it}**`)), MAX_EMBED_DESCRIPTION)
-                    // TODO reveal button
                 });
 
                 if (moderator)
@@ -293,22 +300,31 @@ export const register = ({ client }: { client: Client }): void => {
                     listify(script.rules).filter((rule): rule is ShowRule => 'show' in rule && enable(rule, uniques, script.options)).forEach(rule =>
                         listify(rule.to).forEach(to =>
                             dealt.get(member)?.filter(it => matches(it, to, script)).forEach(yours =>
-                                listify(rule.show).forEach(show =>
+                                listify(rule.show).forEach(show => {
+                                    const these_fields: EmbedField[] = [];
+                                    const limit = evaluate(rule.limit, script.values);
+
                                     dealt.forEach((theirs, them) => {
                                         if (them != member) {
+
                                             theirs.filter(it => matches(it, show, script) && (!validate(rule.distinctive, script.options) || it != yours)).forEach(their => {
                                                 const name = trunc(`Via ${yours}...`, MAX_FIELD_NAME),
                                                     value = trunc(`${them.toString()} was dealt **${rule.as ?? their}**`, MAX_FIELD_VALUE);
-                                                if (!show_fields.some(it => it.name == name && it.value == value))
-                                                    show_fields.push({
+                                                if (![ ...show_fields, ...these_fields ].some(it => it.name == name && it.value == value))
+                                                    these_fields.push({
                                                         name,
                                                         value,
                                                         inline: true
                                                     });
                                             });
                                         }
-                                    })
-                                )
+                                    });
+
+                                    if (limit)
+                                        show_fields.push(...choose(these_fields, limit, true));
+                                    else
+                                        show_fields.push(...these_fields);
+                                })
                             )
                         )
                     );

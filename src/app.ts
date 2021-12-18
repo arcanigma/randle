@@ -14,11 +14,10 @@ import * as status from './routes/status';
 // TODO handle mention caching
 
 // TODO menu command: run as script
-
-// TODO deck threads
+// TODO checklists/decks
 // TODO anonymous send-and-reply
+
 // TODO support for macros
-// TODO tracking reactions etc in topic
 
 const client = new Client({ intents: [
     'GUILDS', 'GUILD_MESSAGES', 'GUILD_MEMBERS', 'GUILD_PRESENCES'

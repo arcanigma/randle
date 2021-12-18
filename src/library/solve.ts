@@ -2,6 +2,8 @@ import { randomInt } from 'crypto';
 import { wss } from './factory';
 import { Defines, Items, Matcher, Option, OptionDefines, Rules, Set, SetDefines, Value, ValueDefines } from './script';
 
+// TODO use vm2 to sandbox scripts using these functions
+
 export function build (items: Items, defines: Defines): string[] {
     if (Array.isArray(items))
         return items.map(
@@ -105,8 +107,8 @@ export function shuffleInPlace<T> (list: T[]): T[] {
     return list;
 }
 
-export function choose<T> (list: T[], quantity: number): T[] {
-    if (quantity > list.length || quantity < 0)
+export function choose<T> (list: T[], quantity: number, fit = false): T[] {
+    if ((quantity > list.length && !fit) || quantity < 0)
         throw `Unexpected choose quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
 
     return shuffleCopy(list).slice(list.length - quantity);

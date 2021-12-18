@@ -9,6 +9,7 @@ import { shuffleCopy, shuffleInPlace } from '../library/solve';
 // TODO support private thread polls
 
 // TODO toggle auto-unseal
+// TODO param for "correct" answer
 
 const MAX_CHOICE_LABEL = 25,
     DURATION_ONE_DAY = 1440;
@@ -77,6 +78,7 @@ export const register = ({ client }: { client: Client }): void => {
 
             const thread = await interaction.channel.threads.create({
                 startMessage: reply.id,
+                // TODO check how thread titles are sanitized
                 name: trunc(prompt, MAX_THREAD_NAME),
                 autoArchiveDuration: DURATION_ONE_DAY
             });
@@ -88,6 +90,7 @@ export const register = ({ client }: { client: Client }): void => {
             while (choices.length > 0) {
                 components.push({
                     type: 'ACTION_ROW',
+                    // TODO handle row widths gracefully
                     components: choices.splice(0, MAX_ROW_COMPONENTS).map(it => ({
                         type: 'BUTTON',
                         emoji: it.emoji ?? (it.emoji = emojis.pop() as string),

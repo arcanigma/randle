@@ -4,6 +4,7 @@ export type Script = {
     minMembers?: number;
     maxMembers?: number;
     limit?: number;
+    // TODO unify Sets/Items into keyed Decks with deals from each
     dealFirst?: Items;
     deal?: Items;
     dealLast?: Items;
@@ -48,6 +49,7 @@ export type Option =
 
 export type Items =
     | string
+    // TODO image URL item
     | { choose: Value; from: Items }
     | { choose: Value; grouping: Items[] }
     | { repeat: Value; from: Items }
@@ -70,11 +72,13 @@ export type ShowRule = {
     to: Matcher;
     as?: string;
     distinctive?: Option;
+    limit?: Value;
 } & Conditional
 
 export type AnnounceRule = {
     announce: Matcher;
     as?: string;
+    limit?: Value;
 } & Conditional
 
 export type ExplainRule = {
