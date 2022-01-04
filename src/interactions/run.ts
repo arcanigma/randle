@@ -27,7 +27,13 @@ export const register = ({ client }: { client: Client }): void => {
                 {
                     name: 'moderator',
                     type: 'USER',
-                    description: 'A member who serves as moderator',
+                    description: 'A member who serves as the moderator',
+                    required: false
+                },
+                {
+                    name: 'preview',
+                    type: 'BOOLEAN',
+                    description: 'Whether to use preview mode (only if you are the moderator)',
                     required: false
                 }
             ]
@@ -46,7 +52,11 @@ export const register = ({ client }: { client: Client }): void => {
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
             const url = interaction.options.get('url')?.value as string,
-                moderator = interaction.channel.members.get(interaction.options.get('moderator')?.value as Snowflake);
+                moderator = interaction.channel.members.get(interaction.options.get('moderator')?.value as Snowflake),
+                preview = interaction.options.get('preview')?.value as boolean;
+
+            if (preview && moderator != interaction.member)
+                throw 'You can only use preview mode if you are the moderator.';
 
             // TODO option to include/exclude, re: admins/owners
             const members = shuffleInPlace([
@@ -261,10 +271,20 @@ export const register = ({ client }: { client: Client }): void => {
                     });
             }
 
-            await interaction.editReply({
-                content: global_content,
-                embeds: truncEmbeds(global_embeds, 'rules')
-            });
+            if (!preview || moderator != interaction.member)
+                await interaction.editReply({
+                    content: global_content,
+                    embeds: truncEmbeds(global_embeds, 'rules')
+                });
+            else {
+                await interaction.deleteReply();
+
+                await interaction.followUp({
+                    content: `**[Preview for ${interaction.channel.toString()}]** ${global_content}`,
+                    embeds: truncEmbeds(global_embeds, 'rules'),
+                    ephemeral: true
+                });
+            }
 
             const mod_embeds: MessageEmbed[] = [],
                 mod_fields: EmbedField[] = [];
@@ -339,11 +359,18 @@ export const register = ({ client }: { client: Client }): void => {
                     }
                 }
 
-                if (per_embeds.length > 0)
-                    await member.send({
-                        content: proxy_content,
-                        embeds: truncEmbeds(per_embeds, 'rules')
-                    });
+                if (per_embeds.length > 0) {
+                    if (!preview || moderator != interaction.member)
+                        await member.send({
+                            content: proxy_content,
+                            embeds: truncEmbeds(per_embeds, 'rules')
+                        });
+                    else
+                        await moderator.send({
+                            content: `**[Preview for ${member.toString()}]** ${proxy_content}`,
+                            embeds: truncEmbeds(per_embeds, 'rules')
+                        });
+                }
             }
 
             if (moderator) {
@@ -376,6 +403,8 @@ export const register = ({ client }: { client: Client }): void => {
                         embeds: mod_embeds
                     });
             }
+
+            // TODO queue all DMs and send only if error-free
         }
         catch (error: unknown) {
             await interaction.deleteReply();
