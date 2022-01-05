@@ -6,7 +6,7 @@ import { registerApplicationCommand } from '../library/backend';
 import { commas, names, trunc } from '../library/factory';
 import { blame, truncEmbeds, truncFields } from '../library/message';
 import { AnnounceRule, ExplainRule, Items, Rules, Script, ShowRule } from '../library/script';
-import { build, choose, enable, evaluate, listify, matches, shuffleInPlace, validate } from '../library/solve';
+import { build, choose, conditional, listOf, matches, optionOf, shuffleInPlace, valueOf } from '../library/solve';
 
 export const MAX_IMPORTS = 5;
 
@@ -68,18 +68,11 @@ export const register = ({ client }: { client: Client }): void => {
 
             const script = await scriptFromURL(url, interaction);
 
-            if (script.values) {
-                if (script.values.members === undefined)
-                    script.values.members = members.length;
-            }
-            else {
-                script.values = {
-                    members: members.length
-                };
-            }
+            if (script.parameters === undefined)
+                script.parameters = {};
 
             if (script.import) {
-                const imports = listify(script.import);
+                const imports = listOf(script.import);
 
                 delete script.import;
 
@@ -97,14 +90,8 @@ export const register = ({ client }: { client: Client }): void => {
                             ? `${script.event} \u2022 ${<string> i_script.event}`
                             : i_script.event;
 
-                    if ('sets' in i_script)
-                        script.sets = Object.assign(script.sets ?? {}, i_script.sets);
-
-                    if ('values' in i_script)
-                        script.values = Object.assign(script.values ?? {}, i_script.values);
-
-                    if ('options' in i_script)
-                        script.options = Object.assign(script.options ?? {}, i_script.options);
+                    if ('parameters' in i_script)
+                        script.parameters = Object.assign(script.parameters ?? {}, i_script.parameters);
 
                     if ('requireModerator' in i_script)
                         script.requireModerator =
@@ -130,10 +117,10 @@ export const register = ({ client }: { client: Client }): void => {
                         );
 
                     if ('deal' in i_script)
-                        script.deal = <Items> listify([ script.deal, i_script.deal ]);
+                        script.deal = <Items> listOf([ script.deal, i_script.deal ]);
 
                     if ('rules' in i_script)
-                        script.rules = <Rules> listify([ script.rules, i_script.rules ]);
+                        script.rules = <Rules> listOf([ script.rules, i_script.rules ]);
                 }
             }
 
@@ -149,13 +136,16 @@ export const register = ({ client }: { client: Client }): void => {
             if (!script.deal)
                 throw 'Script requires a deal.';
 
-            const items = shuffleInPlace(build(script.deal, script));
+            if (script.parameters.members === undefined)
+                script.parameters.members = members.length;
+
+            const items = shuffleInPlace(build(script.deal, script.parameters));
 
             if (script.dealFirst)
-                items.unshift(...shuffleInPlace(build(script.dealFirst, script)));
+                items.unshift(...shuffleInPlace(build(script.dealFirst, script.parameters)));
 
             if (script.dealLast)
-                items.push(...shuffleInPlace(build(script.dealLast, script)));
+                items.push(...shuffleInPlace(build(script.dealLast, script.parameters)));
 
             const uniques = items.filter((item, index) => items.indexOf(item) === index);
 
@@ -220,13 +210,13 @@ export const register = ({ client }: { client: Client }): void => {
             if (script.rules) {
                 const announce_fields: EmbedField[] = [];
 
-                listify(script.rules).filter((rule): rule is AnnounceRule => 'announce' in rule && enable(rule, uniques, script.options)).forEach(rule =>
-                    listify(rule.announce).forEach(announce => {
+                listOf(script.rules).filter((rule): rule is AnnounceRule => 'announce' in rule && conditional(rule, uniques, script.parameters)).forEach(rule =>
+                    listOf(rule.announce).forEach(announce => {
                         const these_fields: EmbedField[] = [];
-                        const limit = evaluate(rule.limit, script.values);
+                        const limit = valueOf(rule.limit, script.parameters);
 
                         dealt.forEach((whose, who) => {
-                            whose.filter(it => matches(it, announce, script)).forEach(which => {
+                            whose.filter(it => matches(it, announce, script.parameters)).forEach(which => {
                                 const name = trunc(rule.as ?? which, MAX_FIELD_NAME),
                                     value = trunc(who.toString(), MAX_FIELD_VALUE);
                                 if (![ ...announce_fields, ...these_fields ].some(it => it.name == name && it.value == value))
@@ -256,7 +246,7 @@ export const register = ({ client }: { client: Client }): void => {
 
                 const explain_fields: EmbedField[] = [];
 
-                listify(script.rules).filter((rule): rule is ExplainRule => 'explain' in rule && enable(rule, uniques, script.options)).forEach(rule =>
+                listOf(script.rules).filter((rule): rule is ExplainRule => 'explain' in rule && conditional(rule, uniques, script.parameters)).forEach(rule =>
                     explain_fields.push({
                         name: trunc(rule.explain, MAX_FIELD_NAME),
                         value: trunc(rule.as, MAX_FIELD_VALUE),
@@ -317,17 +307,17 @@ export const register = ({ client }: { client: Client }): void => {
                 if (script.rules) {
                     const show_fields: EmbedField[] = [];
 
-                    listify(script.rules).filter((rule): rule is ShowRule => 'show' in rule && enable(rule, uniques, script.options)).forEach(rule =>
-                        listify(rule.to).forEach(to =>
-                            dealt.get(member)?.filter(it => matches(it, to, script)).forEach(yours =>
-                                listify(rule.show).forEach(show => {
+                    listOf(script.rules).filter((rule): rule is ShowRule => 'show' in rule && conditional(rule, uniques, script.parameters)).forEach(rule =>
+                        listOf(rule.to).forEach(to =>
+                            dealt.get(member)?.filter(it => matches(it, to, script.parameters)).forEach(yours =>
+                                listOf(rule.show).forEach(show => {
                                     const these_fields: EmbedField[] = [];
-                                    const limit = evaluate(rule.limit, script.values);
+                                    const limit = valueOf(rule.limit, script.parameters);
 
                                     dealt.forEach((theirs, them) => {
                                         if (them != member) {
 
-                                            theirs.filter(it => matches(it, show, script) && (!validate(rule.hideSame, script.options) || it != yours)).forEach(their => {
+                                            theirs.filter(it => matches(it, show, script.parameters) && (!optionOf(rule.hideSame, script.parameters) || it != yours)).forEach(their => {
                                                 const name = trunc(`Via ${yours}...`, MAX_FIELD_NAME),
                                                     value = trunc(`${them.toString()} was dealt **${rule.as ?? their}**`, MAX_FIELD_VALUE);
                                                 if (![ ...show_fields, ...these_fields ].some(it => it.name == name && it.value == value))

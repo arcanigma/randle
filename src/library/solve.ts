@@ -1,81 +1,81 @@
 import { randomInt } from 'crypto';
 import { wss } from './factory';
-import { Defines, Items, Matcher, Option, OptionDefines, Rules, Set, SetDefines, Value, ValueDefines } from './script';
+import { Items, Matcher, Option, Parameters, Rules, Set, Value } from './script';
 
 // TODO use vm2 to sandbox scripts using these functions
 
-export function build (items: Items, defines: Defines): string[] {
+export function build (items: Items, params?: Parameters): string[] {
     if (Array.isArray(items))
         return items.map(
-            item => build(item, defines)
+            item => build(item, params)
         ).flat();
     else if (typeof items === 'string')
         return [wss(items)];
     else if ('choose' in items) {
         if ('from' in items)
             return choose(
-                build(items.from, defines),
-                evaluate(items.choose, defines.values)
+                build(items.from, params),
+                valueOf(items.choose, params)
             );
         else if ('grouping' in items)
             return build(choose(
                 items.grouping,
-                evaluate(items.choose, defines.values)
-            ), defines);
+                valueOf(items.choose, params)
+            ), params);
         else
             throw `Unexpected choose \`${JSON.stringify(items)}\` in script.`;
     }
     else if ('repeat' in items) {
         if ('from' in items)
             return repeat(
-                build(items.from, defines),
-                evaluate(items.repeat, defines.values)
+                build(items.from, params),
+                valueOf(items.repeat, params)
             );
         else if ('grouping' in items)
             return build(repeat(
                 items.grouping,
-                evaluate(items.repeat, defines.values)
-            ), defines);
+                valueOf(items.repeat, params)
+            ), params);
         else
             throw `Unexpected repeat \`${JSON.stringify(items)}\` in script.`;
     }
     else if ('duplicate' in items)
         return repeat(
             choose(
-                build(items.from, defines),
-                items.of ? evaluate(items.of, defines.values) : 1
+                build(items.from, params),
+                items.of ? valueOf(items.of, params) : 1
             ),
-            evaluate(items.duplicate, defines.values)
+            valueOf(items.duplicate, params)
         );
     else if ('cross' in items)
         return cross(
-            build(items.cross, defines),
-            build(items.with, defines),
+            build(items.cross, params),
+            build(items.with, params),
             items.using
         );
     else if ('zip' in items)
         return zip(
-            build(items.zip, defines),
-            build(items.with, defines),
+            build(items.zip, params),
+            build(items.with, params),
             items.using
         );
     else if ('if' in items)
-        return validate(items.if, defines.options)
-            ? build(items.then, defines)
-            : items.else ? build(items.else, defines) : [] ;
+        return optionOf(items.if, params)
+            ? build(items.then, params)
+            : items.else ? build(items.else, params) : [] ;
     else if ('set' in items || 'union' in items) {
         let result = [
-            ...construct(items.set, defines.sets),
-            ...construct(items.union, defines.sets)
+            ...setOf(items.set, params),
+            ...setOf(items.union, params)
         ];
 
         if ('intersect' in items) {
-            const intersect = construct(items.intersect, defines.sets);
+            const intersect = setOf(items.intersect, params);
             result = result.filter(it => intersect.includes(it));
         }
 
         if ('except' in items) {
-            const except = construct(items.except, defines.sets);
+            const except = setOf(items.except, params);
             result = result.filter(it => !except.includes(it));
         }
 
@@ -85,7 +85,7 @@ export function build (items: Items, defines: Defines): string[] {
         throw `Unexpected deck \`${JSON.stringify(items)}\` in script.`;
 }
 
-export function listify<T> (element: T | T[]): T[] {
+export function listOf<T> (element: T | T[]): T[] {
     if (Array.isArray(element))
         return element.flat().filter(it => it !== undefined) as T[];
     else if (element !== undefined)
@@ -149,109 +149,106 @@ export function zip<T> (list1: T[], list2: T[], delimiter?: T): string[] {
     return build;
 }
 
-export function evaluate (it: Value | undefined, values?: ValueDefines): number {
+export function valueOf (it?: Value, params?: Parameters): number {
     if (it === undefined)
         return 0;
     if (typeof it === 'number')
         return it;
     else if (typeof it === 'string') {
-        if (values?.[it] !== undefined)
-            return values[it] = evaluate(
-                values[it],
-                Object.assign({}, values, { [it]: undefined })
+        if (params?.[it] !== undefined && params[it])
+            return params[it] = valueOf(
+                params[it] as Value,
+                Object.assign({}, params, { [it]: undefined })
             );
-        else if (values !== undefined && Object.keys(values).includes(it))
+        else if (params !== undefined && Object.keys(params).includes(it))
             throw `Recursive value \`${JSON.stringify(it)}\` in script.`;
         else
             throw `Undefined value \`${JSON.stringify(it)}\` in script.`;
     }
     else if ('plus' in it)
-        return <number>it.plus.reduce((x, y) => evaluate(x, values) + evaluate(y, values));
+        return <number>it.plus.reduce((x, y) => valueOf(x, params) + valueOf(y, params));
     else if ('minus' in it)
-        return <number>it.minus.reduce((x, y) => evaluate(x, values) - evaluate(y, values));
+        return <number>it.minus.reduce((x, y) => valueOf(x, params) - valueOf(y, params));
     else if ('times' in it)
-        return <number>it.times.reduce((x, y) => evaluate(x, values) * evaluate(y, values));
+        return <number>it.times.reduce((x, y) => valueOf(x, params) * valueOf(y, params));
     else if ('max' in it)
-        return Math.max(...it.max.map(x => evaluate(x, values)));
+        return Math.max(...it.max.map(x => valueOf(x, params)));
     else if ('min' in it)
-        return Math.min(...it.min.map(x => evaluate(x, values)));
+        return Math.min(...it.min.map(x => valueOf(x, params)));
     else
         throw `Unexpected value \`${JSON.stringify(it)}\` in script.`;
 }
 
-export function validate (it: Option | undefined, options?: OptionDefines): boolean {
+export function optionOf (it?: Option, params?: Parameters): boolean {
     if (it === undefined)
         return false;
     if (typeof it === 'boolean')
         return it;
     else if (typeof it === 'string') {
-        if (options?.[it] !== undefined)
-            return options[it] = validate(
-                options[it],
-                Object.assign({}, options, { [it]: undefined })
+        if (params?.[it] !== undefined)
+            return params[it] = optionOf(
+                params[it] as Option,
+                Object.assign({}, params, { [it]: undefined })
             );
-        else if (options !== undefined && Object.keys(options).includes(it))
+        else if (params !== undefined && Object.keys(params).includes(it))
             throw `Recursive option \`${JSON.stringify(it)}\` in script.`;
         else
             throw `Undefined option \`${JSON.stringify(it)}\` in script.`;
     }
     else if ('and' in it)
-        return it.and.every(opt => validate(opt, options));
+        return it.and.every(opt => optionOf(opt, params));
     else if ('or' in it)
-        return it.or.some(opt => validate(opt, options));
+        return it.or.some(opt => optionOf(opt, params));
     else if ('not' in it)
-        return !validate(it.not, options);
+        return !optionOf(it.not, params);
     else
         throw `Unexpected option \`${JSON.stringify(it)}\` in script.`;
 }
 
-export function enable (rule: Rules, items: string[], options?: OptionDefines): boolean {
-    if ('if' in rule && rule.if !== undefined)
-        if (!validate(rule.if, options))
-            return false;
-
-    if ('ifIncluded' in rule && rule.ifIncluded !== undefined)
-        if (!listify(rule.ifIncluded).every(it => items.includes(it)))
-            return false;
-
-    if ('ifExcluded' in rule && rule.ifExcluded !== undefined)
-        if (listify(rule.ifExcluded).every(it => items.includes(it)))
-            return false;
-
-    return true;
-}
-
-export function construct (it: Set | undefined, sets?: SetDefines): string[] {
+export function setOf (it?: Set, params?: Parameters): string[] {
     if (Array.isArray(it))
         return it;
     else if (it === undefined)
         return [];
     else if (typeof it === 'string') {
-        if (sets?.[it] !== undefined)
-            return sets[it] = construct(
-                sets[it],
-                Object.assign({}, sets, { [it]: undefined })
+        if (params?.[it] !== undefined)
+            return params[it] = setOf(
+                params[it] as Set,
+                Object.assign({}, params, { [it]: undefined })
             );
-        else if (sets !== undefined && Object.keys(sets).includes(it))
+        else if (params !== undefined && Object.keys(params).includes(it))
             throw `Recursive set \`${JSON.stringify(it)}\` in script.`;
         else
             throw `Undefined set \`${JSON.stringify(it)}\` in script.`;
     }
     else if ('union' in it)
-        return <string[]>it.union.reduce((x, y) => [ ...construct(x, sets), ...construct(y, sets) ].filter((item, index, self) => self.indexOf(item) === index));
+        return <string[]>it.union.reduce((x, y) => [ ...setOf(x, params), ...setOf(y, params) ].filter((item, index, self) => self.indexOf(item) === index));
     else if ('intersect' in it)
-        return <string[]>it.intersect.reduce((x, y) => construct(x, sets).filter(item => construct(y, sets).includes(item)));
+        return <string[]>it.intersect.reduce((x, y) => setOf(x, params).filter(item => setOf(y, params).includes(item)));
     else if ('except' in it)
-        return <string[]>it.except.reduce((x, y) => construct(x, sets).filter(item => !construct(y, sets).includes(item)));
+        return <string[]>it.except.reduce((x, y) => setOf(x, params).filter(item => !setOf(y, params).includes(item)));
     else
         throw `Unexpected set \`${JSON.stringify(it)}\` in script.`;
 }
 
-export function matches (it: string, matcher: Matcher, defines: Defines): boolean {
+// TODO move to run
+export function conditional (rule: Rules, items: string[], params?: Parameters): boolean {
+    if ('if' in rule && rule.if !== undefined)
+        if (!optionOf(rule.if, params))
+            return false;
+
+    if ('whenDealt' in rule && rule.whenDealt !== undefined)
+        if (!items.some(it => matches(it, rule.whenDealt as Matcher, params)))
+            return false;
+
+    return true;
+}
+
+export function matches (it: string, matcher: Matcher, params?: Parameters): boolean {
     if (Array.isArray(matcher))
-        return matcher.some(m => matches(it, m, defines));
+        return matcher.some(m => matches(it, m, params));
     else if (typeof matcher === 'string')
-        return matches(it, { 'includes': matcher }, defines);
+        return matches(it, { 'includes': matcher }, params);
     else if ('is' in matcher)
         return it == wss(matcher.is);
     if ('isNot' in matcher)
@@ -271,19 +268,19 @@ export function matches (it: string, matcher: Matcher, defines: Defines): boolea
     else if ('matches' in matcher)
         return new RegExp(wss(matcher.matches)).exec(it) != null;
     else if ('all' in matcher)
-        return validate(matcher.all, defines.options);
+        return optionOf(matcher.all, params);
     else if ('not' in matcher)
-        return !matches(it, matcher.not, defines);
+        return !matches(it, matcher.not, params);
     else if ('set' in matcher) {
         let result =
-            matches(it, construct(matcher.set, defines.sets), defines) ||
-            matches(it, construct(matcher.union, defines.sets), defines);
+            matches(it, setOf(matcher.set, params), params) ||
+            matches(it, setOf(matcher.union, params), params);
 
         if ('intersect' in matcher)
-            result = result && matches(it, construct(matcher.intersect, defines.sets), defines);
+            result = result && matches(it, setOf(matcher.intersect, params), params);
 
         if ('except' in matcher)
-            result = result && !matches(it, construct(matcher.except, defines.sets), defines);
+            result = result && !matches(it, setOf(matcher.except, params), params);
 
         return result;
     }

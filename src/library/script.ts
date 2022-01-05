@@ -4,36 +4,25 @@ export type Script = {
     minMembers?: number;
     maxMembers?: number;
     limit?: number;
-    // TODO unify Sets/Items into keyed Decks with deals from each
+    parameters?: Parameters;
+    // TODO unify Sets/Items into named Decks with deals from each
     dealFirst?: Items;
     deal?: Items;
     dealLast?: Items;
     rules?: Rules;
     import?: string | string[];
-} & Defines;
+};
 
-export type Defines = {
-    sets?: SetDefines;
-    values?: ValueDefines;
-    options?: OptionDefines;
-}
+type Name = string;
 
-export type SetDefines = { [name: string]: Set }
-
-export type ValueDefines = { [name: string]: Value }
-
-export type OptionDefines = { [name: string]: Option }
-
-export type Set =
-    | string[]
-    | string
-    | { union: Set[] }
-    | { intersect: Set[] }
-    | { except: Set[] }
+export type Parameters = {
+    // TODO decouple Sets into Decks
+    [name: Name]: Value | Option | Set;
+};
 
 export type Value =
+    | Name | 'members'
     | number
-    | string | 'members'
     | { plus: Value[] }
     | { minus: Value[] }
     | { times: Value[] }
@@ -41,15 +30,22 @@ export type Value =
     | { min: Value[] }
 
 export type Option =
+    | Name
     | boolean
-    | string
     | { and: Option[] }
     | { or: Option[] }
     | { not: Option }
 
+export type Set =
+    | Name
+    | string[]
+    | { union: Set[] }
+    | { intersect: Set[] }
+    | { except: Set[] }
+
 export type Items =
     | string
-    // TODO image URL item
+    // TODO image URL or other media item
     | { choose: Value; from: Items }
     | { choose: Value; grouping: Items[] }
     | { repeat: Value; from: Items }
@@ -88,8 +84,7 @@ export type ExplainRule = {
 
 export type Conditional = {
     if?: Option;
-    ifIncluded?: string | string[];
-    ifExcluded?: string | string[];
+    whenDealt?: Matcher;
 }
 
 export type Matcher =
