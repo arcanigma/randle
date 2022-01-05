@@ -14,7 +14,7 @@ import * as status from './routes/status';
 // TODO handle mention caching
 
 // TODO menu command: run as script
-// TODO checklists/decks
+// TODO checklist threads
 // TODO anonymous send-and-reply
 
 // TODO support for macros

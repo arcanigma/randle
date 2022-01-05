@@ -1,23 +1,17 @@
 export type Script = {
     event?: string;
-    requireModerator?: boolean;
-    minMembers?: number;
-    maxMembers?: number;
-    limit?: number;
-    parameters?: Parameters;
-    // TODO unify Sets/Items into named Decks with deals from each
-    dealFirst?: Items;
-    deal?: Items;
-    dealLast?: Items;
-    rules?: Rules;
+    requireModerator?: Option;
+    minMembers?: Value;
+    maxMembers?: Value;
+    setup?: Setup;
+    rules?: Rule[];
     import?: string | string[];
 };
 
 type Name = string;
 
-export type Parameters = {
-    // TODO decouple Sets into Decks
-    [name: Name]: Value | Option | Set;
+export type Setup = {
+    [name: Name]: Value | Option | Deck;
 };
 
 export type Value =
@@ -36,70 +30,76 @@ export type Option =
     | { or: Option[] }
     | { not: Option }
 
-export type Set =
+export type Deck =
     | Name
-    | string[]
-    | { union: Set[] }
-    | { intersect: Set[] }
-    | { except: Set[] }
-
-export type Items =
     | string
     // TODO image URL or other media item
-    | { choose: Value; from: Items }
-    | { choose: Value; grouping: Items[] }
-    | { repeat: Value; from: Items }
-    | { repeat: Value; grouping: Items[] }
-    | { duplicate: Value; of?: Value; from: Items }
-    | { cross: Items; with: Items; using?: string }
-    | { zip: Items; with: Items; using?: string }
-    | { if: Option; then: Items; else?: Items }
-    | { set: Set; union?: Set; intersect?: Set; except?: Set }
-    | Items[]
+    | { choose: Value; from: Deck }
+    | { choose: Value; grouping: Deck[] }
+    | { repeat: Value; from: Deck }
+    | { repeat: Value; grouping: Deck[] }
+    | { duplicate: Value; of?: Value; from: Deck }
+    | { cross: Deck; with: Deck; using?: string }
+    | { zip: Deck; with: Deck; using?: string }
+    | { if: Option; then: Deck; else?: Deck }
+    | { union: Deck }
+    | { intersect: Deck }
+    | { except: Deck }
+    | Deck[]
 
-export type Rules =
+export type Rule = (
+    | DealRule
     | ShowRule
     | AnnounceRule
     | ExplainRule
-    | Rules[]
+) & ConditionalRule
+
+export type DealRule = {
+    deal: Deck;
+    for?: string;
+    limit?: Value;
+}
 
 export type ShowRule = {
     show: Matcher;
     to: Matcher;
+    hideSame?: Option;
     as?: string;
     limit?: Value;
-    hideSame?: Option;
-} & Conditional
+    cumulative?: Option;
+}
 
 export type AnnounceRule = {
     announce: Matcher;
     as?: string;
     limit?: Value;
-} & Conditional
+    cumulative?: Option;
+}
 
 export type ExplainRule = {
     explain: string;
     as: string;
-} & Conditional
+    cumulative?: Option;
+}
 
-export type Conditional = {
+export type ConditionalRule = {
     if?: Option;
-    whenDealt?: Matcher;
+    when?: Matcher;
 }
 
 export type Matcher =
     | string
-    | { is: string }
-    | { isNot: string }
+    | { includes: string }
+    | { excludes: string }
     | { startsWith: string }
     | { startsWithout: string }
     | { endsWith: string }
     | { endsWithout: string }
-    | { includes: string }
-    | { excludes: string }
-    | { matches: string }
-    | { all: Option }
+    | { is: string }
+    | { isNot: string }
+    | { pattern: string }
+    | { all: true }
     | { not: Matcher }
-    | { set: Set; union?: Set; intersect?: Set; except?: Set }
+    | Deck
     // TODO matcher for member dealt order
     | Matcher[]

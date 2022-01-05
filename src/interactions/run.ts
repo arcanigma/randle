@@ -5,8 +5,8 @@ import { MAX_EMBED_DESCRIPTION, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../const
 import { registerApplicationCommand } from '../library/backend';
 import { commas, names, trunc } from '../library/factory';
 import { blame, truncEmbeds, truncFields } from '../library/message';
-import { AnnounceRule, ExplainRule, Items, Rules, Script, ShowRule } from '../library/script';
-import { build, choose, conditional, listOf, matches, optionOf, shuffleInPlace, valueOf } from '../library/solve';
+import { Script } from '../library/script';
+import { choose, conditionOf, deckOf, listOf, matchOf, optionOf, shuffleInPlace, valueOf } from '../library/solve';
 
 export const MAX_IMPORTS = 5;
 
@@ -19,21 +19,39 @@ export const register = ({ client }: { client: Client }): void => {
             description: 'Run a script',
             options: [
                 {
-                    name: 'url',
+                    name: 'address',
                     type: 'STRING',
-                    description: 'A URL to a message, attachment, or external file containing a JSON script',
+                    description: 'A URL or ID to a message, attachment, or external file',
                     required: true
                 },
                 {
                     name: 'moderator',
                     type: 'USER',
-                    description: 'A member who serves as the moderator',
+                    description: 'A member who serves as the moderator, if any',
                     required: false
+                }
+            ]
+        };
+
+        await registerApplicationCommand(slash, client);
+    });
+
+    client.on('ready', async () => {
+        const slash: ApplicationCommandData = {
+            type: 'CHAT_INPUT',
+            name: 'preview',
+            description: 'Preview a script',
+            options: [
+                {
+                    name: 'address',
+                    type: 'STRING',
+                    description: 'A URL or ID to a message, attachment, or external file',
+                    required: true
                 },
                 {
-                    name: 'preview',
-                    type: 'BOOLEAN',
-                    description: 'Whether to use preview mode (only if you are the moderator)',
+                    name: 'moderator',
+                    type: 'USER',
+                    description: 'A member who serves as the moderator, if any',
                     required: false
                 }
             ]
@@ -43,22 +61,18 @@ export const register = ({ client }: { client: Client }): void => {
     });
 
     client.on('interactionCreate', async interaction => {
-        if (!interaction.isCommand() || interaction.commandName !== 'run') return;
-
-        await interaction.deferReply();
+        if (!interaction.isCommand() || (interaction.commandName !== 'run' && interaction.commandName !== 'preview')) return;
 
         try {
             if (!(interaction.channel instanceof TextChannel))
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
-            const url = interaction.options.get('url')?.value as string,
+            const you = interaction.member as GuildMember,
+                address = interaction.options.get('address')?.value as string,
                 moderator = interaction.channel.members.get(interaction.options.get('moderator')?.value as Snowflake),
-                preview = interaction.options.get('preview')?.value as boolean;
+                preview = interaction.commandName == 'preview';
 
-            if (preview && moderator != interaction.member)
-                throw 'You can only use preview mode if you are the moderator.';
-
-            // TODO option to include/exclude, re: admins/owners
+            // TODO option to include/exclude members, re: admins/owners
             const members = shuffleInPlace([
                 ...interaction.channel.members
                     .filter(them => !them.user.bot)
@@ -66,61 +80,64 @@ export const register = ({ client }: { client: Client }): void => {
                     .values()
             ]);
 
-            const script = await scriptFromURL(url, interaction);
+            const script = await scriptFrom(address.trim(), interaction);
 
-            if (script.parameters === undefined)
-                script.parameters = {};
+            if (script.requireModerator !== undefined)
+                script.requireModerator = optionOf(script.requireModerator, script.setup);
+
+            if (script.minMembers !== undefined)
+                script.minMembers = valueOf(script.minMembers, script.setup);
+
+            if (script.maxMembers !== undefined)
+                script.maxMembers = valueOf(script.maxMembers, script.setup);
+
+            if (!script.setup)
+                script.setup = {};
+
+            if (!script.rules)
+                script.rules = [];
 
             if (script.import) {
                 const imports = listOf(script.import);
-
                 delete script.import;
 
                 if (imports.length > MAX_IMPORTS)
                     throw `Too many imports in script (limit of ${MAX_IMPORTS}).`;
 
                 for (const i_url of imports) {
-                    const i_script = await scriptFromURL(i_url, interaction);
+                    const i_script = await scriptFrom(i_url.trim(), interaction);
 
-                    if ('import' in i_script)
-                        throw `Forbidden nested import in \`${i_url}\` import.`;
-
-                    if ('event' in i_script)
+                    if (i_script.event !== undefined)
                         script.event = script.event !== undefined
-                            ? `${script.event} \u2022 ${<string> i_script.event}`
+                            ? `${script.event} \u2022 ${i_script.event}`
                             : i_script.event;
 
-                    if ('parameters' in i_script)
-                        script.parameters = Object.assign(script.parameters ?? {}, i_script.parameters);
+                    if (i_script.requireModerator !== undefined) {
+                        const flag = optionOf(i_script.requireModerator, script.setup);
+                        if (flag != script.requireModerator)
+                            throw `Moderator requirements must match in script and \`${i_url}\` import.`;
+                    }
 
-                    if ('requireModerator' in i_script)
-                        script.requireModerator =
-                            (script.requireModerator ?? false)
-                            || (i_script.requireModerator ?? false);
+                    if (i_script.minMembers !== undefined) {
+                        const min = valueOf(i_script.minMembers, script.setup);
+                        if (!script.minMembers || min < script.minMembers)
+                            script.minMembers = min;
+                    }
 
-                    if ('minMembers' in i_script)
-                        script.minMembers = Math.max(
-                            script.minMembers ?? Number.MIN_SAFE_INTEGER,
-                            i_script.minMembers ?? Number.MIN_SAFE_INTEGER
-                        );
+                    if (i_script.maxMembers !== undefined) {
+                        const max = valueOf(i_script.maxMembers, script.setup);
+                        if (!script.maxMembers || max > script.maxMembers)
+                            script.maxMembers = max;
+                    }
 
-                    if ('maxMembers' in i_script)
-                        script.maxMembers = Math.min(
-                            script.maxMembers ?? Number.MAX_SAFE_INTEGER,
-                            i_script.maxMembers ?? Number.MAX_SAFE_INTEGER
-                        );
+                    if (i_script.setup)
+                        script.setup = Object.assign(script.setup ?? {}, i_script.setup);
 
-                    if ('limit' in i_script)
-                        script.limit = Math.min(
-                            script.limit ?? Number.MAX_SAFE_INTEGER,
-                            i_script.limit ?? Number.MAX_SAFE_INTEGER
-                        );
+                    if (i_script.rules)
+                        script.rules.push(...i_script.rules);
 
-                    if ('deal' in i_script)
-                        script.deal = <Items> listOf([ script.deal, i_script.deal ]);
-
-                    if ('rules' in i_script)
-                        script.rules = <Rules> listOf([ script.rules, i_script.rules ]);
+                    if (i_script.import)
+                        throw `Forbidden nested import in \`${i_url}\` import.`;
                 }
             }
 
@@ -128,278 +145,302 @@ export const register = ({ client }: { client: Client }): void => {
                 throw 'Script requires a moderator.';
 
             if (script.minMembers && members.length < script.minMembers)
-                throw `Too few members for script (${members.length}, minimum of ${script.minMembers}).`;
+                throw `Too few members for script (minimum of ${script.minMembers}, actually ${members.length}).`;
 
             if (script.maxMembers && members.length > script.maxMembers)
-                throw `Too many members for script (${members.length}, maximum of ${script.maxMembers}).`;
+                throw `Too many members for script (maximum of ${script.maxMembers}, actually ${members.length}).`;
 
-            if (!script.deal)
-                throw 'Script requires a deal.';
+            if (script.setup.members === undefined)
+                script.setup.members = members.length;
 
-            if (script.parameters.members === undefined)
-                script.parameters.members = members.length;
+            if (script.rules?.length < 1)
+                throw 'Script requires at least 1 rule.';
 
-            const items = shuffleInPlace(build(script.deal, script.parameters));
+            const channel_embeds: MessageEmbed[] = [],
+                direct_embeds: Map<GuildMember, MessageEmbed[]> = new Map();
 
-            if (script.dealFirst)
-                items.unshift(...shuffleInPlace(build(script.dealFirst, script.parameters)));
+            const cumulative_deal: Map<GuildMember, string[]> = new Map(),
+                cumulative_used: string[] = [];
 
-            if (script.dealLast)
-                items.push(...shuffleInPlace(build(script.dealLast, script.parameters)));
+            let recent_deal: Map<GuildMember, string[]> = new Map();
+            const recent_used: string[] = [];
 
-            const uniques = items.filter((item, index) => items.indexOf(item) === index);
+            for (const rule of script.rules) {
+                if ('deal' in rule) {
+                    const pile: string[] = shuffleInPlace(deckOf(rule.deal, script.setup));
 
-            const dealt: Map<GuildMember, string[]> = new Map();
-            const rounds = !script.limit
-                ? Math.ceil(items.length / members.length)
-                : Math.min(script.limit, Math.floor(items.length / members.length));
-            for (let round = 1; round <= rounds; round++)
-                members.forEach(them => {
-                    if (items.length > 0) {
-                        if (dealt.has(them))
-                            dealt.get(them)?.push(<string>items.shift());
-                        else
-                            dealt.set(them, [<string>items.shift()]);
+                    let cycles = Math.ceil(pile.length / members.length);
+                    if (rule.limit !== undefined) {
+                        if (rule.limit < 0)
+                            throw 'Deal limit must be at least 1 if not omitted.';
+
+                        cycles = Math.min(valueOf(rule.limit, script.setup), cycles);
                     }
-                });
 
-            if (dealt.size == 0)
-                throw 'You must deal at least 1 item.';
+                    recent_deal = new Map();
 
-            const counts: {
-                [count: number]: GuildMember[];
-            } = {};
-            members.filter(them => dealt.has(them)).forEach(them => {
-                const count = dealt.get(them)?.length ?? 0;
-                if (!counts[count])
-                    counts[count] = [them];
-                else
-                    counts[count].push(them);
-            });
-            for (const count in counts)
-                shuffleInPlace(counts[count]);
+                    dealing:
+                    for (let c = 1; c <= cycles; c++)
+                        for (const them of members) {
+                            if (pile.length == 0)
+                                break dealing;
 
-            let global_content = `${interaction.user.toString()}`;
-            if (moderator)
-                if (moderator == interaction.member)
-                    global_content = `${global_content} (**moderator**)`;
-                else
-                    global_content = `${global_content} on behalf of ${moderator.toString()} (**moderator**)`;
-            global_content = `${global_content} ran a script`;
-            if (script.event)
-                global_content = `${global_content} for the **${script.event}** event`;
+                            const it = pile.shift() as string;
 
-            const global_embeds: MessageEmbed[] = [];
+                            if (recent_deal.has(them))
+                                recent_deal.get(them)?.push(it);
+                            else
+                                recent_deal.set(them, [it]);
 
-            global_embeds.push(<MessageEmbed> {
-                title: 'Dealt...',
-                fields: [
-                    ...Object.keys(counts).map(Number).sort().reverse().map(count => ({
-                        name: `${count > 0 ? `${count} each` : 'None'} to...`,
-                        value: trunc(names(counts[count]), MAX_FIELD_VALUE),
-                        inline: true
-                    })),
-                    ...(items.length > 0 ? [{
-                        name: `${items.length} leftover for...`,
-                        value: trunc(moderator ? moderator.toString() : 'Nobody', MAX_FIELD_VALUE),
-                        inline: true
-                    }] : [])
-                ]
-            });
+                            if (cumulative_deal.has(them))
+                                cumulative_deal.get(them)?.push(it);
+                            else
+                                cumulative_deal.set(them, [it]);
 
-            if (script.rules) {
-                const announce_fields: EmbedField[] = [];
+                            if (!recent_used.includes(it))
+                                recent_used.push(it);
 
-                listOf(script.rules).filter((rule): rule is AnnounceRule => 'announce' in rule && conditional(rule, uniques, script.parameters)).forEach(rule =>
-                    listOf(rule.announce).forEach(announce => {
-                        const these_fields: EmbedField[] = [];
-                        const limit = valueOf(rule.limit, script.parameters);
+                            if (!cumulative_used.includes(it))
+                                cumulative_used.push(it);
+                        }
 
-                        dealt.forEach((whose, who) => {
-                            whose.filter(it => matches(it, announce, script.parameters)).forEach(which => {
-                                const name = trunc(rule.as ?? which, MAX_FIELD_NAME),
-                                    value = trunc(who.toString(), MAX_FIELD_VALUE);
-                                if (![ ...announce_fields, ...these_fields ].some(it => it.name == name && it.value == value))
-                                    these_fields.push({
-                                        name,
-                                        value,
-                                        inline: true
-                                    });
-                            });
+                    const sizes: { [size: number]: GuildMember[] } = {};
+                    for (const [ them, theirs ] of recent_deal) {
+                        const size = theirs.length ?? 0;
+                        if (sizes[size])
+                            sizes[size].push(them);
+                        else
+                            sizes[size] = [them];
+                    }
+                    for (const size in sizes)
+                        shuffleInPlace(sizes[size]);
+
+                    channel_embeds.push(<MessageEmbed> {
+                        title: rule.for
+                            ? `Dealt for ${rule.for}...`
+                            : 'Dealt...',
+                        fields: [
+                            ...Object.keys(sizes).map(Number).sort().reverse().map(size => ({
+                                name: `${size > 0 ? `${size} each` : 'None'} to...`,
+                                value: trunc(names(sizes[size]), MAX_FIELD_VALUE),
+                                inline: true
+                            })),
+                            ...(pile.length > 0 ? [{
+                                name: `${pile.length} leftover for...`,
+                                value: trunc(moderator ? moderator.toString() : 'Nobody', MAX_FIELD_VALUE),
+                                inline: true
+                            }] : [])
+                        ]
+                    });
+
+                    const moderator_fields = [];
+
+                    for (const [ member, these ] of recent_deal) {
+                        if (!direct_embeds.has(member))
+                            direct_embeds.set(member, []);
+
+                        direct_embeds.get(member)?.push(<MessageEmbed> {
+                            title: rule.for
+                                ? `You were dealt for ${rule.for}...`
+                                : 'You were dealt...',
+                            // TODO each item as a field instead of joined description
+                            description: trunc(commas(these.map(it => `**${it}**`)), MAX_EMBED_DESCRIPTION)
                         });
 
-                        if (limit)
-                            announce_fields.push(...choose(these_fields, limit, true));
-                        else
-                            announce_fields.push(...these_fields);
-                    })
-                );
+                        if (moderator)
+                            moderator_fields.push({
+                                name: trunc(`${commas(these)} to...`, MAX_FIELD_NAME),
+                                value: trunc(member.toString(), MAX_FIELD_VALUE),
+                                inline: true
+                            });
+                    }
 
-                if (announce_fields.length > 0) {
-                    shuffleInPlace(announce_fields);
+                    if (moderator) {
+                        if (pile.length > 0)
+                            moderator_fields.push({
+                                name: `${pile.length} leftover for you...`,
+                                value: trunc(commas(pile.map(it => `**${it}**`)), MAX_FIELD_VALUE),
+                                inline: true
+                            });
 
-                    global_embeds.push(<MessageEmbed> {
-                        title: 'Announced...',
-                        fields: truncFields(announce_fields, 'announce rules')
-                    });
+                        if (moderator_fields.length > 0) {
+                            if (!direct_embeds.has(moderator))
+                                direct_embeds.set(moderator, []);
+
+                            direct_embeds.get(moderator)?.push(<MessageEmbed> {
+                                title: 'Dealt...',
+                                fields: moderator_fields
+                            });
+                        }
+                    }
                 }
+                else {
+                    let timely_deal: Map<GuildMember, string[]>,
+                        timely_used: string[];
 
-                const explain_fields: EmbedField[] = [];
+                    if (optionOf(rule.cumulative, script.setup)) {
+                        timely_deal = cumulative_deal;
+                        timely_used = cumulative_used;
+                    }
+                    else {
+                        timely_deal = recent_deal;
+                        timely_used = recent_used;
+                    }
 
-                listOf(script.rules).filter((rule): rule is ExplainRule => 'explain' in rule && conditional(rule, uniques, script.parameters)).forEach(rule =>
-                    explain_fields.push({
-                        name: trunc(rule.explain, MAX_FIELD_NAME),
-                        value: trunc(rule.as, MAX_FIELD_VALUE),
-                        inline: true
-                    })
-                );
+                    const enabled = conditionOf(rule, timely_used, script.setup);
 
-                if (explain_fields.length > 0)
-                    global_embeds.push(<MessageEmbed> {
-                        title: 'Explained...',
-                        fields: truncFields(explain_fields, 'explain rules')
-                    });
+                    if (enabled)
+                        if ('show' in rule) {
+                            for (const [ member, these ] of timely_deal) {
+                                const member_fields: EmbedField[] = [];
+
+                                these.filter(it => matchOf(it, rule.to, script.setup)).forEach(yours => {
+                                    for (const show of listOf(rule.show)) {
+                                        const these_fields: EmbedField[] = [];
+
+                                        const limit = valueOf(rule.limit, script.setup);
+
+                                        for (const [ them, those ] of timely_deal) {
+                                            if (them != member)
+                                                those.filter(it => matchOf(it, show, script.setup) && (!optionOf(rule.hideSame, script.setup) || it != yours)).forEach(theirs => {
+                                                    const name = trunc(`Via ${yours}...`, MAX_FIELD_NAME),
+                                                        value = trunc(`${them.toString()} was dealt **${rule.as ?? theirs}**`, MAX_FIELD_VALUE);
+                                                    if (![ ...member_fields, ...these_fields ].some(it => it.name == name && it.value == value))
+                                                        these_fields.push({
+                                                            name,
+                                                            value,
+                                                            inline: true
+                                                        });
+                                                });
+                                        }
+
+                                        if (limit)
+                                            member_fields.push(...choose(these_fields, limit, true));
+                                        else
+                                            member_fields.push(...these_fields);
+                                    }
+                                });
+
+                                if (member_fields.length > 0) {
+                                    shuffleInPlace(member_fields);
+
+                                    if (!direct_embeds.has(member))
+                                        direct_embeds.set(member, []);
+
+                                    direct_embeds.get(member)?.push(<MessageEmbed> {
+                                        title: 'You were shown...',
+                                        fields: truncFields(member_fields, 'show rules')
+                                    });
+                                }
+                            }
+                        }
+                        else if ('announce' in rule) {
+                            const channel_fields: EmbedField[] = [];
+
+                            for (const announce of listOf(rule.announce)) {
+                                const these_fields: EmbedField[] = [];
+
+                                const limit = valueOf(rule.limit, script.setup);
+
+                                for (const [ them, those ] of timely_deal) {
+                                    those.filter(it => matchOf(it, announce, script.setup)).forEach(theirs => {
+                                        const name = trunc(rule.as ?? theirs, MAX_FIELD_NAME),
+                                            value = trunc(them.toString(), MAX_FIELD_VALUE);
+                                        if (![ ...channel_fields, ...these_fields ].some(it => it.name == name && it.value == value))
+                                            these_fields.push({
+                                                name,
+                                                value,
+                                                inline: true
+                                            });
+                                    });
+                                }
+
+                                if (limit)
+                                    channel_fields.push(...choose(these_fields, limit, true));
+                                else
+                                    channel_fields.push(...these_fields);
+                            }
+
+                            if (channel_fields.length > 0) {
+                                shuffleInPlace(channel_fields);
+
+                                channel_embeds.push(<MessageEmbed> {
+                                    title: 'Announced...',
+                                    fields: truncFields(channel_fields, 'announce rules')
+                                });
+                            }
+                        }
+                        else if ('explain' in rule) {
+                            const channel_fields: EmbedField[] = [];
+
+                            channel_fields.push({
+                                name: trunc(rule.explain, MAX_FIELD_NAME),
+                                value: trunc(rule.as, MAX_FIELD_VALUE),
+                                inline: true
+                            });
+
+                            if (channel_fields.length > 0)
+                                channel_embeds.push(<MessageEmbed> {
+                                    title: 'Explained...',
+                                    fields: truncFields(channel_fields, 'explain rules')
+                                });
+                        }
+                }
             }
 
-            if (!preview || moderator != interaction.member)
-                await interaction.editReply({
-                    content: global_content,
-                    embeds: truncEmbeds(global_embeds, 'rules')
+            if (channel_embeds.length == 0 && direct_embeds.size == 0)
+                throw 'The script did not send any channel or direct messages.';
+
+            let channel_content = `${interaction.user.toString()}`;
+            if (moderator)
+                if (moderator == you)
+                    channel_content = `${channel_content} (**moderator**)`;
+                else
+                    channel_content = `${channel_content} on behalf of ${moderator.toString()} (**moderator**)`;
+            channel_content = `${channel_content} ran a script`;
+            if (script.event)
+                channel_content = `${channel_content} for the **${script.event}** event in this channel`;
+
+            if (!preview)
+                await interaction.reply({
+                    content: channel_content,
+                    embeds: truncEmbeds(channel_embeds, 'rules')
                 });
             else {
-                await interaction.deleteReply();
-
-                await interaction.followUp({
-                    content: `**[Preview for ${interaction.channel.toString()}]** ${global_content}`,
-                    embeds: truncEmbeds(global_embeds, 'rules'),
+                await interaction.reply({
+                    content: `:construction: **Preview for Channel** \u2022 ${channel_content}`,
+                    embeds: truncEmbeds(channel_embeds, 'rules'),
                     ephemeral: true
                 });
             }
 
-            const mod_embeds: MessageEmbed[] = [],
-                mod_fields: EmbedField[] = [];
+            for (const [ member, embeds ] of direct_embeds) {
+                if (embeds.length > 0) {
+                    let content = member != you ? interaction.user.toString() : 'You';
+                    if (moderator)
+                        if (moderator == you)
+                            content = `${content} (**moderator**)`;
+                        else
+                            content = `${content} on behalf of ${moderator != member ? moderator.toString() : 'you'} (**moderator**)`;
+                    content = `${content} ran a script`;
+                    if (script.event)
+                        content = `${content} for the **${script.event}** event in ${interaction.channel.toString()}`;
 
-            for (const [ member, items ] of dealt) {
-                let proxy_content = interaction.member != member ? interaction.user.toString() : 'You';
-                if (moderator)
-                    if (moderator == interaction.member)
-                        proxy_content = `${proxy_content} (**moderator**)`;
-                    else
-                        proxy_content = `${proxy_content} on behalf of ${moderator != member ? moderator.toString() : 'you'} (**moderator**)`;
-                proxy_content = `${proxy_content} ran a script`;
-                if (script.event)
-                    proxy_content = `${proxy_content} for the **${script.event}** event in ${interaction.channel.toString()}`;
-
-                const per_embeds: MessageEmbed[] = [];
-
-                per_embeds.push(<MessageEmbed> {
-                    title: 'You were dealt...',
-                    description: trunc(commas(items.map(it => `**${it}**`)), MAX_EMBED_DESCRIPTION)
-                });
-
-                if (moderator)
-                    mod_fields.push({
-                        name: trunc(`${commas(items)} to...`, MAX_FIELD_NAME),
-                        value: trunc(member.toString(), MAX_FIELD_VALUE),
-                        inline: true
-                    });
-
-                if (script.rules) {
-                    const show_fields: EmbedField[] = [];
-
-                    listOf(script.rules).filter((rule): rule is ShowRule => 'show' in rule && conditional(rule, uniques, script.parameters)).forEach(rule =>
-                        listOf(rule.to).forEach(to =>
-                            dealt.get(member)?.filter(it => matches(it, to, script.parameters)).forEach(yours =>
-                                listOf(rule.show).forEach(show => {
-                                    const these_fields: EmbedField[] = [];
-                                    const limit = valueOf(rule.limit, script.parameters);
-
-                                    dealt.forEach((theirs, them) => {
-                                        if (them != member) {
-
-                                            theirs.filter(it => matches(it, show, script.parameters) && (!optionOf(rule.hideSame, script.parameters) || it != yours)).forEach(their => {
-                                                const name = trunc(`Via ${yours}...`, MAX_FIELD_NAME),
-                                                    value = trunc(`${them.toString()} was dealt **${rule.as ?? their}**`, MAX_FIELD_VALUE);
-                                                if (![ ...show_fields, ...these_fields ].some(it => it.name == name && it.value == value))
-                                                    these_fields.push({
-                                                        name,
-                                                        value,
-                                                        inline: true
-                                                    });
-                                            });
-                                        }
-                                    });
-
-                                    if (limit)
-                                        show_fields.push(...choose(these_fields, limit, true));
-                                    else
-                                        show_fields.push(...these_fields);
-                                })
-                            )
-                        )
-                    );
-
-                    if (show_fields.length > 0) {
-                        shuffleInPlace(show_fields);
-
-                        per_embeds.push(<MessageEmbed> {
-                            title: 'You were shown...',
-                            fields: truncFields(show_fields, 'show rules')
-                        });
-                    }
-                }
-
-                if (per_embeds.length > 0) {
-                    if (!preview || moderator != interaction.member)
+                    if (!preview)
                         await member.send({
-                            content: proxy_content,
-                            embeds: truncEmbeds(per_embeds, 'rules')
+                            content,
+                            embeds: truncEmbeds(embeds, 'rules')
                         });
                     else
-                        await moderator.send({
-                            content: `**[Preview for ${member.toString()}]** ${proxy_content}`,
-                            embeds: truncEmbeds(per_embeds, 'rules')
+                        await you.send({
+                            content: `:construction: **Preview for ${member != you ? member.toString() : 'You'}** \u2022 ${content}`,
+                            embeds: truncEmbeds(embeds, 'rules')
                         });
                 }
             }
-
-            if (moderator) {
-                let mod_content = interaction.member != moderator ? interaction.user.toString() : 'You';
-                if (moderator)
-                    if (moderator == interaction.member)
-                        mod_content = `${mod_content} (**moderator**)`;
-                    else
-                        mod_content = `${mod_content} on behalf of you (**moderator**)`;
-                mod_content = `${mod_content} ran a script`;
-                if (script.event)
-                    mod_content = `${mod_content} for the **${script.event}** event in ${interaction.channel.toString()}`;
-
-                if (items.length > 0)
-                    mod_fields.push({
-                        name: `${items.length} leftover for you...`,
-                        value: trunc(commas(items.map(it => `**${it}**`)), MAX_FIELD_VALUE),
-                        inline: true
-                    });
-
-                if (mod_fields.length > 0)
-                    mod_embeds.push(<MessageEmbed> {
-                        title: 'Dealt...',
-                        fields: mod_fields
-                    });
-
-                if (mod_embeds.length > 0)
-                    await moderator.send({
-                        content: mod_content,
-                        embeds: mod_embeds
-                    });
-            }
-
-            // TODO queue all DMs and send only if error-free
         }
         catch (error: unknown) {
-            await interaction.deleteReply();
-
-            await interaction.followUp({
+            await interaction.reply({
                 embeds: blame({ error, interaction }),
                 ephemeral: true
             });
@@ -408,22 +449,32 @@ export const register = ({ client }: { client: Client }): void => {
 
 };
 
-async function scriptFromURL (url: string, interaction: CommandInteraction): Promise<Script> {
-    if (interaction.channel == null)
-        throw `Unsupported channel when accessing \`${url}\` script.`;
-
-    const re_message_url = new RegExp(`^https?://(.+)/channels/${interaction.guildId as string}/${interaction.channelId }/(\\d+)/?$`),
-        match_message = re_message_url.exec(url);
+const re_message_id = /^(?:(\d+)-)?(\d+)$|^https?:\/\/.+\/channels\/.+\/(\d+)\/(\d+)\/?$/;
+async function scriptFrom (address: string, interaction: CommandInteraction): Promise<Script> {
+    const match = re_message_id.exec(address);
 
     let data: string;
-    if (match_message) {
-        const message = await interaction.channel.messages.fetch(match_message[2] );
+
+    if (match) {
+        const message_id = match[2] ?? match[4];
+
+        if (!interaction.channel)
+            throw `Unknown channel at \`${address}\` address.`;
+
+        // TODO support message in this channel's threads
+        let message;
+        try {
+            message = await interaction.channel.messages.fetch(message_id);
+        }
+        catch (error) {
+            throw `Message must be in this channel at \`${address}\` address.`;
+        }
 
         if (message.attachments.size == 0) {
             if (message.content.length > 0)
                 data = message.content.replace(/^`+|`+$/g, '');
             else
-                throw `No text or attachments in \`${url}\` message.`;
+                throw `No text or attachments at \`${address}\` address.`;
         }
         else if (message.attachments.size == 1) {
             const attachment_url = message.attachments.first()?.attachment as string;
@@ -432,19 +483,19 @@ async function scriptFromURL (url: string, interaction: CommandInteraction): Pro
                 data = await got.get(attachment_url).text();
             }
             catch (error) {
-                throw `Attachment error ${(error as Error).message} in \`${url}\` message.`;
+                throw `Attachment error ${(error as Error).message} at \`${address}\` address.`;
             }
         }
         else {
-            throw `Too many attachments (${message.attachments.size}, limit of 1) in \`${url}\` message.`;
+            throw `Too many attachments (limit of 1, actually ${message.attachments.size}) at \`${address}\` address.`;
         }
     }
     else {
         try {
-            data = await got.get(url).text();
+            data = await got.get(address).text();
         }
         catch (error) {
-            throw `Web error ${(error as Error).message} when accessing \`${url}\` script.`;
+            throw `Web error ${(error as Error).message} at \`${address}\` address.`;
         }
     }
 
@@ -453,7 +504,10 @@ async function scriptFromURL (url: string, interaction: CommandInteraction): Pro
         script = JSON5.parse(data);
     }
     catch (error) {
-        throw `JSON error \`${JSON.stringify(error)}\` when parsing \`${url}\` script.`;
+        if (error == JSON5.parse('{"lineNumber":1,"columnNumber":1}'))
+            throw `No JSON at \`${address}\` address.`;
+        else
+            throw `JSON error \`${JSON.stringify(error)}\` at \`${address}\` address.`;
     }
 
     return script;
