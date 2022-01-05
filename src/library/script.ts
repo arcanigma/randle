@@ -71,8 +71,8 @@ export type ShowRule = {
     show: Matcher;
     to: Matcher;
     as?: string;
-    distinctive?: Option;
     limit?: Value;
+    hideSame?: Option;
 } & Conditional
 
 export type AnnounceRule = {
@@ -103,7 +103,8 @@ export type Matcher =
     | { includes: string }
     | { excludes: string }
     | { matches: string }
-    | { all: true }
-    // TODO matcher for member dealt order
+    | { all: Option }
+    | { not: Matcher }
     | { set: Set; union?: Set; intersect?: Set; except?: Set }
+    // TODO matcher for member dealt order
     | Matcher[]

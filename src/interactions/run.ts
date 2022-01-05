@@ -327,7 +327,7 @@ export const register = ({ client }: { client: Client }): void => {
                                     dealt.forEach((theirs, them) => {
                                         if (them != member) {
 
-                                            theirs.filter(it => matches(it, show, script) && (!validate(rule.distinctive, script.options) || it != yours)).forEach(their => {
+                                            theirs.filter(it => matches(it, show, script) && (!validate(rule.hideSame, script.options) || it != yours)).forEach(their => {
                                                 const name = trunc(`Via ${yours}...`, MAX_FIELD_NAME),
                                                     value = trunc(`${them.toString()} was dealt **${rule.as ?? their}**`, MAX_FIELD_VALUE);
                                                 if (![ ...show_fields, ...these_fields ].some(it => it.name == name && it.value == value))

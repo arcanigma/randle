@@ -270,8 +270,10 @@ export function matches (it: string, matcher: Matcher, defines: Defines): boolea
         return !it.includes(wss(matcher.excludes));
     else if ('matches' in matcher)
         return new RegExp(wss(matcher.matches)).exec(it) != null;
-    else if ('all' in matcher && matcher.all === true)
-        return true;
+    else if ('all' in matcher)
+        return validate(matcher.all, defines.options);
+    else if ('not' in matcher)
+        return !matches(it, matcher.not, defines);
     else if ('set' in matcher) {
         let result =
             matches(it, construct(matcher.set, defines.sets), defines) ||
