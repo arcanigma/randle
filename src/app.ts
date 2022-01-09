@@ -11,12 +11,9 @@ import * as who from './interactions/who';
 import * as logo from './routes/logo';
 import * as status from './routes/status';
 
-// TODO handle mention caching
-
-// TODO menu command: run as script
-// TODO checklist threads
 // TODO anonymous send-and-reply
 
+// TODO dice pools with mark-for-reroll
 // TODO support for macros
 
 const client = new Client({ intents: [
@@ -27,6 +24,7 @@ void client.login(process.env.DISCORD_BOT_TOKEN);
 
 client.setMaxListeners(25);
 
+// TODO packages: sequelize, @types/sequelize, pg, pg-hstore
 // const db = new Sequelize(process.env.DATABASE_URL ?? '', {
 //     dialect: 'postgres',
 //     logging: false,

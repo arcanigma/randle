@@ -7,9 +7,7 @@ import { blame } from '../library/message';
 import { shuffleCopy, shuffleInPlace } from '../library/solve';
 
 // TODO support private thread polls
-
 // TODO toggle auto-unseal
-// TODO param for "correct" answer
 
 const MAX_CHOICE_LABEL = 25,
     DURATION_ONE_DAY = 1440;
@@ -78,7 +76,6 @@ export const register = ({ client }: { client: Client }): void => {
 
             const thread = await interaction.channel.threads.create({
                 startMessage: reply.id,
-                // TODO check how thread titles are sanitized
                 name: trunc(prompt, MAX_THREAD_NAME),
                 autoArchiveDuration: DURATION_ONE_DAY
             });
@@ -450,7 +447,7 @@ const re_user = /<@!?(\d+)>/g,
     re_markdown = /[_~*]+/g;
 function buildChoice (choice: string, members: Collection<string, GuildMember>): string {
     return `${wss(choice
-        .replaceAll(re_user, (_, id) => members.get(id)?.nickname ?? members.get(id)?.user.username ?? 'Unknown')
+        .replaceAll(re_user, (_, id: string) => members.get(id)?.nickname ?? members.get(id)?.user.username ?? 'Unknown')
         .replaceAll(re_emoji, '')
         .replaceAll(re_markdown, '')
     )}`;

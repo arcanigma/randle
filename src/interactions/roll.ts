@@ -100,15 +100,15 @@ function rollDice (clauses: string[]): MessageEmbed[] {
         const fields: EmbedField[] = [];
 
         const re_dice_code = /\b([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?\b/ig;
-        const outcome = clauses[i].replace(re_dice_code, (code, count, size, hilo, keep, modifier) => {
-            count = parseInt(count) || 1;
-            size = (size != '%' ? parseInt(size) || 1 : 100);
+        const outcome = clauses[i].replace(re_dice_code, (code: string, count: string | number, size: string | number, hilo: string | number, keep: string | number, modifier: string | number) => {
+            count = parseInt(count as string) || 1;
+            size = (size != '%' ? parseInt(size as string) || 1 : 100);
 
             const rolls: number[] = [];
             for (let i = 1; i <= count; i++)
                 rolls.push(randomInt(size) + 1);
 
-            keep = Math.min(parseInt(keep) || 1, count);
+            keep = Math.min(parseInt(keep as string) || 1, count);
 
             const strikes: {
                 [key: number]: number;
@@ -119,13 +119,13 @@ function rollDice (clauses: string[]): MessageEmbed[] {
                     sorted.sort((x,y) => x-y);
                 else
                     sorted.sort((x,y) => y-x);
-                for (let i = keep as number; i < sorted.length; i++) {
+                for (let i = keep ; i < sorted.length; i++) {
                     const key = sorted[i];
                     strikes[key] = (strikes[key] ?? 0) + 1;
                 }
             }
 
-            modifier = parseInt(modifier) || 0;
+            modifier = parseInt(modifier as string) || 0;
             if (modifier)
                 rolls.push(modifier);
 
@@ -154,9 +154,9 @@ function rollDice (clauses: string[]): MessageEmbed[] {
                 atoms.unshift(`**${total}**`, '=');
 
             let emoji;
-            if (total == 1 * (!hilo ? count : keep) + parseInt(modifier))
+            if (total == 1 * (!hilo ? count : keep) + modifier)
                 emoji = '🔻';
-            else if (total == size * (!hilo ? count : keep) + parseInt(modifier))
+            else if (total == size * (!hilo ? count : keep) + modifier)
                 emoji = '🔺';
 
             fields.push({

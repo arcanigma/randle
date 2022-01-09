@@ -2,13 +2,28 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "pwa-node",
+            "type": "node",
             "request": "launch",
-            "name": "ts-node-dev",
+            "name": "Run Application",
             "runtimeExecutable": "npm",
+            "runtimeArgs": [ "run", "dev" ],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/**",
+                "!**/node_modules/**"
+            ],
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Run Current File",
+            "runtimeExecutable": "tsnd",
             "runtimeArgs": [
-                "run-script",
-                "dev"
+                "--skip-project",
+                "--transpile-only",
+                "${file}"
             ],
             "skipFiles": [
                 "<node_internals>/**"
