@@ -39,6 +39,8 @@ export type Deck =
     | { repeat: Value; from: Deck }
     | { repeat: Value; grouping: Deck[] }
     | { duplicate: Value; of?: Value; from: Deck }
+    | { first: Value; from: Deck }
+    | { last: Value; from: Deck }
     | { cross: Deck; with: Deck; using?: string }
     | { zip: Deck; with: Deck; using?: string }
     | { if: Option; then: Deck; else?: Deck }

@@ -17,27 +17,23 @@ export function deckOf (it?: Deck, setup?: Setup): string[] {
         else
             return [wss(it)];
     }
-    else if ('choose' in it) {
-        if ('from' in it)
-            return choose(deckOf(it.from, setup), valueOf(it.choose, setup));
-        else if ('grouping' in it)
-            return deckOf(choose(it.grouping, valueOf(it.choose, setup)), setup);
-        else
-            throw `Unexpected choose \`${JSON.stringify(it)}\` in script.`;
-    }
-    else if ('repeat' in it) {
-        if ('from' in it)
-            return repeat(deckOf(it.from, setup), valueOf(it.repeat, setup));
-        else if ('grouping' in it)
-            return deckOf(repeat(it.grouping, valueOf(it.repeat, setup)), setup);
-        else
-            throw `Unexpected repeat \`${JSON.stringify(it)}\` in script.`;
-    }
+    else if ('choose' in it && 'from' in it)
+        return choose(deckOf(it.from, setup), valueOf(it.choose, setup));
+    else if ('choose' in it && 'grouping' in it)
+        return deckOf(choose(it.grouping, valueOf(it.choose, setup)), setup);
+    else if ('repeat' in it && 'from' in it)
+        return repeat(deckOf(it.from, setup), valueOf(it.repeat, setup));
+    else if ('repeat' in it && 'grouping' in it)
+        return deckOf(repeat(it.grouping, valueOf(it.repeat, setup)), setup);
     else if ('duplicate' in it)
         return repeat(
             choose(deckOf(it.from, setup), it.of ? valueOf(it.of, setup) : 1),
             valueOf(it.duplicate, setup)
         );
+    else if ('first' in it)
+        return first(deckOf(it.from, setup), valueOf(it.first, setup));
+    else if ('last' in it)
+        return last(deckOf(it.from, setup), valueOf(it.last, setup));
     else if ('cross' in it)
         return cross(deckOf(it.cross, setup), deckOf(it.with, setup), it.using);
     else if ('zip' in it)
@@ -87,11 +83,14 @@ export function choose<T> (list: T[], quantity: number, fit = false): T[] {
     if ((quantity > list.length && !fit) || quantity < 0)
         throw `Unexpected choose quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
 
+    if (list.length == 0)
+        throw 'Unexpected empty list in script.';
+
     return shuffleCopy(list).slice(list.length - quantity);
 }
 
-export function repeat<T> (list: T[], quantity: number): T[] {
-    if (quantity < 0)
+export function repeat<T> (list: T[], quantity: number, fit = false): T[] {
+    if ((quantity > list.length && !fit) || quantity < 0)
         throw `Unexpected repeat quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
 
     if (list.length == 0)
@@ -106,6 +105,26 @@ export function repeat<T> (list: T[], quantity: number): T[] {
 // export function pluck (object: Record<string, unknown>): string {
 //     return choose(Object.keys(object), 1)[0];
 // }
+
+export function first<T> (list: T[], quantity: number, fit = false): T[] {
+    if ((quantity > list.length && !fit) || quantity < 0)
+        throw `Unexpected first quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
+
+    if (list.length == 0)
+        throw 'Unexpected empty list in script.';
+
+    return list.slice(0, quantity);
+}
+
+export function last<T> (list: T[], quantity: number, fit = false): T[] {
+    if ((quantity > list.length && !fit) || quantity < 0)
+        throw `Unexpected last quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
+
+    if (list.length == 0)
+        throw 'Unexpected empty list in script.';
+
+    return list.slice(-quantity);
+}
 
 export function cross<T> (list1: T[], list2: T[], delimiter?: T): string[] {
     const build = [];
