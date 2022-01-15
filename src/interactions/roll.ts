@@ -1,11 +1,12 @@
 import { randomInt } from 'crypto';
-import { ApplicationCommandData, Client, EmbedField, MessageEmbed } from 'discord.js';
+import { ApplicationCommandData, BaseGuildEmojiManager, Client, EmbedField, MessageEmbed } from 'discord.js';
 import ordinal from 'ordinal';
 import { MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants';
 import { registerApplicationCommand } from '../library/backend';
 import { trunc, wss } from '../library/factory';
 import { blame, truncEmbeds, truncFields } from '../library/message';
 import { } from '../library/parser';
+import { repeat } from '../library/solve';
 
 export const register = ({ client }: { client: Client }): void => {
 
@@ -30,20 +31,20 @@ export const register = ({ client }: { client: Client }): void => {
     // TODO refactor into parser
     // TODO support macros
 
-    const re_segments = /\s*;\s*/;
+    const re_boundary = /\s*;\s*/;
     client.on('interactionCreate', async interaction => {
         if (!interaction.isCommand() || interaction.commandName !== 'roll') return;
 
         try {
-            const text = interaction.options.get('text')?.value as string;
+            const text = interaction.options.get('text')?.value as string,
+                arrays = findEmojiArrays(text, interaction.client.emojis),
+                clauses = text.trim().split(re_boundary),
+                raw_clauses = clauses.length;
 
-            const clauses = text.trim().split(re_segments),
-                segments = clauses.length;
-
-            for (let i = 0; i < segments; i++)
+            for (let i = 0; i < raw_clauses; i++)
                 clauses.push(...expandRepeats(clauses.shift() as string));
 
-            const embeds = rollDice(clauses);
+            const embeds = rollDice(clauses, arrays);
 
             if (embeds.length > 0)
                 await interaction.reply({
@@ -91,7 +92,10 @@ function expandRepeats (clause: string) {
     }
 }
 
-function rollDice (clauses: string[]): MessageEmbed[] {
+const re_dice_code = /\b([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?\b/ig,
+    re_array_code = /(?:\b([1-9][0-9]*)?d?)?\{(\w+?)\}/ig;
+
+function rollDice (clauses: string[], arrays: Record<string, string[]>): MessageEmbed[] {
     const embeds: MessageEmbed[] = [];
 
     for (let i = 0; i < clauses.length; i++) {
@@ -99,7 +103,6 @@ function rollDice (clauses: string[]): MessageEmbed[] {
 
         const fields: EmbedField[] = [];
 
-        const re_dice_code = /\b([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?\b/ig;
         const outcome = clauses[i].replace(re_dice_code, (code: string, count: string | number, size: string | number, hilo: string | number, keep: string | number, modifier: string | number) => {
             count = parseInt(count as string) || 1;
             size = (size != '%' ? parseInt(size as string) || 1 : 100);
@@ -166,6 +169,24 @@ function rollDice (clauses: string[]): MessageEmbed[] {
             });
 
             return `${total}`;
+        }).replace(re_array_code, (code: string, count: string | number, slug: string) => {
+            slug = slug.toLowerCase();
+
+            if (!arrays[slug])
+                return code;
+
+            count = parseInt(count as string) || 1;
+
+            const rolls = repeat(arrays[slug], count),
+                title = slug[0].toUpperCase() + slug.slice(1);
+
+            fields.push({
+                name: trunc(`${title}`, MAX_FIELD_NAME),
+                value: trunc(`${rolls.join(' ')}`, MAX_FIELD_VALUE),
+                inline: true
+            });
+
+            return `${count} of ${title}`;
         });
 
         if (outcome != clauses[i]) {
@@ -214,4 +235,22 @@ function regexClosure (clause: string, re: RegExp, fun: (substring: string, ...a
         clause = clause.replace(re, fun);
     } while (clause != old);
     return clause;
+}
+
+function findEmojiArrays (text: string, emojis: BaseGuildEmojiManager): Record<string, string[]> {
+    const arrays: Record<string, string[]> = {};
+    for (let [ , , slug ] of text.matchAll(re_array_code)) {
+        slug = slug.toLowerCase();
+
+        if (arrays[slug])
+            continue;
+
+        const ids = emojis.cache
+            .filter(e => e.name?.toLowerCase().startsWith(`${slug}_`) ?? false)
+            .map(e => e.toString());
+
+        if (ids.length > 0)
+            arrays[slug] = ids;
+    }
+    return arrays;
 }
