@@ -80,21 +80,28 @@ export function shuffleInPlace<T> (list: T[]): T[] {
 }
 
 export function choose<T> (list: T[], quantity: number, fit = false): T[] {
-    if ((quantity > list.length && !fit) || quantity < 0)
-        throw `Unexpected choose quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
+    if (quantity > list.length) {
+        if (fit)
+            quantity = list.length;
+        else
+            throw `Choose \`${JSON.stringify(quantity)}\` too many for list \`${JSON.stringify(list)}\` in script.`;
+    }
+
+    if (quantity < 0)
+        throw `Choose \`${JSON.stringify(quantity)}\` too few for list \`${JSON.stringify(list)}\` in script.`;
 
     if (list.length == 0)
-        throw 'Unexpected empty list in script.';
+        throw 'Choose for unexpected empty list in script.';
 
     return shuffleCopy(list).slice(list.length - quantity);
 }
 
-export function repeat<T> (list: T[], quantity: number, fit = false): T[] {
-    if ((quantity > list.length && !fit) || quantity < 0)
-        throw `Unexpected repeat quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
+export function repeat<T> (list: T[], quantity: number): T[] {
+    if (quantity < 0)
+        throw `Repeat \`${JSON.stringify(quantity)}\` too few for list \`${JSON.stringify(list)}\` in script.`;
 
     if (list.length == 0)
-        throw 'Unexpected empty list in script.';
+        throw 'Repeat for unexpected empty list in script.';
 
     const build = [];
     for (let i = 1; i <= quantity; i++)
@@ -102,26 +109,36 @@ export function repeat<T> (list: T[], quantity: number, fit = false): T[] {
     return build;
 }
 
-// export function pluck (object: Record<string, unknown>): string {
-//     return choose(Object.keys(object), 1)[0];
-// }
-
 export function first<T> (list: T[], quantity: number, fit = false): T[] {
-    if ((quantity > list.length && !fit) || quantity < 0)
-        throw `Unexpected first quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
+    if (quantity > list.length) {
+        if (fit)
+            quantity = list.length;
+        else
+            throw `First \`${JSON.stringify(quantity)}\` too many for list \`${JSON.stringify(list)}\` in script.`;
+    }
+
+    if (quantity < 0)
+        throw `First \`${JSON.stringify(quantity)}\` too few for list \`${JSON.stringify(list)}\` in script.`;
 
     if (list.length == 0)
-        throw 'Unexpected empty list in script.';
+        throw 'First for unexpected empty list in script.';
 
     return list.slice(0, quantity);
 }
 
 export function last<T> (list: T[], quantity: number, fit = false): T[] {
-    if ((quantity > list.length && !fit) || quantity < 0)
-        throw `Unexpected last quantity \`${JSON.stringify(quantity)}\` for list \`${JSON.stringify(list)}\` in script.`;
+    if (quantity > list.length) {
+        if (fit)
+            quantity = list.length;
+        else
+            throw `Last \`${JSON.stringify(quantity)}\` too many for list \`${JSON.stringify(list)}\` in script.`;
+    }
+
+    if (quantity < 0)
+        throw `Last \`${JSON.stringify(quantity)}\` too few for list \`${JSON.stringify(list)}\` in script.`;
 
     if (list.length == 0)
-        throw 'Unexpected empty list in script.';
+        throw 'Last for unexpected empty list in script.';
 
     return list.slice(-quantity);
 }
