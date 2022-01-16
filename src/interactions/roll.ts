@@ -156,10 +156,13 @@ function rollDice (clauses: string[], arrays: Record<string, string[]>): Message
             else
                 atoms.unshift(`**${total}**`, '=');
 
+            const min = 1 * (!hilo ? count : keep) + modifier,
+                max = size * (!hilo ? count : keep) + modifier;
+
             let emoji;
-            if (total == 1 * (!hilo ? count : keep) + modifier)
+            if (total == min && total != max)
                 emoji = '🔻';
-            else if (total == size * (!hilo ? count : keep) + modifier)
+            else if (total == max && total != min)
                 emoji = '🔺';
 
             fields.push({
