@@ -7,7 +7,6 @@ import { blame } from '../library/message';
 import { shuffleCopy, shuffleInPlace } from '../library/solve';
 
 // TODO support private thread polls
-// TODO toggle auto-unseal
 
 const MAX_CHOICE_LABEL = 25,
     DURATION_ONE_DAY = 1440;
@@ -38,6 +37,16 @@ export const register = ({ client }: { client: Client }): void => {
                     description: 'A list of choices, a range size, or an @everyone, @here, or @role mention',
                     required: true
                 },
+                {
+                    name: 'type',
+                    type: 'STRING',
+                    description: 'The type of poll (sealed by default)',
+                    choices: [
+                        { name: 'Sealed', value: 'sealed' },
+                        { name: 'Unsealed', value: 'unsealed' }
+                    ],
+                    required: false
+                },
             ]
         };
 
@@ -60,6 +69,7 @@ export const register = ({ client }: { client: Client }): void => {
                     emoji: buildEmoji(it),
                     label: buildChoice(it, members)
                 })),
+                type = interaction.options.get('type')?.value as string,
                 emojis = shuffleCopy(ABSTRACT_EMOJIS.filter(emoji => !choices.some(choice => choice.emoji == emoji)));
 
             if (choices.length < 1)
@@ -70,7 +80,9 @@ export const register = ({ client }: { client: Client }): void => {
                 throw `At most ${MAX_CHOICES} choices are allowed.`;
 
             const reply = await interaction.reply({
-                content: `${interaction.user.toString()} made a poll`,
+                content: type != 'unsealed'
+                    ? `${interaction.user.toString()} made a **sealed** poll`
+                    : `${interaction.user.toString()} made an **unsealed** poll`,
                 fetchReply: true
             });
 
@@ -92,7 +104,9 @@ export const register = ({ client }: { client: Client }): void => {
                         type: 'BUTTON',
                         emoji: it.emoji ?? (it.emoji = emojis.pop() as string),
                         label: (it.label = trunc(it.label, MAX_CHOICE_LABEL)),
-                        customId: `vote_${it.emoji} ${it.label}`,
+                        customId: type != 'unsealed'
+                            ? `vote_s_${it.emoji} ${it.label}`
+                            : `vote_u_${it.emoji} ${it.label}`,
                         style: 'PRIMARY'
                     }))
                 });
@@ -103,7 +117,7 @@ export const register = ({ client }: { client: Client }): void => {
             });
 
             await thread.send({
-                content: '**Votes and Poll Actions**',
+                content: '**Choices and Actions**',
                 components: components
             });
         }
@@ -115,26 +129,41 @@ export const register = ({ client }: { client: Client }): void => {
         }
     });
 
-    // TODO combine listeners when possible
     client.on('interactionCreate', async interaction => {
-        if (!interaction.isButton() || !interaction.customId.startsWith('vote_')) return;
+        if (!interaction.isButton() || !(interaction.customId.startsWith('vote_s_') || interaction.customId.startsWith('vote_u_'))) return;
 
         try {
+            if (!(interaction.channel instanceof ThreadChannel))
+                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
+
             if (!canVote(interaction))
                 throw "You don't have permission to vote in this poll";
 
-            const choice = (interaction.component as MessageButton).customId?.slice(5);
+            const choice = (interaction.component as MessageButton).customId?.slice(7);
             if (!choice) return;
 
-            await interaction.reply({
-                content: `${interaction.user.toString()} voted`,
-                components: [
-                    {
-                        type: 'ACTION_ROW',
-                        components: buildSealedComponents(choice)
-                    }
-                ]
-            });
+            if (interaction.customId.startsWith('vote_s_')) {
+                await interaction.reply({
+                    content: `${interaction.user.toString()} voted`,
+                    components: [
+                        {
+                            type: 'ACTION_ROW',
+                            components: buildSealedComponents(choice)
+                        }
+                    ]
+                });
+            }
+            else {
+                await interaction.reply({
+                    content: `${interaction.user.toString()} voted for **${choice}**`,
+                    components: [
+                        {
+                            type: 'ACTION_ROW',
+                            components: buildUnsealedComponents(choice)
+                        }
+                    ]
+                });
+            }
 
             await interaction.followUp({
                 content: `You voted for **${choice}**`,
@@ -459,7 +488,7 @@ function buildPollActionComponents (): MessageActionRowComponentResolvable[] {
             type: 'SELECT_MENU',
             customId: 'mod_poll',
             emoji: '🗳️',
-            placeholder: 'Select a Poll Action',
+            placeholder: 'Select an Action',
             minValues: 1,
             maxValues: 1,
             options: [
@@ -529,8 +558,6 @@ function buildSealedComponents (choice: string): MessageActionRowComponentResolv
         }
     ];
 }
-
-
 
 function buildUnsealedComponents (choice: string): MessageActionRowComponentResolvable[] {
     return [

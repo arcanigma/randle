@@ -12,8 +12,6 @@ import * as logo from './routes/logo';
 import * as status from './routes/status';
 
 // TODO anonymous send-and-reply
-
-// TODO dice pools with mark-for-reroll
 // TODO support for macros
 
 const client = new Client({ intents: [
