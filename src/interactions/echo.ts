@@ -22,7 +22,10 @@ export const register = ({ client }: { client: Client }): void => {
     });
 
     client.on('interactionCreate', async interaction => {
-        if (!interaction.isCommand() || interaction.commandName !== 'echo') return;
+        if (!(
+            interaction.isCommand() &&
+            interaction.commandName === 'echo'
+        )) return;
 
         const input = interaction.options.get('input')?.value as string;
 

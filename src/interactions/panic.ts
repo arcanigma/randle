@@ -27,13 +27,13 @@ export const register = ({ client }: { client: Client }): void => {
     });
 
     client.on('interactionCreate', async interaction => {
-        if (!interaction.isCommand() || interaction.commandName !== 'panic') return;
+        if (!(
+            interaction.isCommand() &&
+            interaction.commandName === 'panic' &&
+            interaction.channel instanceof TextChannel
+        )) return;
 
         try {
-            if (!(interaction.channel instanceof TextChannel))
-                // TODO throw about text channel, not just unsupported
-                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
-
             const about = interaction.options.get('about')?.value as string | undefined;
 
             console.debug(interaction);

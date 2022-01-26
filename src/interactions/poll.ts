@@ -54,12 +54,13 @@ export const register = ({ client }: { client: Client }): void => {
     });
 
     client.on('interactionCreate', async interaction => {
-        if (!interaction.isCommand() || interaction.commandName !== 'poll') return;
+        if (!(
+            interaction.isCommand() &&
+            interaction.commandName === 'poll' &&
+            interaction.channel instanceof TextChannel
+        )) return;
 
         try {
-            if (!(interaction.channel instanceof TextChannel))
-                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
-
             if (!canMakePoll(interaction))
                 throw "You don't have permission to make a poll in this channel";
 

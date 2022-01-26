@@ -26,7 +26,10 @@ export const register = ({ client }: { client: Client }): void => {
     });
 
     client.on('interactionCreate', async interaction => {
-        if (!interaction.isCommand() || interaction.commandName !== 'shuffle') return;
+        if (!(
+            interaction.isCommand() &&
+            interaction.commandName === 'shuffle'
+        )) return;
 
         try {
             const raw_items = interaction.options.get('items')?.value as string;
@@ -74,7 +77,10 @@ export const register = ({ client }: { client: Client }): void => {
     });
 
     client.on('interactionCreate', async interaction => {
-        if (!interaction.isCommand() || interaction.commandName !== 'draw') return;
+        if (!(
+            interaction.isCommand() &&
+            interaction.commandName === 'draw'
+        )) return;
 
         try {
             const raw_items = interaction.options.get('items')?.value as string,

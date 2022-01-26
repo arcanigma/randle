@@ -61,12 +61,13 @@ export const register = ({ client }: { client: Client }): void => {
     });
 
     client.on('interactionCreate', async interaction => {
-        if (!interaction.isCommand() || (interaction.commandName !== 'run' && interaction.commandName !== 'preview')) return;
+        if (!(
+            interaction.isCommand() &&
+            [ 'run', 'preview' ].includes(interaction.commandName) &&
+            interaction.channel instanceof TextChannel
+        )) return;
 
         try {
-            if (!(interaction.channel instanceof TextChannel))
-                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
-
             const you = interaction.member as GuildMember,
                 address = interaction.options.get('address')?.value as string,
                 moderator = interaction.channel.members.get(interaction.options.get('moderator')?.value as Snowflake),

@@ -33,7 +33,10 @@ export const register = ({ client }: { client: Client }): void => {
 
     const re_boundary = /\s*;\s*/;
     client.on('interactionCreate', async interaction => {
-        if (!interaction.isCommand() || interaction.commandName !== 'roll') return;
+        if (!(
+            interaction.isCommand() &&
+            interaction.commandName === 'roll'
+        )) return;
 
         try {
             const text = interaction.options.get('text')?.value as string,

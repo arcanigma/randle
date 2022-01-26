@@ -46,7 +46,7 @@ export async function itemize (text: string, interaction: Interaction): Promise<
         }
         else if (items[0] == '@everyone' || items[0] == '@here') {
             if (!(interaction.channel instanceof TextChannel))
-                throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
+                throw `Channel <${interaction.channel?.toString() ?? 'undefined'}> is not a text channel.`;
 
             items = interaction.channel.members
                 .filter(them => !them.user.bot)
