@@ -12,12 +12,12 @@ export const register = ({ client }: { client: Client }): void => {
         const slash: ApplicationCommandData = {
             type: 'CHAT_INPUT',
             name: 'panic',
-            description: 'Press the panic button, anonymously',
+            description: 'Press the panic button (anonymous to the channel, but logged to the server)',
             options: [
                 {
                     name: 'about',
                     type: 'STRING',
-                    description: 'What to panic about',
+                    description: 'The reason to panic about',
                     required: false
                 }
             ],
@@ -31,25 +31,28 @@ export const register = ({ client }: { client: Client }): void => {
 
         try {
             if (!(interaction.channel instanceof TextChannel))
+                // TODO throw about text channel, not just unsupported
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
             const about = interaction.options.get('about')?.value as string | undefined;
 
+            console.debug(interaction);
+
             await interaction.reply({
-                content: 'You pressed the panic button, anonymously.',
+                content: 'You pressed the panic button.',
                 ephemeral: true
             });
 
             await interaction.channel.send({
                 embeds: [
                     {
-                        title: 'Someone pressed the panic button!',
+                        title: 'A member in the channel pressed the panic button!',
                         color: 'YELLOW',
                         thumbnail: { url: `attachment://${PANIC_BUTTON_IMAGE}` },
                         fields: [
                             {
                                 name: 'About...',
-                                value: about ?? 'They didn\'t say what.'
+                                value: about ?? 'The member didn\'t give a reason.'
                             }
                         ]
                     }
