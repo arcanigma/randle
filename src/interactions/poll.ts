@@ -66,7 +66,7 @@ export const register = ({ client }: { client: Client }): void => {
 
             const prompt = interaction.options.get('prompt')?.value as string,
                 members = interaction.channel.members,
-                choices = (await itemize(interaction.options.get('choices')?.value as string, interaction)).map(it => ({
+                choices = itemize(interaction.options.get('choices')?.value as string, interaction).map(it => ({
                     emoji: buildEmoji(it),
                     label: buildChoice(it, members)
                 })),

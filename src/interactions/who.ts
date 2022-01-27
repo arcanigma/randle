@@ -1,6 +1,6 @@
 import { ApplicationCommandData, Client, TextChannel } from 'discord.js';
 import { registerApplicationCommand } from '../library/backend';
-import { names } from '../library/factory';
+import { commas, membersOf } from '../library/factory';
 import { blame } from '../library/message';
 import { shuffleInPlace } from '../library/solve';
 
@@ -35,21 +35,17 @@ export const register = ({ client }: { client: Client }): void => {
             const role_id = interaction.options.get('role')?.value as string;
 
             if (role_id == interaction.guild?.roles.everyone.id) {
-                const members = shuffleInPlace([...interaction.channel.members.values()]);
+                const { members } = membersOf('@everyone', interaction);
 
                 await interaction.reply({
-                    content: `Everyone in ${interaction.channel?.toString()} includes ${names(members)}.`
+                    content: `Everyone in ${interaction.channel?.toString()} includes ${commas(shuffleInPlace(members))}.`
                 });
             }
             else {
-                const role = await interaction.guild?.roles.fetch(role_id);
-                if (!role)
-                    throw `Unsupported role <${role_id}>.`;
-
-                const members = shuffleInPlace([...role.members.values()]);
+                const { name, members } = membersOf(role_id, interaction);
 
                 await interaction.reply({
-                    content: `The role ${role.toString()} includes ${names(members)}.`
+                    content: `The role ${name} includes ${commas(shuffleInPlace(members))}.`
                 });
             }
         }

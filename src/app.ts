@@ -11,7 +11,7 @@ import * as who from './interactions/who';
 import * as logo from './routes/logo';
 import * as status from './routes/status';
 
-// TODO anonymous send-and-reply
+// TODO anonymous send-and-reply by proxy
 // TODO support for macros
 
 const client = new Client({ intents: [

@@ -73,7 +73,7 @@ export const register = ({ client }: { client: Client }): void => {
                 moderator = interaction.channel.members.get(interaction.options.get('moderator')?.value as Snowflake),
                 preview = interaction.commandName == 'preview';
 
-            // TODO option to include/exclude members, re: admins/owners
+            // TODO option to include/exclude a spectators role
             const members = shuffleInPlace([
                 ...interaction.channel.members
                     .filter(them => !them.user.bot)
@@ -173,7 +173,7 @@ export const register = ({ client }: { client: Client }): void => {
                     let cycles = Math.ceil(pile.length / members.length);
                     if (rule.limit !== undefined) {
                         if (rule.limit < 0)
-                            throw 'Deal limit must be at least 1 if not omitted.';
+                            throw 'Deal limit must be at least 1, if any.';
 
                         cycles = Math.min(valueOf(rule.limit, script.setup), cycles);
                     }
@@ -244,7 +244,6 @@ export const register = ({ client }: { client: Client }): void => {
                             title: rule.for
                                 ? `You were dealt for ${rule.for}...`
                                 : 'You were dealt...',
-                            // TODO each item as a field instead of joined description
                             description: trunc(commas(these.map(it => `**${it}**`)), MAX_EMBED_DESCRIPTION)
                         });
 
@@ -462,7 +461,7 @@ async function scriptFrom (address: string, interaction: CommandInteraction): Pr
         if (!interaction.channel)
             throw `Unknown channel at \`${address}\` address.`;
 
-        // TODO support message in this channel's threads
+        // TODO support any message within threads of this channel
         let message;
         try {
             message = await interaction.channel.messages.fetch(message_id);

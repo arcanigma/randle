@@ -60,7 +60,6 @@ export type DealRule = {
     deal: Deck;
     for?: string;
     limit?: Value;
-    exactly?: Option; // TODO throw if not an exact deal
 }
 
 export type ShowRule = {

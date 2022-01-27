@@ -34,39 +34,57 @@ export function wss (text: string): string {
     return text.trim().replace(re_wss, ' ');
 }
 
-// TODO support @everyone etc within a larger list
-// TODO filter duplicates
-const re_role = /^<@&(\d+)>$/;
-export async function itemize (text: string, interaction: Interaction): Promise<string[]> {
-    let items = text.split(',').map(it => it.trim()).filter(Boolean),
-        match;
-    if (items.length == 1) {
-        if (Number(items[0]) >= 1 && Number(items[0]) % 1 == 0) {
-            items = (<number[]> Array(Number(items[0])).fill(1)).map((v, i) => String(v + i));
-        }
-        else if (items[0] == '@everyone' || items[0] == '@here') {
-            if (!(interaction.channel instanceof TextChannel))
-                throw `Channel <${interaction.channel?.toString() ?? 'undefined'}> is not a text channel.`;
+export function itemize (text: string, interaction: Interaction): string[] {
+    const elements = text.split(',').map(it => it.trim()).filter(Boolean);
 
-            items = interaction.channel.members
-                .filter(them => !them.user.bot)
-                .filter(them => items[0] != '@here' || them.presence?.status == 'online')
-                .map(them => them.toString());
-        }
-        else if ((match = re_role.exec(items[0]))) {
-            // TODO get from cache?
-            const role = await interaction.guild?.roles.fetch(match[1]);
-            if (!role)
-                throw `Unsupported role <${match[1]}>.`;
-
-            items = role.members
-                .filter(them => !them.user.bot)
-                .map(them => them.toString());
-        }
-        // TODO support macros
+    if (elements.length == 1) {
+        const num = Number(elements[0]);
+        if (num >= 1 && num % 1 == 0)
+            return (<number[]> Array(num).fill(1)).map((v, i) => String(v + i));
     }
-    else if (items.length < 1) {
+
+    const items: string[] = [];
+    for (const it of elements) {
+        const them = membersOf(it, interaction);
+
+        if (them.members.length > 0)
+            items.push(...them.members);
+        else
+            items.push(it);
+    }
+
+    if (items.length < 1)
         throw 'Number of items must be at least 1.';
-    }
+
     return items;
+}
+
+const re_role = /^<@&(\d+)>$|^(\d+)$/;
+export function membersOf (mention: string, interaction: Interaction): { name: string; members: string[] } {
+    if ((mention == '@everyone' || mention == '@here') && interaction.channel instanceof TextChannel)
+        return {
+            name: mention,
+            members: interaction.channel.members
+                .filter(them => !them.user.bot)
+                .filter(them => mention != '@here' || them.presence?.status == 'online')
+                .map(them => them.toString())
+        };
+
+    const match = re_role.exec(mention),
+        role_id = match?.[1] ?? match?.[2];
+
+    if (role_id) {
+        const role = interaction.guild?.roles.cache.get(role_id);
+        if (role)
+            return {
+                name: role.toString(),
+                members: role?.members
+                    .map(them => them.toString())
+            };
+    }
+
+    return {
+        name: 'undefined',
+        members: []
+    };
 }

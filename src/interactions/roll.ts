@@ -29,7 +29,6 @@ export const register = ({ client }: { client: Client }): void => {
     });
 
     // TODO refactor into parser
-    // TODO support macros
 
     const re_boundary = /\s*;\s*/;
     client.on('interactionCreate', async interaction => {

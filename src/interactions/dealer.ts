@@ -32,9 +32,8 @@ export const register = ({ client }: { client: Client }): void => {
         )) return;
 
         try {
-            const raw_items = interaction.options.get('items')?.value as string;
-
-            const items = shuffleInPlace(await itemize(raw_items, interaction));
+            const elements = interaction.options.get('items')?.value as string,
+                items = shuffleInPlace(itemize(elements, interaction));
 
             await interaction.reply({
                 content: `${interaction.user.toString()} shuffled ${items.length != 1 ? 'items' : 'an item'}`,
@@ -83,10 +82,10 @@ export const register = ({ client }: { client: Client }): void => {
         )) return;
 
         try {
-            const raw_items = interaction.options.get('items')?.value as string,
+            const elements = interaction.options.get('items')?.value as string,
                 quantity = interaction.options.get('quantity')?.value as number ?? 1;
 
-            let items = await itemize(raw_items, interaction);
+            let items = itemize(elements, interaction);
 
             if (items.length < 1)
                 throw 'At least 1 item is required.';
