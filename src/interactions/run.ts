@@ -69,17 +69,21 @@ export const register = ({ client }: { client: Client }): void => {
 
         try {
             const you = interaction.member as GuildMember,
+                bot = interaction.guild?.members.resolve(client?.user?.id as string) as GuildMember,
                 address = interaction.options.get('address')?.value as string,
                 moderator = interaction.channel.members.get(interaction.options.get('moderator')?.value as Snowflake),
                 preview = interaction.commandName == 'preview';
 
-            // TODO option to include/exclude a spectators role
             const members = shuffleInPlace([
                 ...interaction.channel.members
                     .filter(them => !them.user.bot)
                     .filter(them => !moderator || them != moderator)
+                    .filter(them => them.roles.highest.name == '@everyone' || them.roles.highest.position > bot.roles.highest.position)
                     .values()
             ]);
+
+            if (members.length < 1)
+                throw `Everyone in ${interaction.channel.toString()} includes no qualifying members for a script.`;
 
             const script = await scriptFrom(address.trim(), interaction);
 
