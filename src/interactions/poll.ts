@@ -470,7 +470,14 @@ function canModeratePoll (interaction: Interaction): boolean {
 
 const re_emoji = emojiRegex();
 function buildEmoji (choice: string): string | undefined {
-    return re_emoji.exec(choice)?.[0];
+    const match = re_emoji.exec(choice);
+    if (match) {
+        const emoji = match[0],
+            codepoints = [...emoji],
+            base = codepoints[0]; // TODO support modifiers once API does
+        return base;
+    }
+    else return undefined;
 }
 
 const re_user = /<@!?(\d+)>/g,
