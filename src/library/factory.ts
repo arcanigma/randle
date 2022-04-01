@@ -1,4 +1,4 @@
-import { GuildMember, Interaction, TextChannel } from 'discord.js';
+import { GuildMember, Interaction, TextChannel, VoiceChannel } from 'discord.js';
 
 export function commas (list: (string | undefined)[], separator=', ', conjunction='and'): string {
     const flist = <string[]>list.filter(it => it !== undefined);
@@ -12,7 +12,7 @@ export function commas (list: (string | undefined)[], separator=', ', conjunctio
         return '';
 }
 
-export function names (members: GuildMember[], separator?: string, conjunction?: string): string {
+export function names (members: (GuildMember | string)[], separator?: string, conjunction?: string): string {
     return commas(members.map(them => `${them.toString()}`), separator, conjunction) || 'nobody';
 }
 
@@ -61,7 +61,10 @@ export function itemize (text: string, interaction: Interaction): string[] {
 
 const re_role = /^<@&(\d+)>$|^(\d+)$/;
 export function membersOf (mention: string, interaction: Interaction): { name: string; members: string[] } {
-    if ((mention == '@everyone' || mention == '@here') && interaction.channel instanceof TextChannel)
+    if (
+        (mention == '@everyone' || mention == '@here') &&
+        (interaction.channel instanceof TextChannel || interaction.channel instanceof VoiceChannel)
+    ) {
         return {
             name: mention,
             members: interaction.channel.members
@@ -69,6 +72,7 @@ export function membersOf (mention: string, interaction: Interaction): { name: s
                 .filter(them => mention != '@here' || them.presence?.status == 'online')
                 .map(them => them.toString())
         };
+    }
 
     const match = re_role.exec(mention),
         role_id = match?.[1] ?? match?.[2];

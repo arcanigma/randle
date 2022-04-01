@@ -1,6 +1,6 @@
-import { ApplicationCommandData, Client, TextChannel } from 'discord.js';
+import { ApplicationCommandData, Client, TextChannel, VoiceChannel } from 'discord.js';
 import { registerApplicationCommand } from '../library/backend';
-import { commas, membersOf } from '../library/factory';
+import { membersOf, names } from '../library/factory';
 import { blame } from '../library/message';
 import { shuffleInPlace } from '../library/solve';
 
@@ -27,25 +27,28 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interactionCreate', async interaction => {
         if (!(
             interaction.isCommand() &&
-            interaction.commandName === 'who' &&
-            interaction.channel instanceof TextChannel
+            interaction.commandName === 'who'
         )) return;
 
         try {
+            if (!(
+                interaction.channel instanceof TextChannel || interaction.channel instanceof VoiceChannel
+            )) throw 'This command can only be used in text and voice channels.';
+
             const role_id = interaction.options.get('role')?.value as string;
 
             if (role_id == interaction.guild?.roles.everyone.id) {
                 const { members } = membersOf('@everyone', interaction);
 
                 await interaction.reply({
-                    content: `Everyone in ${interaction.channel?.toString()} includes ${commas(shuffleInPlace(members))}.`
+                    content: `Everyone in ${interaction.channel?.toString()} includes ${names(shuffleInPlace(members))}.`
                 });
             }
             else {
                 const { name, members } = membersOf(role_id, interaction);
 
                 await interaction.reply({
-                    content: `The role ${name} includes ${commas(shuffleInPlace(members))}.`
+                    content: `The role ${name} includes ${names(shuffleInPlace(members))}.`
                 });
             }
         }

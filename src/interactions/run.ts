@@ -1,4 +1,4 @@
-import { ApplicationCommandData, Client, CommandInteraction, EmbedField, GuildMember, MessageEmbed, Snowflake, TextChannel } from 'discord.js';
+import { ApplicationCommandData, Client, CommandInteraction, EmbedField, GuildMember, MessageEmbed, Snowflake, TextChannel, VoiceChannel } from 'discord.js';
 import got from 'got';
 import JSON5 from 'json5';
 import { MAX_EMBED_DESCRIPTION, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants';
@@ -63,11 +63,14 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interactionCreate', async interaction => {
         if (!(
             interaction.isCommand() &&
-            [ 'run', 'preview' ].includes(interaction.commandName) &&
-            interaction.channel instanceof TextChannel
+            [ 'run', 'preview' ].includes(interaction.commandName)
         )) return;
 
         try {
+            if (!(
+                interaction.channel instanceof TextChannel || interaction.channel instanceof VoiceChannel
+            )) throw 'This command can only be used in text and voice channels.';
+
             const you = interaction.member as GuildMember,
                 bot = interaction.guild?.members.resolve(client?.user?.id as string) as GuildMember,
                 address = interaction.options.get('address')?.value as string,
@@ -232,7 +235,7 @@ export const register = ({ client }: { client: Client }): void => {
                             })),
                             ...(pile.length > 0 ? [{
                                 name: `${pile.length} leftover for...`,
-                                value: trunc(moderator ? moderator.toString() : 'Nobody', MAX_FIELD_VALUE),
+                                value: trunc(moderator ? moderator.toString() : 'nobody', MAX_FIELD_VALUE),
                                 inline: true
                             }] : [])
                         ]
@@ -466,6 +469,7 @@ async function scriptFrom (address: string, interaction: CommandInteraction): Pr
             throw `Unknown channel at \`${address}\` address.`;
 
         // TODO support any message within threads of this channel
+        // TODO support message within text chat of voice channel
         let message;
         try {
             message = await interaction.channel.messages.fetch(message_id);

@@ -2,11 +2,12 @@ import { ApplicationCommandData, Client, Collection, EmbedField, GuildMember, In
 import emojiRegex from 'emoji-regex';
 import { MAX_ACTION_ROWS, MAX_FIELD_NAME, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } from '../constants';
 import { registerApplicationCommand } from '../library/backend';
-import { commas, itemize, trunc, wss } from '../library/factory';
+import { commas, itemize, names, trunc, wss } from '../library/factory';
 import { blame } from '../library/message';
 import { shuffleCopy, shuffleInPlace } from '../library/solve';
 
 // TODO support private thread polls
+// TODO overhaul polls with one drop-down menu per voter?
 
 const MAX_CHOICE_LABEL = 25,
     DURATION_ONE_DAY = 1440;
@@ -56,11 +57,14 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interactionCreate', async interaction => {
         if (!(
             interaction.isCommand() &&
-            interaction.commandName === 'poll' &&
-            interaction.channel instanceof TextChannel
+            interaction.commandName === 'poll'
         )) return;
 
         try {
+            if (!(
+                interaction.channel instanceof TextChannel
+            )) throw 'This command can only be used in text channels.';
+
             if (!canMakePoll(interaction))
                 throw "You don't have permission to make a poll in this channel";
 
@@ -341,12 +345,12 @@ export const register = ({ client }: { client: Client }): void => {
                             fields: [
                                 {
                                     name: `Voted (${voted.length})`,
-                                    value: voted.length > 0 ? commas(voted) : 'nobody',
+                                    value: names(voted),
                                     inline: true
                                 },
                                 {
                                     name: `Not Voted (${unvoted.length})`,
-                                    value: unvoted.length > 0 ? commas(unvoted) : 'nobody',
+                                    value: names(unvoted),
                                     inline: true
                                 }
                             ]

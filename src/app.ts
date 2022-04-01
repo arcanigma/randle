@@ -16,7 +16,11 @@ import * as status from './routes/status';
 // TODO support for macros
 
 const client = new Client({ intents: [
-    'GUILDS', 'GUILD_MESSAGES', 'GUILD_MEMBERS', 'GUILD_PRESENCES'
+    'GUILDS',
+    'GUILD_MESSAGES',
+    'GUILD_MEMBERS',
+    'GUILD_PRESENCES',
+    'GUILD_VOICE_STATES'
 ] });
 
 void client.login(process.env.DISCORD_BOT_TOKEN);

@@ -29,11 +29,14 @@ export const register = ({ client }: { client: Client }): void => {
     client.on('interactionCreate', async interaction => {
         if (!(
             interaction.isCommand() &&
-            interaction.commandName === 'panic' &&
-            interaction.channel instanceof TextChannel
+            interaction.commandName === 'panic'
         )) return;
 
         try {
+            if (!(
+                interaction.channel instanceof TextChannel
+            )) throw 'This command can only be used in text channels.';
+
             const about = interaction.options.get('about')?.value as string | undefined;
 
             console.debug(interaction);
@@ -43,6 +46,7 @@ export const register = ({ client }: { client: Client }): void => {
                 ephemeral: true
             });
 
+            // TODO find a way to support text chat of voice channel
             await interaction.channel.send({
                 embeds: [
                     {
