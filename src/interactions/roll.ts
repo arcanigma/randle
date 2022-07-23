@@ -8,6 +8,8 @@ import { blame, truncEmbeds, truncFields } from '../library/message';
 import { } from '../library/parser';
 import { repeat } from '../library/solve';
 
+// TODO support messages that include custom emojis
+
 export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {

@@ -480,7 +480,7 @@ async function scriptFrom (address: string, interaction: CommandInteraction): Pr
 
         if (message.attachments.size == 0) {
             if (message.content.length > 0)
-                data = message.content.replace(/^`+|`+$/g, '');
+                data = message.content.replace(/^```(json\b)?|```$/g, '');
             else
                 throw `No text or attachments at \`${address}\` address.`;
         }

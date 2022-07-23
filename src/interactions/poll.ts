@@ -8,6 +8,7 @@ import { shuffleCopy, shuffleInPlace } from '../library/solve';
 
 // TODO support private thread polls
 // TODO overhaul polls with one drop-down menu per voter?
+// TODO modify choices using modal
 
 const MAX_CHOICE_LABEL = 25,
     DURATION_ONE_DAY = 1440;
