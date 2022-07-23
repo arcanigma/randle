@@ -1,9 +1,9 @@
 import { ApplicationCommandData, Client } from 'discord.js';
-import { MAX_EMBED_DESCRIPTION } from '../constants';
-import { registerApplicationCommand } from '../library/backend';
-import { commas, itemize, trunc, wss } from '../library/factory';
-import { blame } from '../library/message';
-import { choose } from '../library/solve';
+import { MAX_EMBED_DESCRIPTION } from '../constants.js';
+import { registerApplicationCommand } from '../library/backend.js';
+import { commas, itemize, trunc, wss } from '../library/factory.js';
+import { blame } from '../library/message.js';
+import { choose } from '../library/solve.js';
 
 export const register = ({ client }: { client: Client }): void => {
 

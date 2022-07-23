@@ -1,10 +1,13 @@
 import { ApplicationCommandData, Client, MessageAttachment, TextChannel } from 'discord.js';
-import path from 'path';
-import { registerApplicationCommand } from '../library/backend';
-import { blame } from '../library/message';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+import { registerApplicationCommand } from '../library/backend.js';
+import { blame } from '../library/message.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const PANIC_BUTTON_IMAGE = 'panic-button.png',
-    PANIC_BUTTON_PATH = path.join(__dirname, `../../assets/${PANIC_BUTTON_IMAGE}`);
+    PANIC_BUTTON_PATH = join(__dirname, `../../public/${PANIC_BUTTON_IMAGE}`);
 
 export const register = ({ client }: { client: Client }): void => {
 

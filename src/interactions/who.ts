@@ -1,8 +1,8 @@
 import { ApplicationCommandData, Client, TextChannel, VoiceChannel } from 'discord.js';
-import { registerApplicationCommand } from '../library/backend';
-import { membersOf, names } from '../library/factory';
-import { blame } from '../library/message';
-import { shuffleInPlace } from '../library/solve';
+import { registerApplicationCommand } from '../library/backend.js';
+import { membersOf, names } from '../library/factory.js';
+import { blame } from '../library/message.js';
+import { shuffleInPlace } from '../library/solve.js';
 
 export const register = ({ client }: { client: Client }): void => {
 

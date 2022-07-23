@@ -1,16 +1,16 @@
 import { Client } from 'discord.js';
 import express from 'express';
-import * as topicUpdated from './events/topicUpdated';
-import * as draw from './interactions/draw';
-import * as echo from './interactions/echo';
-import * as panic from './interactions/panic';
-import * as poll from './interactions/poll';
-import * as roll from './interactions/roll';
-import * as run from './interactions/run';
-import * as shuffle from './interactions/shuffle';
-import * as who from './interactions/who';
-import * as logo from './routes/logo';
-import * as status from './routes/status';
+import * as topicUpdated from './events/topicUpdated.js';
+import * as draw from './interactions/draw.js';
+import * as echo from './interactions/echo.js';
+import * as panic from './interactions/panic.js';
+import * as poll from './interactions/poll.js';
+import * as roll from './interactions/roll.js';
+import * as run from './interactions/run.js';
+import * as shuffle from './interactions/shuffle.js';
+import * as who from './interactions/who.js';
+import * as logo from './routes/logo.js';
+import * as status from './routes/status.js';
 
 // TODO anonymous send-and-reply by proxy
 // TODO support for macros
@@ -62,6 +62,6 @@ logo.register({ app });
 
 const PORT = Number(process.env.PORT ?? 80);
 
-app.listen(PORT, () =>
-    console.debug(`Express ready on port <${PORT}>.`)
-);
+app.listen(PORT, () => {
+    console.debug(`Express ready on port <${PORT}>.`);
+});

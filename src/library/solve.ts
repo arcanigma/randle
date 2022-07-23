@@ -1,6 +1,6 @@
 import { randomInt } from 'crypto';
-import { wss } from './factory';
-import { Deck, Matcher, Option, Rule, Setup, Value } from './script';
+import { wss } from './factory.js';
+import { Deck, Matcher, Option, Rule, Setup, Value } from './script.js';
 
 // TODO support vm2-sandboxed JS with scoped functions
 

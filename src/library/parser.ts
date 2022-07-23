@@ -1,4 +1,4 @@
-import { trunc } from '../library/factory';
+import { trunc } from './factory.js';
 
 export function tokenize (sentence: string, separator: string | RegExp): string[] {
     return sentence

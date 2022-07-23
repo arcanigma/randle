@@ -1,5 +1,8 @@
 import { Express } from 'express';
-import path from 'path';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export const register = ({ app }: { app: Express }): void => {
 
@@ -8,7 +11,7 @@ export const register = ({ app }: { app: Express }): void => {
         : 'logo-dev.png';
 
     app.get([ '/', '/favicon.png' ], (_, res) => {
-        res.sendFile(path.join(__dirname, `../../assets/${LOGO_FILE}`));
+        res.sendFile(join(__dirname, `../../public/${LOGO_FILE}`));
     });
 
     console.debug('Registered logo route in server.');

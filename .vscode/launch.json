@@ -2,36 +2,17 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "node",
+            "name": "Launch via NPM",
             "request": "launch",
-            "name": "Run Application",
-            "runtimeExecutable": "npm",
-            "runtimeArgs": [ "run", "dev" ],
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "resolveSourceMapLocations": [
-                "${workspaceFolder}/**",
-                "!**/node_modules/**"
-            ],
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "Run Current File",
-            "runtimeExecutable": "tsnd",
             "runtimeArgs": [
-                "--skip-project",
-                "--transpile-only",
-                "${file}"
+                "run-script",
+                "dev"
             ],
+            "runtimeExecutable": "npm",
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "resolveSourceMapLocations": [
-                "${workspaceFolder}/**",
-                "!**/node_modules/**"
-            ],
+            "type": "node"
         }
     ]
 }

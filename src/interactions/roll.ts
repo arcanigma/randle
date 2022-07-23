@@ -1,12 +1,12 @@
 import { randomInt } from 'crypto';
 import { ApplicationCommandData, BaseGuildEmojiManager, Client, EmbedField, MessageEmbed } from 'discord.js';
-import ordinal from 'ordinal';
-import { MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants';
-import { registerApplicationCommand } from '../library/backend';
-import { trunc, wss } from '../library/factory';
-import { blame, truncEmbeds, truncFields } from '../library/message';
-import { } from '../library/parser';
-import { repeat } from '../library/solve';
+import * as inflection from 'inflection';
+import { MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants.js';
+import { registerApplicationCommand } from '../library/backend.js';
+import { trunc, wss } from '../library/factory.js';
+import { blame, truncEmbeds, truncFields } from '../library/message.js';
+import { } from '../library/parser.js';
+import { repeat } from '../library/solve.js';
 
 // TODO support messages that include custom emojis
 
@@ -85,7 +85,7 @@ function expandRepeats (clause: string) {
         const clones = [];
         if (list.length == 1 && reps >= 1)
             for (let i = 1; i <= reps; i++)
-                clones.push(`${text} on the ${ordinal(i)} roll`);
+                clones.push(`${text} on the ${inflection.ordinalize(String(i))} roll`);
         else
             for (const label of list)
                 clones.push(`${text} for ${label}`);

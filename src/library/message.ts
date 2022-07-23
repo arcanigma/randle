@@ -1,6 +1,6 @@
 import { CommandInteraction, EmbedField, Interaction, MessageEmbed } from 'discord.js';
-import { MAX_EMBED_FIELDS, MAX_FIELD_NAME, MAX_FIELD_VALUE, MAX_MESSAGE_EMBEDS } from '../constants';
-import { trunc } from './factory';
+import { MAX_EMBED_FIELDS, MAX_FIELD_NAME, MAX_FIELD_VALUE, MAX_MESSAGE_EMBEDS } from '../constants.js';
+import { trunc } from './factory.js';
 
 export function blame ({ error, interaction }: { error: unknown; interaction: Interaction }): MessageEmbed[] {
     if (error instanceof Error) {

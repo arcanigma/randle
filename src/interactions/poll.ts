@@ -1,10 +1,10 @@
 import { ApplicationCommandData, Client, Collection, EmbedField, GuildMember, Interaction, Message, MessageActionRow, MessageActionRowComponentResolvable, MessageButton, MessageOptions, Permissions, TextChannel, ThreadChannel, UserMention } from 'discord.js';
 import emojiRegex from 'emoji-regex';
-import { MAX_ACTION_ROWS, MAX_FIELD_NAME, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } from '../constants';
-import { registerApplicationCommand } from '../library/backend';
-import { commas, itemize, names, trunc, wss } from '../library/factory';
-import { blame } from '../library/message';
-import { shuffleCopy, shuffleInPlace } from '../library/solve';
+import { MAX_ACTION_ROWS, MAX_FIELD_NAME, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } from '../constants.js';
+import { registerApplicationCommand } from '../library/backend.js';
+import { commas, itemize, names, trunc, wss } from '../library/factory.js';
+import { blame } from '../library/message.js';
+import { shuffleCopy, shuffleInPlace } from '../library/solve.js';
 
 // TODO support private thread polls
 // TODO overhaul polls with one drop-down menu per voter?

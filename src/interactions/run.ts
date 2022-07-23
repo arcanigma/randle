@@ -1,12 +1,12 @@
 import { ApplicationCommandData, Client, CommandInteraction, EmbedField, GuildMember, MessageEmbed, Snowflake, TextChannel, VoiceChannel } from 'discord.js';
 import got from 'got';
 import JSON5 from 'json5';
-import { MAX_EMBED_DESCRIPTION, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants';
-import { registerApplicationCommand } from '../library/backend';
-import { commas, names, trunc } from '../library/factory';
-import { blame, truncEmbeds, truncFields } from '../library/message';
-import { Script } from '../library/script';
-import { choose, conditionOf, deckOf, listOf, matchOf, optionOf, shuffleInPlace, valueOf } from '../library/solve';
+import { MAX_EMBED_DESCRIPTION, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants.js';
+import { registerApplicationCommand } from '../library/backend.js';
+import { commas, names, trunc } from '../library/factory.js';
+import { blame, truncEmbeds, truncFields } from '../library/message.js';
+import { Script } from '../library/script.js';
+import { choose, conditionOf, deckOf, listOf, matchOf, optionOf, shuffleInPlace, valueOf } from '../library/solve.js';
 
 export const MAX_IMPORTS = 5;
 

@@ -1,7 +1,10 @@
 {
-    "extends": "@tsconfig/node16/tsconfig.json",
+    "extends": "@tsconfig/node18/tsconfig.json",
     "include": [ "./src/app.ts" ],
     "compilerOptions": {
+        "target": "ESNext",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
         "outDir": "./dist/",
         "incremental": true,
         "skipLibCheck": true,

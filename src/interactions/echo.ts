@@ -1,5 +1,5 @@
 import { ApplicationCommandData, Client } from 'discord.js';
-import { registerApplicationCommand } from '../library/backend';
+import { registerApplicationCommand } from '../library/backend.js';
 
 export const register = ({ client }: { client: Client }): void => {
 
