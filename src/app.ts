@@ -40,11 +40,8 @@ client.setMaxListeners(25);
 
 // void db.sync();
 
-if (process.env.NODE_ENV == 'development') {
-    echo.register({ client });
-}
-
 draw.register({ client });
+echo.register({ client });
 panic.register({ client });
 poll.register({ client });
 roll.register({ client });
