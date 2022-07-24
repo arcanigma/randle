@@ -1,4 +1,4 @@
-import { ApplicationCommandData, Client, MessageAttachment, TextChannel } from 'discord.js';
+import { ApplicationCommandData, ApplicationCommandOptionType, ApplicationCommandType, AttachmentBuilder, Client, Colors, InteractionType, TextChannel } from 'discord.js';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { registerApplicationCommand } from '../library/backend.js';
@@ -13,13 +13,13 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {
         const slash: ApplicationCommandData = {
-            type: 'CHAT_INPUT',
+            type: ApplicationCommandType.ChatInput,
             name: 'panic',
             description: 'Press the panic button (anonymous to the channel, but logged to the server)',
             options: [
                 {
                     name: 'about',
-                    type: 'STRING',
+                    type: ApplicationCommandOptionType.String,
                     description: 'The reason to panic about',
                     required: false
                 }
@@ -31,7 +31,7 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('interactionCreate', async interaction => {
         if (!(
-            interaction.isCommand() &&
+            interaction.type === InteractionType.ApplicationCommand &&
             interaction.commandName === 'panic'
         )) return;
 
@@ -54,7 +54,7 @@ export const register = ({ client }: { client: Client }): void => {
                 embeds: [
                     {
                         title: 'A member in the channel pressed the panic button!',
-                        color: 'YELLOW',
+                        color: Colors.Yellow,
                         thumbnail: { url: `attachment://${PANIC_BUTTON_IMAGE}` },
                         fields: [
                             {
@@ -65,7 +65,7 @@ export const register = ({ client }: { client: Client }): void => {
                     }
                 ],
                 files: [
-                    new MessageAttachment(PANIC_BUTTON_PATH)
+                    new AttachmentBuilder(PANIC_BUTTON_PATH)
                 ]
             });
         }

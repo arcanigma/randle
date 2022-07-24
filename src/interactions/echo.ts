@@ -1,17 +1,17 @@
-import { ApplicationCommandData, Client } from 'discord.js';
+import { ApplicationCommandData, ApplicationCommandOptionType, ApplicationCommandType, Client, InteractionType } from 'discord.js';
 import { registerApplicationCommand } from '../library/backend.js';
 
 export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {
         const slash: ApplicationCommandData = {
-            type: 'CHAT_INPUT',
+            type: ApplicationCommandType.ChatInput,
             name: 'echo',
             description: 'Replies by echoing your input',
             options: [
                 {
                     name: 'input',
-                    type: 'STRING',
+                    type: ApplicationCommandOptionType.String,
                     description: 'The input to be echoed',
                     required: true
                 }
@@ -23,7 +23,7 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('interactionCreate', async interaction => {
         if (!(
-            interaction.isCommand() &&
+            interaction.type === InteractionType.ApplicationCommand &&
             interaction.commandName === 'echo'
         )) return;
 

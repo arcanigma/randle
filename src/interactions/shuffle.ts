@@ -1,4 +1,4 @@
-import { ApplicationCommandData, Client } from 'discord.js';
+import { ApplicationCommandData, ApplicationCommandOptionType, ApplicationCommandType, Client, InteractionType } from 'discord.js';
 import { MAX_EMBED_DESCRIPTION } from '../constants.js';
 import { registerApplicationCommand } from '../library/backend.js';
 import { commas, itemize, trunc, wss } from '../library/factory.js';
@@ -9,13 +9,13 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {
         const slash: ApplicationCommandData = {
-            type: 'CHAT_INPUT',
+            type: ApplicationCommandType.ChatInput,
             name: 'shuffle',
             description: 'Shuffle items',
             options: [
                 {
                     name: 'items',
-                    type: 'STRING',
+                    type: ApplicationCommandOptionType.String,
                     description: 'A list of items, a range size, or an @everyone, @here, or @role mention',
                     required: true
                 },
@@ -27,7 +27,7 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('interactionCreate', async interaction => {
         if (!(
-            interaction.isCommand() &&
+            interaction.type === InteractionType.ApplicationCommand &&
             interaction.commandName === 'shuffle'
         )) return;
 

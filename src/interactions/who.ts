@@ -1,4 +1,4 @@
-import { ApplicationCommandData, Client, TextChannel, VoiceChannel } from 'discord.js';
+import { ApplicationCommandData, ApplicationCommandOptionType, ApplicationCommandType, Client, InteractionType, TextChannel, VoiceChannel } from 'discord.js';
 import { registerApplicationCommand } from '../library/backend.js';
 import { membersOf, names } from '../library/factory.js';
 import { blame } from '../library/message.js';
@@ -8,13 +8,13 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {
         const slash: ApplicationCommandData = {
-            type: 'CHAT_INPUT',
+            type: ApplicationCommandType.ChatInput,
             name: 'who',
             description: 'List the members of a role', // TODO or channel
             options: [
                 {
                     name: 'role',
-                    type: 'ROLE',
+                    type: ApplicationCommandOptionType.Role,
                     description: 'The @role mention',
                     required: true
                 }
@@ -26,7 +26,7 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('interactionCreate', async interaction => {
         if (!(
-            interaction.isCommand() &&
+            interaction.type === InteractionType.ApplicationCommand &&
             interaction.commandName === 'who'
         )) return;
 

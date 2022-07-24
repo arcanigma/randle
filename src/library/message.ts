@@ -1,11 +1,11 @@
-import { CommandInteraction, EmbedField, Interaction, MessageEmbed } from 'discord.js';
+import { CommandInteraction, Embed, EmbedField, Interaction } from 'discord.js';
 import { MAX_EMBED_FIELDS, MAX_FIELD_NAME, MAX_FIELD_VALUE, MAX_MESSAGE_EMBEDS } from '../constants.js';
 import { trunc } from './factory.js';
 
-export function blame ({ error, interaction }: { error: unknown; interaction: Interaction }): MessageEmbed[] {
+export function blame ({ error, interaction }: { error: unknown; interaction: Interaction }): Embed[] {
     if (error instanceof Error) {
         console.error({ error });
-        return <MessageEmbed[]>[
+        return <Embed[]>[
             {
                 title: '🛑 Error',
                 description: 'Your action caused an error.',
@@ -46,7 +46,7 @@ export function blame ({ error, interaction }: { error: unknown; interaction: In
     }
     else {
         console.warn({ error });
-        return <MessageEmbed[]>[
+        return <Embed[]>[
             {
                 title: '⚠️ Warning',
                 description: 'Your action caused a warning.',
@@ -63,10 +63,10 @@ export function blame ({ error, interaction }: { error: unknown; interaction: In
     }
 }
 
-export function truncEmbeds (embeds: MessageEmbed[], label: string): MessageEmbed[] {
+export function truncEmbeds (embeds: Embed[], label: string): Embed[] {
     if (embeds.length >= MAX_MESSAGE_EMBEDS) {
         embeds = embeds.slice(0, MAX_MESSAGE_EMBEDS - 1);
-        embeds[MAX_MESSAGE_EMBEDS - 1] = <MessageEmbed> {
+        embeds[MAX_MESSAGE_EMBEDS - 1] = <Embed> {
             title: '⚠️ Warning',
             description: `Too many ${label} to show (limit of ${MAX_MESSAGE_EMBEDS}).`
         };

@@ -1,4 +1,4 @@
-import { ApplicationCommandData, Client, CommandInteraction, EmbedField, GuildMember, MessageEmbed, Snowflake, TextChannel, VoiceChannel } from 'discord.js';
+import { ApplicationCommandData, ApplicationCommandOptionType, ApplicationCommandType, Client, CommandInteraction, Embed, EmbedField, GuildMember, InteractionType, Snowflake, TextChannel, VoiceChannel } from 'discord.js';
 import got from 'got';
 import JSON5 from 'json5';
 import { MAX_EMBED_DESCRIPTION, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants.js';
@@ -14,19 +14,19 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {
         const slash: ApplicationCommandData = {
-            type: 'CHAT_INPUT',
+            type: ApplicationCommandType.ChatInput,
             name: 'run',
             description: 'Run a script',
             options: [
                 {
                     name: 'address',
-                    type: 'STRING',
+                    type: ApplicationCommandOptionType.String,
                     description: 'A URL or ID to a message, attachment, or external file',
                     required: true
                 },
                 {
                     name: 'moderator',
-                    type: 'USER',
+                    type: ApplicationCommandOptionType.User,
                     description: 'A member who serves as the moderator, if any',
                     required: false
                 }
@@ -38,19 +38,19 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {
         const slash: ApplicationCommandData = {
-            type: 'CHAT_INPUT',
+            type: ApplicationCommandType.ChatInput,
             name: 'preview',
             description: 'Preview a script',
             options: [
                 {
                     name: 'address',
-                    type: 'STRING',
+                    type: ApplicationCommandOptionType.String,
                     description: 'A URL or ID to a message, attachment, or external file',
                     required: true
                 },
                 {
                     name: 'moderator',
-                    type: 'USER',
+                    type: ApplicationCommandOptionType.User,
                     description: 'A member who serves as the moderator, if any',
                     required: false
                 }
@@ -62,7 +62,7 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('interactionCreate', async interaction => {
         if (!(
-            interaction.isCommand() &&
+            interaction.type === InteractionType.ApplicationCommand &&
             [ 'run', 'preview' ].includes(interaction.commandName)
         )) return;
 
@@ -164,8 +164,8 @@ export const register = ({ client }: { client: Client }): void => {
             if (script.rules?.length < 1)
                 throw 'Script requires at least 1 rule.';
 
-            const channel_embeds: MessageEmbed[] = [],
-                direct_embeds: Map<GuildMember, MessageEmbed[]> = new Map();
+            const channel_embeds: Embed[] = [],
+                direct_embeds: Map<GuildMember, Embed[]> = new Map();
 
             const cumulative_deal: Map<GuildMember, string[]> = new Map(),
                 cumulative_used: string[] = [];
@@ -223,7 +223,7 @@ export const register = ({ client }: { client: Client }): void => {
                     for (const size in sizes)
                         shuffleInPlace(sizes[size]);
 
-                    channel_embeds.push(<MessageEmbed> {
+                    channel_embeds.push(<Embed> {
                         title: rule.for
                             ? `Dealt for ${rule.for}...`
                             : 'Dealt...',
@@ -247,7 +247,7 @@ export const register = ({ client }: { client: Client }): void => {
                         if (!direct_embeds.has(member))
                             direct_embeds.set(member, []);
 
-                        direct_embeds.get(member)?.push(<MessageEmbed> {
+                        direct_embeds.get(member)?.push(<Embed> {
                             title: rule.for
                                 ? `You were dealt for ${rule.for}...`
                                 : 'You were dealt...',
@@ -274,7 +274,7 @@ export const register = ({ client }: { client: Client }): void => {
                             if (!direct_embeds.has(moderator))
                                 direct_embeds.set(moderator, []);
 
-                            direct_embeds.get(moderator)?.push(<MessageEmbed> {
+                            direct_embeds.get(moderator)?.push(<Embed> {
                                 title: 'Dealt...',
                                 fields: moderator_fields
                             });
@@ -334,7 +334,7 @@ export const register = ({ client }: { client: Client }): void => {
                                     if (!direct_embeds.has(member))
                                         direct_embeds.set(member, []);
 
-                                    direct_embeds.get(member)?.push(<MessageEmbed> {
+                                    direct_embeds.get(member)?.push(<Embed> {
                                         title: 'You were shown...',
                                         fields: truncFields(member_fields, 'show rules')
                                     });
@@ -371,7 +371,7 @@ export const register = ({ client }: { client: Client }): void => {
                             if (channel_fields.length > 0) {
                                 shuffleInPlace(channel_fields);
 
-                                channel_embeds.push(<MessageEmbed> {
+                                channel_embeds.push(<Embed> {
                                     title: 'Announced...',
                                     fields: truncFields(channel_fields, 'announce rules')
                                 });
@@ -387,7 +387,7 @@ export const register = ({ client }: { client: Client }): void => {
                             });
 
                             if (channel_fields.length > 0)
-                                channel_embeds.push(<MessageEmbed> {
+                                channel_embeds.push(<Embed> {
                                     title: 'Explained...',
                                     fields: truncFields(channel_fields, 'explain rules')
                                 });

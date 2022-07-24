@@ -1,5 +1,5 @@
 import { randomInt } from 'crypto';
-import { ApplicationCommandData, BaseGuildEmojiManager, Client, EmbedField, MessageEmbed } from 'discord.js';
+import { ApplicationCommandData, ApplicationCommandOptionType, ApplicationCommandType, BaseGuildEmojiManager, Client, Embed, EmbedField, InteractionType } from 'discord.js';
 import * as inflection from 'inflection';
 import { MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants.js';
 import { registerApplicationCommand } from '../library/backend.js';
@@ -14,13 +14,13 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {
         const slash: ApplicationCommandData = {
-            type: 'CHAT_INPUT',
+            type: ApplicationCommandType.ChatInput,
             name: 'roll',
             description: 'Roll dice',
             options: [
                 {
                     name: 'text',
-                    type: 'STRING',
+                    type: ApplicationCommandOptionType.String,
                     description: 'Text including dice codes',
                     required: true
                 },
@@ -35,7 +35,7 @@ export const register = ({ client }: { client: Client }): void => {
     const re_boundary = /\s*;\s*/;
     client.on('interactionCreate', async interaction => {
         if (!(
-            interaction.isCommand() &&
+            interaction.type === InteractionType.ApplicationCommand &&
             interaction.commandName === 'roll'
         )) return;
 
@@ -99,8 +99,8 @@ function expandRepeats (clause: string) {
 const re_dice_code = /\b([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?\b/ig,
     re_array_code = /(?:\b([1-9][0-9]*)?d?)?\{(\w+?)\}/ig;
 
-function rollDice (clauses: string[], arrays: Record<string, string[]>): MessageEmbed[] {
-    const embeds: MessageEmbed[] = [];
+function rollDice (clauses: string[], arrays: Record<string, string[]>): Embed[] {
+    const embeds: Embed[] = [];
 
     for (let i = 0; i < clauses.length; i++) {
         clauses[i] = evaluateArithmetic(clauses[i]);
@@ -201,7 +201,7 @@ function rollDice (clauses: string[], arrays: Record<string, string[]>): Message
             clauses[i] = evaluateArithmetic(clauses[i]);
             clauses[i] = prettifyMarkdown(clauses[i]);
 
-            embeds.push(<MessageEmbed>{
+            embeds.push(<Embed>{
                 title: trunc(`${embeds.length == 0 ? 'Rolled' : 'Then rolled' } ${clauses[i]}.`, MAX_EMBED_TITLE),
                 fields: truncFields(fields, 'rolls')
             });

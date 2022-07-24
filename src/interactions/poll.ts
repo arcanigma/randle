@@ -1,4 +1,4 @@
-import { ApplicationCommandData, Client, Collection, EmbedField, GuildMember, Interaction, Message, MessageActionRow, MessageActionRowComponentResolvable, MessageButton, MessageOptions, Permissions, TextChannel, ThreadChannel, UserMention } from 'discord.js';
+import { ApplicationCommandData, ApplicationCommandOptionType, ApplicationCommandType, ButtonComponent, ButtonStyle, Client, Collection, ComponentType, EmbedField, GuildMember, Interaction, InteractionType, Message, MessageActionRowComponentResolvable, MessageOptions, PermissionsBitField, TextChannel, ThreadChannel, UserMention } from 'discord.js';
 import emojiRegex from 'emoji-regex';
 import { MAX_ACTION_ROWS, MAX_FIELD_NAME, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } from '../constants.js';
 import { registerApplicationCommand } from '../library/backend.js';
@@ -23,25 +23,25 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('ready', async () => {
         const slash: ApplicationCommandData = {
-            type: 'CHAT_INPUT',
+            type: ApplicationCommandType.ChatInput,
             name: 'poll',
             description: 'Create a poll',
             options: [
                 {
                     name: 'prompt',
-                    type: 'STRING',
+                    type: ApplicationCommandOptionType.String,
                     description: 'A question or statement',
                     required: true
                 },
                 {
                     name: 'choices',
-                    type: 'STRING',
+                    type: ApplicationCommandOptionType.String,
                     description: 'A list of choices, a range size, or an @everyone, @here, or @role mention',
                     required: true
                 },
                 {
                     name: 'type',
-                    type: 'STRING',
+                    type: ApplicationCommandOptionType.String,
                     description: 'The type of poll (sealed by default)',
                     choices: [
                         { name: 'Sealed', value: 'sealed' },
@@ -57,7 +57,7 @@ export const register = ({ client }: { client: Client }): void => {
 
     client.on('interactionCreate', async interaction => {
         if (!(
-            interaction.isCommand() &&
+            interaction.type === InteractionType.ApplicationCommand &&
             interaction.commandName === 'poll'
         )) return;
 
@@ -104,21 +104,21 @@ export const register = ({ client }: { client: Client }): void => {
             const components: MessageOptions['components'] = [];
             while (choices.length > 0) {
                 components.push({
-                    type: 'ACTION_ROW',
+                    type: ComponentType.ActionRow,
                     // TODO handle row widths gracefully
                     components: choices.splice(0, MAX_ROW_COMPONENTS).map(it => ({
-                        type: 'BUTTON',
+                        type: ComponentType.Button,
                         emoji: it.emoji ?? (it.emoji = emojis.pop() as string),
                         label: (it.label = trunc(it.label, MAX_CHOICE_LABEL)),
                         customId: type != 'unsealed'
                             ? `vote_s_${it.emoji} ${it.label}`
                             : `vote_u_${it.emoji} ${it.label}`,
-                        style: 'PRIMARY'
+                        style: ButtonStyle.Primary
                     }))
                 });
             }
             components.push({
-                type: 'ACTION_ROW',
+                type: ComponentType.ActionRow,
                 components: buildPollActionComponents()
             });
 
@@ -145,7 +145,7 @@ export const register = ({ client }: { client: Client }): void => {
             if (!canVote(interaction))
                 throw "You don't have permission to vote in this poll";
 
-            const choice = (interaction.component as MessageButton).customId?.slice(7);
+            const choice = (interaction.component as ButtonComponent).customId?.slice(7);
             if (!choice) return;
 
             if (interaction.customId.startsWith('vote_s_')) {
@@ -153,7 +153,7 @@ export const register = ({ client }: { client: Client }): void => {
                     content: `${interaction.user.toString()} voted`,
                     components: [
                         {
-                            type: 'ACTION_ROW',
+                            type: ComponentType.ActionRow,
                             components: buildSealedComponents(choice)
                         }
                     ]
@@ -164,7 +164,7 @@ export const register = ({ client }: { client: Client }): void => {
                     content: `${interaction.user.toString()} voted for **${choice}**`,
                     components: [
                         {
-                            type: 'ACTION_ROW',
+                            type: ComponentType.ActionRow,
                             components: buildUnsealedComponents(choice)
                         }
                     ]
@@ -191,7 +191,7 @@ export const register = ({ client }: { client: Client }): void => {
             if (!(interaction.channel instanceof ThreadChannel))
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
-            const choice = (interaction.component as MessageButton).customId?.slice(7),
+            const choice = (interaction.component as ButtonComponent).customId?.slice(7),
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
 
@@ -202,7 +202,7 @@ export const register = ({ client }: { client: Client }): void => {
                 content: `${whose} voted for **${choice}**`,
                 components: [
                     {
-                        type: 'ACTION_ROW',
+                        type: ComponentType.ActionRow,
                         components: buildUnsealedComponents(choice)
                     }
                 ]
@@ -223,7 +223,7 @@ export const register = ({ client }: { client: Client }): void => {
             if (!(interaction.channel instanceof ThreadChannel))
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
-            const choice = (interaction.component as MessageButton).customId?.slice(7),
+            const choice = (interaction.component as ButtonComponent).customId?.slice(7),
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
 
@@ -234,7 +234,7 @@ export const register = ({ client }: { client: Client }): void => {
                 content: `${whose} voted`,
                 components: [
                     {
-                        type: 'ACTION_ROW',
+                        type: ComponentType.ActionRow,
                         components: buildSealedComponents(choice)
                     }
                 ]
@@ -255,7 +255,7 @@ export const register = ({ client }: { client: Client }): void => {
             if (!(interaction.channel instanceof ThreadChannel))
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
-            const choice = (interaction.component as MessageButton).customId?.slice(5),
+            const choice = (interaction.component as ButtonComponent).customId?.slice(5),
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
 
@@ -282,7 +282,7 @@ export const register = ({ client }: { client: Client }): void => {
             if (!(interaction.channel instanceof ThreadChannel))
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
-            const choice = (interaction.component as MessageButton).customId?.slice(8),
+            const choice = (interaction.component as ButtonComponent).customId?.slice(8),
                 whose = interaction.message.content.match(re_user)?.[0];
             if (!choice || !whose) return;
 
@@ -293,7 +293,7 @@ export const register = ({ client }: { client: Client }): void => {
                 content: `${whose} discarded a vote`,
                 components: [
                     {
-                        type: 'ACTION_ROW',
+                        type: ComponentType.ActionRow,
                         components: buildDiscardedComponents(choice)
                     }
                 ]
@@ -327,7 +327,7 @@ export const register = ({ client }: { client: Client }): void => {
 
             await interaction.update({
                 content: interaction.message.content,
-                components: interaction.message.components as MessageActionRow[]
+                components: interaction.message.components
             });
 
             const messages = await interaction.channel.messages.fetch();
@@ -375,7 +375,7 @@ export const register = ({ client }: { client: Client }): void => {
             }
             else if (action == 'unseal') {
                 messages.filter(message => message.author.bot).forEach(message => {
-                    const button = message.components[0]?.components[0] as MessageButton;
+                    const button = message.components[0]?.components[0] as ButtonComponent;
                     if (!button) return;
 
                     if (button.label == 'Unseal') {
@@ -387,7 +387,7 @@ export const register = ({ client }: { client: Client }): void => {
                             content: `${whose} voted for **${choice}**`,
                             components: [
                                 {
-                                    type: 'ACTION_ROW',
+                                    type: ComponentType.ActionRow,
                                     components: buildUnsealedComponents(choice)
                                 }
                             ]
@@ -397,7 +397,7 @@ export const register = ({ client }: { client: Client }): void => {
             }
             else if (action == 'reseal') {
                 messages.filter(message => message.author.bot).forEach(message => {
-                    const button = message.components[0]?.components[0] as MessageButton;
+                    const button = message.components[0]?.components[0] as ButtonComponent;
                     if (!button) return;
 
                     if (button.label == 'Reseal') {
@@ -409,7 +409,7 @@ export const register = ({ client }: { client: Client }): void => {
                             content: `${whose} voted`,
                             components: [
                                 {
-                                    type: 'ACTION_ROW',
+                                    type: ComponentType.ActionRow,
                                     components: buildSealedComponents(choice)
                                 }
                             ]
@@ -459,18 +459,18 @@ function isAuthor (interaction: Interaction, whose: string): boolean {
 function canVote (interaction: Interaction): boolean {
     const permissions = (interaction.channel as ThreadChannel).permissionsFor(interaction.user);
 
-    return permissions?.has(Permissions.FLAGS.SEND_MESSAGES_IN_THREADS) ?? false;
+    return permissions?.has(PermissionsBitField.Flags.SendMessagesInThreads) ?? false;
 }
 
 function canMakePoll (interaction: Interaction): boolean {
     const permissions = (interaction.channel as ThreadChannel).permissionsFor(interaction.user);
 
-    return permissions?.has(Permissions.FLAGS.CREATE_PUBLIC_THREADS) ?? false;
+    return permissions?.has(PermissionsBitField.Flags.CreatePublicThreads) ?? false;
 }
 
 function canModeratePoll (interaction: Interaction): boolean {
     const permissions = (interaction.channel as ThreadChannel).permissionsFor(interaction.user);
-    return permissions?.has(Permissions.FLAGS.MANAGE_THREADS) ?? false;
+    return permissions?.has(PermissionsBitField.Flags.ManageThreads) ?? false;
 }
 
 const re_emoji = emojiRegex();
@@ -498,7 +498,7 @@ function buildChoice (choice: string, members: Collection<string, GuildMember>):
 function buildPollActionComponents (): MessageActionRowComponentResolvable[] {
     return [
         {
-            type: 'SELECT_MENU',
+            type: ComponentType.SelectMenu,
             customId: 'mod_poll',
             emoji: '🗳️',
             placeholder: 'Select an Action',
@@ -549,25 +549,25 @@ function buildPollActionComponents (): MessageActionRowComponentResolvable[] {
 function buildSealedComponents (choice: string): MessageActionRowComponentResolvable[] {
     return [
         {
-            type: 'BUTTON',
+            type: ComponentType.Button,
             customId: `unseal_${choice}`,
             emoji: '📤',
             label: 'Unseal',
-            style: 'SECONDARY'
+            style: ButtonStyle.Secondary
         },
         {
-            type: 'BUTTON',
+            type: ComponentType.Button,
             customId: `peek_${choice}`,
             emoji: '🔍',
             label: 'Peek',
-            style: 'SECONDARY'
+            style: ButtonStyle.Secondary
         },
         {
-            type: 'BUTTON',
+            type: ComponentType.Button,
             customId: `discard_${choice}`,
             emoji: '🗑️',
             label: 'Discard',
-            style: 'SECONDARY'
+            style: ButtonStyle.Secondary
         }
     ];
 }
@@ -575,11 +575,11 @@ function buildSealedComponents (choice: string): MessageActionRowComponentResolv
 function buildUnsealedComponents (choice: string): MessageActionRowComponentResolvable[] {
     return [
         {
-            type: 'BUTTON',
+            type: ComponentType.Button,
             customId: `reseal_${choice}`,
             emoji: '📥',
             label: 'Reseal',
-            style: 'SECONDARY'
+            style: ButtonStyle.Secondary
         }
     ];
 }
@@ -587,11 +587,11 @@ function buildUnsealedComponents (choice: string): MessageActionRowComponentReso
 function buildDiscardedComponents (choice: string): MessageActionRowComponentResolvable[] {
     return [
         {
-            type: 'BUTTON',
+            type: ComponentType.Button,
             customId: `reseal_${choice}`,
             emoji: '🗑️',
             label: 'Restore',
-            style: 'SECONDARY'
+            style: ButtonStyle.Secondary
         }
     ];
 }
@@ -599,7 +599,7 @@ function buildDiscardedComponents (choice: string): MessageActionRowComponentRes
 function getVoteResults (messages: Collection<string, Message>): Record<string, Record<UserMention, number>> {
     const results: Record<string, Record<string, number>> = {};
     messages.filter(message => message.author.bot).forEach(message => {
-        const firstButton = message?.components[0]?.components[0] as MessageButton;
+        const firstButton = message?.components[0]?.components[0] as ButtonComponent;
         if (!firstButton) return;
 
         if (firstButton.label == 'Unseal' || firstButton.label == 'Reseal') {

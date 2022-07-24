@@ -1,4 +1,4 @@
-import { Client } from 'discord.js';
+import { Client, GatewayIntentBits } from 'discord.js';
 import express from 'express';
 import * as topicUpdated from './events/topicUpdated.js';
 import * as draw from './interactions/draw.js';
@@ -16,11 +16,11 @@ import * as status from './routes/status.js';
 // TODO support for macros
 
 const client = new Client({ intents: [
-    'GUILDS',
-    'GUILD_MESSAGES',
-    'GUILD_MEMBERS',
-    'GUILD_PRESENCES',
-    'GUILD_VOICE_STATES'
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.GuildVoiceStates
 ] });
 
 void client.login(process.env.DISCORD_BOT_TOKEN);
