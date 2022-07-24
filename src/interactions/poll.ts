@@ -1,14 +1,12 @@
 import { ApplicationCommandOptionType, ApplicationCommandType, ButtonComponent, ButtonStyle, CacheType, Client, Collection, ComponentType, EmbedField, GuildMember, Interaction, InteractionType, Message, MessageActionRowComponentResolvable, MessageOptions, PermissionsBitField, TextChannel, ThreadChannel, UserMention } from 'discord.js';
 import emojiRegex from 'emoji-regex';
 import { MAX_ACTION_ROWS, MAX_FIELD_NAME, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } from '../constants.js';
-import { createApplicationCommand } from '../library/backend.js';
+import { createSlashCommand } from '../library/backend.js';
 import { commas, itemize, names, trunc, wss } from '../library/factory.js';
 import { blame } from '../library/message.js';
 import { shuffleCopy, shuffleInPlace } from '../library/solve.js';
 
-// TODO support private thread polls
-// TODO overhaul polls with one drop-down menu per voter?
-// TODO modify choices using modal
+// TODO allow modifying choices using modal
 
 const MAX_CHOICE_LABEL = 25,
     DURATION_ONE_DAY = 1440;
@@ -19,8 +17,8 @@ const ABSTRACT_EMOJIS = [
     '🖤', '🤍', '❤️', '🧡', '💛', '💚', '💙', '💜', '🤎'
 ];
 
-export function register ({ client }: { client: Client }): void {
-    createApplicationCommand(client, {
+export async function register ({ client }: { client: Client }): Promise<void> {
+    await createSlashCommand(client, {
         type: ApplicationCommandType.ChatInput,
         name: 'poll',
         description: 'Create a poll',
@@ -478,7 +476,7 @@ function buildEmoji (choice: string): string | undefined {
     if (match) {
         const emoji = match[0],
             codepoints = [...emoji],
-            base = codepoints[0]; // TODO support modifiers once API does
+            base = codepoints[0]; // TODO support modifiers once Discord does
         return base;
     }
     else return undefined;

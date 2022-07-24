@@ -3,17 +3,18 @@ import express from 'express';
 import * as topicUpdated from './events/topicUpdated.js';
 import * as draw from './interactions/draw.js';
 import * as echo from './interactions/echo.js';
+import * as launch from './interactions/launch.js';
 import * as panic from './interactions/panic.js';
 import * as poll from './interactions/poll.js';
 import * as roll from './interactions/roll.js';
-import * as run from './interactions/run.js';
 import * as shuffle from './interactions/shuffle.js';
 import * as who from './interactions/who.js';
+import { resetCommands } from './library/backend.js';
 import * as logo from './routes/logo.js';
 import * as status from './routes/status.js';
 
-// TODO anonymous send-and-reply by proxy
-// TODO support for macros
+// TODO anonymous send-and-reply
+// TODO macros
 
 const client = new Client({ intents: [
     GatewayIntentBits.Guilds,
@@ -35,17 +36,18 @@ const interactions = [
     draw,
     shuffle,
     poll,
-    run,
     panic,
     echo,
-    who
+    who,
+    launch
 ];
 
-client.once('ready', () => {
-    for (const interaction of interactions)
-        interaction.register({ client });
+client.once('ready', async () => {
+    if (process.env.RESET_COMMANDS)
+        await resetCommands(client);
 
-    topicUpdated.register();
+    for (const interaction of interactions)
+        await interaction.register({ client });
 });
 
 client.on('interactionCreate', async interaction => {

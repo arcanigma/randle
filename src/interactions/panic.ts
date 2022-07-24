@@ -1,7 +1,7 @@
 import { ApplicationCommandOptionType, ApplicationCommandType, AttachmentBuilder, CacheType, Client, Colors, Interaction, InteractionType, TextChannel, ThreadChannel, VoiceChannel } from 'discord.js';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { createApplicationCommand } from '../library/backend.js';
+import { createSlashCommand } from '../library/backend.js';
 import { blame } from '../library/message.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -9,8 +9,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PANIC_BUTTON_IMAGE = 'panic-button.png',
     PANIC_BUTTON_PATH = join(__dirname, `../../public/${PANIC_BUTTON_IMAGE}`);
 
-export function register ({ client }: { client: Client }): void {
-    createApplicationCommand(client, {
+export async function register ({ client }: { client: Client }): Promise<void> {
+    await createSlashCommand(client, {
         type: ApplicationCommandType.ChatInput,
         name: 'panic',
         description: 'Press the panic button (anonymous to the channel, but logged to the server)',

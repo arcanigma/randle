@@ -2,7 +2,7 @@ import { ApplicationCommandType, CacheType, Client, Embed, EmbedField, GuildMemb
 import got from 'got';
 import JSON5 from 'json5';
 import { MAX_EMBED_DESCRIPTION, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants.js';
-import { createApplicationCommand } from '../library/backend.js';
+import { createMenuCommand } from '../library/backend.js';
 import { commas, names, trunc } from '../library/factory.js';
 import { blame, truncEmbeds, truncFields } from '../library/message.js';
 import { Script } from '../library/script.js';
@@ -10,23 +10,23 @@ import { choose, conditionOf, deckOf, listOf, matchOf, optionOf, shuffleInPlace,
 
 export const MAX_IMPORTS = 5;
 
-export function register ({ client }: { client: Client }): void {
-    createApplicationCommand(client, {
+export async function register ({ client }: { client: Client }): Promise<void> {
+    await createMenuCommand(client, {
         type: ApplicationCommandType.Message,
         name: 'Launch Script',
     });
 
-    createApplicationCommand(client, {
+    await createMenuCommand(client, {
         type: ApplicationCommandType.Message,
         name: 'Launch Script as Moderator',
     });
 
-    createApplicationCommand(client, {
+    await createMenuCommand(client, {
         type: ApplicationCommandType.Message,
         name: 'Preview Script',
     });
 
-    createApplicationCommand(client, {
+    await createMenuCommand(client, {
         type: ApplicationCommandType.Message,
         name: 'Preview Script as Moderator',
     });

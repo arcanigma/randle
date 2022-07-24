@@ -1,8 +1,8 @@
 import { ApplicationCommandOptionType, ApplicationCommandType, CacheType, Client, Interaction, InteractionType } from 'discord.js';
-import { createApplicationCommand } from '../library/backend.js';
+import { createSlashCommand } from '../library/backend.js';
 
-export function register ({ client }: { client: Client }): void {
-    createApplicationCommand(client, {
+export async function register ({ client }: { client: Client }): Promise<void> {
+    await createSlashCommand(client, {
         type: ApplicationCommandType.ChatInput,
         name: 'echo',
         description: 'Replies by echoing your input',

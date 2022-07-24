@@ -1,11 +1,11 @@
 import { ApplicationCommandOptionType, ApplicationCommandType, CacheType, Client, Interaction, InteractionType, TextChannel, ThreadChannel, VoiceChannel } from 'discord.js';
-import { createApplicationCommand } from '../library/backend.js';
+import { createSlashCommand } from '../library/backend.js';
 import { membersOf, names } from '../library/factory.js';
 import { blame } from '../library/message.js';
 import { shuffleInPlace } from '../library/solve.js';
 
-export function register ({ client }: { client: Client }): void {
-    createApplicationCommand(client, {
+export async function register ({ client }: { client: Client }): Promise<void> {
+    await createSlashCommand(client, {
         type: ApplicationCommandType.ChatInput,
         name: 'who',
         description: 'List the members of a role', // TODO or channel

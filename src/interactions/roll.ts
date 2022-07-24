@@ -2,7 +2,7 @@ import { randomInt } from 'crypto';
 import { ApplicationCommandOptionType, ApplicationCommandType, BaseGuildEmojiManager, CacheType, Client, Embed, EmbedField, Interaction, InteractionType } from 'discord.js';
 import * as inflection from 'inflection';
 import { MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants.js';
-import { createApplicationCommand } from '../library/backend.js';
+import { createSlashCommand } from '../library/backend.js';
 import { trunc, wss } from '../library/factory.js';
 import { blame, truncEmbeds, truncFields } from '../library/message.js';
 import { } from '../library/parser.js';
@@ -10,8 +10,8 @@ import { repeat } from '../library/solve.js';
 
 // TODO support messages that include custom emojis
 
-export function register ({ client }: { client: Client }): void {
-    createApplicationCommand(client, {
+export async function register ({ client }: { client: Client }): Promise<void> {
+    await createSlashCommand(client, {
         type: ApplicationCommandType.ChatInput,
         name: 'roll',
         description: 'Roll dice',
@@ -25,8 +25,6 @@ export function register ({ client }: { client: Client }): void {
         ]
     });
 }
-
-// TODO refactor into parser
 
 const re_boundary = /\s*;\s*/;
 export async function execute ({ interaction }: { interaction: Interaction<CacheType>}): Promise<boolean> {
@@ -96,6 +94,8 @@ const re_dice_code = /\b([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?(
     re_array_code = /(?:\b([1-9][0-9]*)?d?)?\{(\w+?)\}/ig;
 
 function rollDice (clauses: string[], arrays: Record<string, string[]>): Embed[] {
+    // TODO refactor into parser
+
     const embeds: Embed[] = [];
 
     for (let i = 0; i < clauses.length; i++) {

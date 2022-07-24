@@ -1,12 +1,12 @@
 import { ApplicationCommandOptionType, ApplicationCommandType, CacheType, Client, Interaction, InteractionType } from 'discord.js';
 import { MAX_EMBED_DESCRIPTION } from '../constants.js';
-import { createApplicationCommand } from '../library/backend.js';
+import { createSlashCommand } from '../library/backend.js';
 import { commas, itemize, trunc, wss } from '../library/factory.js';
 import { blame } from '../library/message.js';
 import { choose } from '../library/solve.js';
 
-export function register ({ client }: { client: Client }): void {
-    createApplicationCommand(client, {
+export async function register ({ client }: { client: Client }): Promise<void> {
+    await createSlashCommand(client, {
         type: ApplicationCommandType.ChatInput,
         name: 'draw',
         description: 'Draw some shuffled items',

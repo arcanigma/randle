@@ -33,7 +33,6 @@ export type Option =
 export type Deck =
     | Name
     | string
-    // TODO image URL or other media item
     | { choose: Value; from: Deck }
     | { choose: Value; grouping: Deck[] }
     | { repeat: Value; from: Deck }
@@ -103,5 +102,4 @@ export type Matcher =
     | { all: true }
     | { not: Matcher }
     | Deck
-    // TODO matcher for member dealt order
     | Matcher[]
