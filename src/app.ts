@@ -23,11 +23,57 @@ const client = new Client({ intents: [
     GatewayIntentBits.GuildVoiceStates
 ] });
 
-void client.login(process.env.DISCORD_BOT_TOKEN);
+client.login(process.env.DISCORD_BOT_TOKEN).then(() => {
+    console.debug('Bot logged into Discord.');
+}, () => {
+    console.debug('Bot unable to log into Discord.');
+    process.exitCode = 1;
+});
 
-client.setMaxListeners(25);
+const interactions = [
+    roll,
+    draw,
+    shuffle,
+    poll,
+    run,
+    panic,
+    echo,
+    who
+];
 
-// TODO packages: sequelize, @types/sequelize, pg, pg-hstore
+client.once('ready', () => {
+    for (const interaction of interactions)
+        interaction.register({ client });
+
+    topicUpdated.register();
+});
+
+client.on('interactionCreate', async interaction => {
+    for (const event of interactions)
+        if (await event.execute({ interaction }))
+            return;
+});
+
+client.on('channelUpdate', async (oldChannel, newChannel) => {
+    await topicUpdated.execute({ oldChannel, newChannel });
+});
+
+const app = express();
+
+const routes = [
+    status,
+    logo
+];
+
+const port = Number(process.env.PORT ?? 80);
+app.listen(port, () => {
+    for (const route of routes)
+        route.register({ app });
+
+    console.debug(`Listening on port <${port}>.`);
+});
+
+// // packages: sequelize, @types/sequelize, pg, pg-hstore
 // const db = new Sequelize(process.env.DATABASE_URL ?? '', {
 //     dialect: 'postgres',
 //     logging: false,
@@ -39,29 +85,3 @@ client.setMaxListeners(25);
 // });
 
 // void db.sync();
-
-draw.register({ client });
-echo.register({ client });
-panic.register({ client });
-poll.register({ client });
-roll.register({ client });
-run.register({ client });
-shuffle.register({ client });
-who.register({ client });
-
-topicUpdated.register({ client });
-
-client.once('ready', () => {
-    console.debug('Discord ready.');
-});
-
-const app = express();
-
-status.register({ app });
-logo.register({ app });
-
-const PORT = Number(process.env.PORT ?? 80);
-
-app.listen(PORT, () => {
-    console.debug(`Express ready on port <${PORT}>.`);
-});

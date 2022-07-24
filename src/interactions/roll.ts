@@ -1,8 +1,8 @@
 import { randomInt } from 'crypto';
-import { ApplicationCommandData, ApplicationCommandOptionType, ApplicationCommandType, BaseGuildEmojiManager, Client, Embed, EmbedField, InteractionType } from 'discord.js';
+import { ApplicationCommandOptionType, ApplicationCommandType, BaseGuildEmojiManager, CacheType, Client, Embed, EmbedField, Interaction, InteractionType } from 'discord.js';
 import * as inflection from 'inflection';
 import { MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants.js';
-import { registerApplicationCommand } from '../library/backend.js';
+import { createApplicationCommand } from '../library/backend.js';
 import { trunc, wss } from '../library/factory.js';
 import { blame, truncEmbeds, truncFields } from '../library/message.js';
 import { } from '../library/parser.js';
@@ -10,69 +10,65 @@ import { repeat } from '../library/solve.js';
 
 // TODO support messages that include custom emojis
 
-export const register = ({ client }: { client: Client }): void => {
-
-    client.on('ready', async () => {
-        const slash: ApplicationCommandData = {
-            type: ApplicationCommandType.ChatInput,
-            name: 'roll',
-            description: 'Roll dice',
-            options: [
-                {
-                    name: 'text',
-                    type: ApplicationCommandOptionType.String,
-                    description: 'Text including dice codes',
-                    required: true
-                },
-            ]
-        };
-
-        await registerApplicationCommand(slash, client);
+export function register ({ client }: { client: Client }): void {
+    createApplicationCommand(client, {
+        type: ApplicationCommandType.ChatInput,
+        name: 'roll',
+        description: 'Roll dice',
+        options: [
+            {
+                name: 'text',
+                type: ApplicationCommandOptionType.String,
+                description: 'Text including dice codes',
+                required: true
+            },
+        ]
     });
+}
 
-    // TODO refactor into parser
+// TODO refactor into parser
 
-    const re_boundary = /\s*;\s*/;
-    client.on('interactionCreate', async interaction => {
-        if (!(
-            interaction.type === InteractionType.ApplicationCommand &&
-            interaction.commandName === 'roll'
-        )) return;
+const re_boundary = /\s*;\s*/;
+export async function execute ({ interaction }: { interaction: Interaction<CacheType>}): Promise<boolean> {
+    if (!(
+        interaction.type === InteractionType.ApplicationCommand &&
+        interaction.commandName === 'roll'
+    )) return false;
 
-        try {
-            const text = interaction.options.get('text')?.value as string,
-                arrays = findEmojiArrays(text, interaction.client.emojis),
-                clauses = text.trim().split(re_boundary),
-                raw_clauses = clauses.length;
+    try {
+        const text = interaction.options.get('text')?.value as string,
+            arrays = findEmojiArrays(text, interaction.client.emojis),
+            clauses = text.trim().split(re_boundary),
+            raw_clauses = clauses.length;
 
-            for (let i = 0; i < raw_clauses; i++)
-                clauses.push(...expandRepeats(clauses.shift() as string));
+        for (let i = 0; i < raw_clauses; i++)
+            clauses.push(...expandRepeats(clauses.shift() as string));
 
-            const embeds = rollDice(clauses, arrays);
+        const embeds = rollDice(clauses, arrays);
 
-            if (embeds.length > 0)
-                await interaction.reply({
-                    content: `${interaction.user.toString()} rolled dice`,
-                    embeds
-                });
-            else
-                await interaction.reply({
-                    embeds: [{
-                        title: '⚠️ Warning',
-                        description: 'There were no dice to roll.'
-                    }],
-                    ephemeral: true
-                });
-        }
-        catch (error: unknown) {
+        if (embeds.length > 0)
             await interaction.reply({
-                embeds: blame({ error, interaction }),
+                content: `${interaction.user.toString()} rolled dice`,
+                embeds
+            });
+        else
+            await interaction.reply({
+                embeds: [{
+                    title: '⚠️ Warning',
+                    description: 'There were no dice to roll.'
+                }],
                 ephemeral: true
             });
-        }
-    });
+    }
+    catch (error: unknown) {
+        await interaction.reply({
+            embeds: blame({ error, interaction }),
+            ephemeral: true
+        });
+    }
 
-};
+    return true;
+}
 
 const re_ellipsis = /\.\.\./,
     re_commas = /\s*,\s*/;

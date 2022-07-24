@@ -4,8 +4,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-export const register = ({ app }: { app: Express }): void => {
-
+export function register ({ app }: { app: Express }): void {
     const LOGO_FILE = process.env.npm_lifecycle_event != 'dev'
         ? 'logo.png'
         : 'logo-dev.png';
@@ -14,6 +13,5 @@ export const register = ({ app }: { app: Express }): void => {
         res.sendFile(join(__dirname, `../../public/${LOGO_FILE}`));
     });
 
-    console.debug('Registered logo route in server.');
-
-};
+    console.debug('Registered <logo> route in server.');
+}

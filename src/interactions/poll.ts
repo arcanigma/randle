@@ -1,7 +1,7 @@
-import { ApplicationCommandData, ApplicationCommandOptionType, ApplicationCommandType, ButtonComponent, ButtonStyle, Client, Collection, ComponentType, EmbedField, GuildMember, Interaction, InteractionType, Message, MessageActionRowComponentResolvable, MessageOptions, PermissionsBitField, TextChannel, ThreadChannel, UserMention } from 'discord.js';
+import { ApplicationCommandOptionType, ApplicationCommandType, ButtonComponent, ButtonStyle, CacheType, Client, Collection, ComponentType, EmbedField, GuildMember, Interaction, InteractionType, Message, MessageActionRowComponentResolvable, MessageOptions, PermissionsBitField, TextChannel, ThreadChannel, UserMention } from 'discord.js';
 import emojiRegex from 'emoji-regex';
 import { MAX_ACTION_ROWS, MAX_FIELD_NAME, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } from '../constants.js';
-import { registerApplicationCommand } from '../library/backend.js';
+import { createApplicationCommand } from '../library/backend.js';
 import { commas, itemize, names, trunc, wss } from '../library/factory.js';
 import { blame } from '../library/message.js';
 import { shuffleCopy, shuffleInPlace } from '../library/solve.js';
@@ -19,48 +19,43 @@ const ABSTRACT_EMOJIS = [
     '🖤', '🤍', '❤️', '🧡', '💛', '💚', '💙', '💜', '🤎'
 ];
 
-export const register = ({ client }: { client: Client }): void => {
-
-    client.on('ready', async () => {
-        const slash: ApplicationCommandData = {
-            type: ApplicationCommandType.ChatInput,
-            name: 'poll',
-            description: 'Create a poll',
-            options: [
-                {
-                    name: 'prompt',
-                    type: ApplicationCommandOptionType.String,
-                    description: 'A question or statement',
-                    required: true
-                },
-                {
-                    name: 'choices',
-                    type: ApplicationCommandOptionType.String,
-                    description: 'A list of choices, a range size, or an @everyone, @here, or @role mention',
-                    required: true
-                },
-                {
-                    name: 'type',
-                    type: ApplicationCommandOptionType.String,
-                    description: 'The type of poll (sealed by default)',
-                    choices: [
-                        { name: 'Sealed', value: 'sealed' },
-                        { name: 'Unsealed', value: 'unsealed' }
-                    ],
-                    required: false
-                },
-            ]
-        };
-
-        await registerApplicationCommand(slash, client);
+export function register ({ client }: { client: Client }): void {
+    createApplicationCommand(client, {
+        type: ApplicationCommandType.ChatInput,
+        name: 'poll',
+        description: 'Create a poll',
+        options: [
+            {
+                name: 'prompt',
+                type: ApplicationCommandOptionType.String,
+                description: 'A question or statement',
+                required: true
+            },
+            {
+                name: 'choices',
+                type: ApplicationCommandOptionType.String,
+                description: 'A list of choices, a range size, or an @everyone, @here, or @role mention',
+                required: true
+            },
+            {
+                name: 'type',
+                type: ApplicationCommandOptionType.String,
+                description: 'The type of poll (sealed by default)',
+                choices: [
+                    { name: 'Sealed', value: 'sealed' },
+                    { name: 'Unsealed', value: 'unsealed' }
+                ],
+                required: false
+            },
+        ]
     });
+}
 
-    client.on('interactionCreate', async interaction => {
-        if (!(
-            interaction.type === InteractionType.ApplicationCommand &&
-            interaction.commandName === 'poll'
-        )) return;
-
+export async function execute ({ interaction }: { interaction: Interaction<CacheType>}): Promise<boolean> {
+    if (
+        interaction.type === InteractionType.ApplicationCommand &&
+        interaction.commandName === 'poll'
+    ) {
         try {
             if (!(
                 interaction.channel instanceof TextChannel
@@ -133,11 +128,11 @@ export const register = ({ client }: { client: Client }): void => {
                 ephemeral: true
             });
         }
-    });
-
-    client.on('interactionCreate', async interaction => {
-        if (!interaction.isButton() || !(interaction.customId.startsWith('vote_s_') || interaction.customId.startsWith('vote_u_'))) return;
-
+    }
+    else if (
+        interaction.isButton() &&
+        (interaction.customId.startsWith('vote_s_') || interaction.customId.startsWith('vote_u_'))
+    ) {
         try {
             if (!(interaction.channel instanceof ThreadChannel))
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
@@ -146,7 +141,7 @@ export const register = ({ client }: { client: Client }): void => {
                 throw "You don't have permission to vote in this poll";
 
             const choice = (interaction.component as ButtonComponent).customId?.slice(7);
-            if (!choice) return;
+            if (!choice) return false;
 
             if (interaction.customId.startsWith('vote_s_')) {
                 await interaction.reply({
@@ -182,18 +177,18 @@ export const register = ({ client }: { client: Client }): void => {
                 ephemeral: true
             });
         }
-    });
-
-    client.on('interactionCreate', async interaction => {
-        if (!interaction.isButton() || !interaction.customId.startsWith('unseal_')) return;
-
+    }
+    else if (
+        interaction.isButton() &&
+        interaction.customId.startsWith('unseal_')
+    ) {
         try {
             if (!(interaction.channel instanceof ThreadChannel))
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
             const choice = (interaction.component as ButtonComponent).customId?.slice(7),
                 whose = interaction.message.content.match(re_user)?.[0];
-            if (!choice || !whose) return;
+            if (!choice || !whose) return false;
 
             if (!isAuthor(interaction, whose) && !canModeratePoll(interaction))
                 throw "You don't have permission to unseal that vote";
@@ -214,18 +209,18 @@ export const register = ({ client }: { client: Client }): void => {
                 ephemeral: true
             });
         }
-    });
-
-    client.on('interactionCreate', async interaction => {
-        if (!interaction.isButton() || !interaction.customId.startsWith('reseal_')) return;
-
+    }
+    else if (
+        interaction.isButton() &&
+        interaction.customId.startsWith('reseal_')
+    ) {
         try {
             if (!(interaction.channel instanceof ThreadChannel))
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
             const choice = (interaction.component as ButtonComponent).customId?.slice(7),
                 whose = interaction.message.content.match(re_user)?.[0];
-            if (!choice || !whose) return;
+            if (!choice || !whose) return false;
 
             if (!isAuthor(interaction, whose) && !canModeratePoll(interaction))
                 throw "You don't have permission to reseal that vote";
@@ -246,18 +241,18 @@ export const register = ({ client }: { client: Client }): void => {
                 ephemeral: true
             });
         }
-    });
-
-    client.on('interactionCreate', async interaction => {
-        if (!interaction.isButton() || !interaction.customId.startsWith('peek_')) return;
-
+    }
+    else if (
+        interaction.isButton() &&
+        interaction.customId.startsWith('peek_')
+    ) {
         try {
             if (!(interaction.channel instanceof ThreadChannel))
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
             const choice = (interaction.component as ButtonComponent).customId?.slice(5),
                 whose = interaction.message.content.match(re_user)?.[0];
-            if (!choice || !whose) return;
+            if (!choice || !whose) return false;
 
             if (!isAuthor(interaction, whose) && !canModeratePoll(interaction))
                 throw "You don't have permission to peek at that vote";
@@ -273,18 +268,18 @@ export const register = ({ client }: { client: Client }): void => {
                 ephemeral: true
             });
         }
-    });
-
-    client.on('interactionCreate', async interaction => {
-        if (!interaction.isButton() || !interaction.customId.startsWith('discard_')) return;
-
+    }
+    else if (
+        interaction.isButton() &&
+        interaction.customId.startsWith('discard_')
+    ) {
         try {
             if (!(interaction.channel instanceof ThreadChannel))
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
             const choice = (interaction.component as ButtonComponent).customId?.slice(8),
                 whose = interaction.message.content.match(re_user)?.[0];
-            if (!choice || !whose) return;
+            if (!choice || !whose) return false;
 
             if (!isAuthor(interaction, whose) && !canModeratePoll(interaction))
                 throw "You don't have permission to discard that vote";
@@ -306,17 +301,17 @@ export const register = ({ client }: { client: Client }): void => {
                 ephemeral: true
             });
         }
-    });
-
-    client.on('interactionCreate', async interaction => {
-        if (!interaction.isSelectMenu() || interaction.customId != 'mod_poll') return;
-
+    }
+    else if (
+        interaction.isSelectMenu() &&
+        interaction.customId == 'mod_poll'
+    ) {
         try {
             if (!(interaction.channel instanceof ThreadChannel))
                 throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
             const action = interaction.values[0];
-            if (!action) return;
+            if (!action) return false;
 
             if (action == 'check') {
                 if (!canVote(interaction))
@@ -448,9 +443,13 @@ export const register = ({ client }: { client: Client }): void => {
                 ephemeral: true
             });
         }
-    });
+    }
+    else {
+        return false;
+    }
 
-};
+    return true;
+}
 
 function isAuthor (interaction: Interaction, whose: string): boolean {
     return interaction.user.toString() == whose;

@@ -1,19 +1,25 @@
-import { ApplicationCommand, ApplicationCommandData, Client } from 'discord.js';
+import { ApplicationCommandData, Client } from 'discord.js';
 
-export async function registerApplicationCommand (command: ApplicationCommandData, client: Client): Promise<ApplicationCommand> {
+export function createApplicationCommand (client: Client, command: ApplicationCommandData): void {
     if (process.env.DISCORD_GUILD_ID) {
         const guild = client.guilds.cache.get(process.env.DISCORD_GUILD_ID);
         if (!guild)
             throw `Unavailable guild <${process.env.DISCORD_GUILD_ID}>.`;
 
-        console.debug(`Registered /${command.name} on guild <${guild.name}>.`);
-        return await guild.commands.create(command);
+        guild.commands.create(command).then(() => {
+            console.debug(`Registered /${command.name} on guild <${guild.name}>.`);
+        }, () => {
+            console.debug(`Unable to register /${command.name} on guild <${guild.name}>.`);
+        });
     }
     else {
         if (!client.application)
             throw 'Unavailable application.';
 
-        console.debug(`Registered /${command.name} globally.`);
-        return await client.application.commands.create(command);
+        client.application.commands.create(command).then(() => {
+            console.debug(`Registered /${command.name} globally.`);
+        }, () => {
+            console.debug(`Unable to register /${command.name} globally.`);
+        });
     }
 }
