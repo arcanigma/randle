@@ -7,15 +7,13 @@ export async function registerApplicationCommand (command: ApplicationCommandDat
             throw `Unavailable guild <${process.env.DISCORD_GUILD_ID}>.`;
 
         console.debug(`Registered /${command.name} on guild <${guild.name}>.`);
-
         return await guild.commands.create(command);
     }
     else {
         if (!client.application)
             throw 'Unavailable application.';
 
-        console.debug(`Registered /${command.name} on all guilds.`);
-
+        console.debug(`Registered /${command.name} globally.`);
         return await client.application.commands.create(command);
     }
 }
