@@ -9,9 +9,13 @@ export function deckOf (it?: Deck, setup?: Setup): string[] {
         return it.map(item => deckOf(item, setup)).flat();
     }
     else if (typeof it === 'string') {
-        // TODO consider recursion
         if (setup?.[it] !== undefined)
-            return setup[it] = deckOf(setup[it] as Deck, setup);
+            return setup[it] = deckOf(
+                setup[it] as Deck,
+                Object.assign({}, setup, { [it]: undefined })
+            );
+        else if (setup !== undefined && Object.keys(setup).includes(it))
+            throw `Recursive deck \`${JSON.stringify(it)}\` in script.`;
         else
             return [wss(it)];
     }
@@ -165,15 +169,13 @@ export function valueOf (it?: Value, setup?: Setup): number {
     if (typeof it === 'number')
         return it;
     else if (typeof it === 'string') {
-        // TODO reconsider recursion
         if (setup?.[it] !== undefined)
-            return setup[it] = valueOf( setup[it] as Value, setup );
-            // return setup[it] = valueOf(
-            //     setup[it] as Value,
-            //     Object.assign({}, setup, { [it]: undefined })
-            // );
-        // else if (setup !== undefined && Object.keys(setup).includes(it))
-        //     throw `Recursive value \`${JSON.stringify(it)}\` in script.`;
+            return setup[it] = valueOf(
+                setup[it] as Value,
+                Object.assign({}, setup, { [it]: undefined })
+            );
+        else if (setup !== undefined && Object.keys(setup).includes(it))
+            throw `Recursive value \`${JSON.stringify(it)}\` in script.`;
         else
             throw `Undefined value \`${JSON.stringify(it)}\` in script.`;
     }
@@ -192,20 +194,18 @@ export function valueOf (it?: Value, setup?: Setup): number {
 }
 
 export function optionOf (it?: Option, setup?: Setup): boolean {
-    if (it === undefined)
+    if (it === undefined || it === false || it === 'false')
         return false;
-    if (typeof it === 'boolean')
-        return it;
+    else if (it === true || it === 'true')
+        return true;
     else if (typeof it === 'string') {
-        // TODO reconsider recursion
         if (setup?.[it] !== undefined)
-            return setup[it] = optionOf(setup[it] as Option, setup);
-        //     return setup[it] = optionOf(
-        //         setup[it] as Option,
-        //         Object.assign({}, setup, { [it]: undefined })
-        //     );
-        // else if (setup !== undefined && Object.keys(setup).includes(it))
-        //     throw `Recursive option \`${JSON.stringify(it)}\` in script.`;
+            return setup[it] = optionOf(
+                setup[it] as Option,
+                Object.assign({}, setup, { [it]: undefined })
+            );
+        else if (setup !== undefined && Object.keys(setup).includes(it))
+            throw `Recursive option \`${JSON.stringify(it)}\` in script.`;
         else
             throw `Undefined option \`${JSON.stringify(it)}\` in script.`;
     }
@@ -235,7 +235,6 @@ export function matchOf (it: string, matcher: Matcher, setup?: Setup): boolean {
     if (Array.isArray(matcher))
         return matcher.some(m => matchOf(it, m, setup));
     else if (typeof matcher === 'string')
-        // TODO consider recursion
         if (setup?.[it] !== undefined)
             return matchOf(it, deckOf(matcher, setup), setup);
         else

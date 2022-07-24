@@ -67,25 +67,23 @@ export type ShowRule = {
     hideSame?: Option;
     as?: string;
     limit?: Value;
-    cumulative?: Option;
 }
 
 export type AnnounceRule = {
     announce: Matcher;
     as?: string;
     limit?: Value;
-    cumulative?: Option;
 }
 
 export type ExplainRule = {
     explain: string;
     as: string;
-    cumulative?: Option;
 }
 
 export type ConditionalRule = {
     if?: Option;
     when?: Matcher;
+    cumulative?: Option;
 }
 
 export type Matcher =

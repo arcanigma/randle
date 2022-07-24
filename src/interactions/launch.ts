@@ -169,10 +169,17 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
         const cumulative_deal: Map<GuildMember, string[]> = new Map(),
             cumulative_used: string[] = [];
 
-        let recent_deal: Map<GuildMember, string[]> = new Map();
-        const recent_used: string[] = [];
+        let recent_deal: Map<GuildMember, string[]> = new Map(),
+            recent_used: string[] = [];
 
         for (const rule of script.rules) {
+            const which_used = optionOf(rule.cumulative, script.setup)
+                ? cumulative_used
+                : recent_used;
+
+            if (!conditionOf(rule, which_used, script.setup))
+                continue;
+
             if ('deal' in rule) {
                 const pile: string[] = shuffleInPlace(deckOf(rule.deal, script.setup));
 
@@ -185,6 +192,7 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 }
 
                 recent_deal = new Map();
+                recent_used = [];
 
                 dealing:
                 for (let c = 1; c <= cycles; c++)
@@ -281,116 +289,105 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 }
             }
             else {
-                let timely_deal: Map<GuildMember, string[]>,
-                    timely_used: string[];
+                const which_deal = optionOf(rule.cumulative, script.setup)
+                    ? cumulative_deal
+                    : recent_deal;
 
-                if (optionOf(rule.cumulative, script.setup)) {
-                    timely_deal = cumulative_deal;
-                    timely_used = cumulative_used;
-                }
-                else {
-                    timely_deal = recent_deal;
-                    timely_used = recent_used;
-                }
+                if ('show' in rule) {
+                    for (const [ member, these ] of which_deal) {
+                        const member_fields: EmbedField[] = [];
 
-                const enabled = conditionOf(rule, timely_used, script.setup);
+                        these.filter(it => matchOf(it, rule.to, script.setup)).forEach(yours => {
+                            for (const show of listOf(rule.show)) {
+                                const these_fields: EmbedField[] = [];
 
-                if (enabled)
-                    if ('show' in rule) {
-                        for (const [ member, these ] of timely_deal) {
-                            const member_fields: EmbedField[] = [];
+                                const limit = valueOf(rule.limit, script.setup);
 
-                            these.filter(it => matchOf(it, rule.to, script.setup)).forEach(yours => {
-                                for (const show of listOf(rule.show)) {
-                                    const these_fields: EmbedField[] = [];
-
-                                    const limit = valueOf(rule.limit, script.setup);
-
-                                    for (const [ them, those ] of timely_deal) {
-                                        if (them != member)
-                                            those.filter(it => matchOf(it, show, script.setup) && (!optionOf(rule.hideSame, script.setup) || it != yours)).forEach(theirs => {
-                                                const name = trunc(`Via ${yours}...`, MAX_FIELD_NAME),
-                                                    value = trunc(`${them.toString()} was dealt **${rule.as ?? theirs}**`, MAX_FIELD_VALUE);
-                                                if (![ ...member_fields, ...these_fields ].some(it => it.name == name && it.value == value))
-                                                    these_fields.push({
-                                                        name,
-                                                        value,
-                                                        inline: true
-                                                    });
-                                            });
-                                    }
-
-                                    if (limit)
-                                        member_fields.push(...choose(these_fields, limit, true));
-                                    else
-                                        member_fields.push(...these_fields);
-                                }
-                            });
-
-                            if (member_fields.length > 0) {
-                                shuffleInPlace(member_fields);
-
-                                if (!direct_embeds.has(member))
-                                    direct_embeds.set(member, []);
-
-                                direct_embeds.get(member)?.push(<Embed> {
-                                    title: 'You were shown...',
-                                    fields: truncFields(member_fields, 'show rules')
-                                });
-                            }
-                        }
-                    }
-                    else if ('announce' in rule) {
-                        const channel_fields: EmbedField[] = [];
-
-                        for (const announce of listOf(rule.announce)) {
-                            const these_fields: EmbedField[] = [];
-
-                            const limit = valueOf(rule.limit, script.setup);
-
-                            for (const [ them, those ] of timely_deal) {
-                                those.filter(it => matchOf(it, announce, script.setup)).forEach(theirs => {
-                                    const name = trunc(rule.as ?? theirs, MAX_FIELD_NAME),
-                                        value = trunc(them.toString(), MAX_FIELD_VALUE);
-                                    if (![ ...channel_fields, ...these_fields ].some(it => it.name == name && it.value == value))
-                                        these_fields.push({
-                                            name,
-                                            value,
-                                            inline: true
+                                for (const [ them, those ] of which_deal) {
+                                    if (them != member)
+                                        those.filter(it => matchOf(it, show, script.setup) && (!optionOf(rule.hideSame, script.setup) || it != yours)).forEach(theirs => {
+                                            const name = trunc(`Via ${yours}...`, MAX_FIELD_NAME),
+                                                value = trunc(`${them.toString()} was dealt **${rule.as ?? theirs}**`, MAX_FIELD_VALUE);
+                                            if (![ ...member_fields, ...these_fields ].some(it => it.name == name && it.value == value))
+                                                these_fields.push({
+                                                    name,
+                                                    value,
+                                                    inline: true
+                                                });
                                         });
-                                });
+                                }
+
+                                if (limit)
+                                    member_fields.push(...choose(these_fields, limit, true));
+                                else
+                                    member_fields.push(...these_fields);
                             }
-
-                            if (limit)
-                                channel_fields.push(...choose(these_fields, limit, true));
-                            else
-                                channel_fields.push(...these_fields);
-                        }
-
-                        if (channel_fields.length > 0) {
-                            shuffleInPlace(channel_fields);
-
-                            channel_embeds.push(<Embed> {
-                                title: 'Announced...',
-                                fields: truncFields(channel_fields, 'announce rules')
-                            });
-                        }
-                    }
-                    else if ('explain' in rule) {
-                        const channel_fields: EmbedField[] = [];
-
-                        channel_fields.push({
-                            name: trunc(rule.explain, MAX_FIELD_NAME),
-                            value: trunc(rule.as, MAX_FIELD_VALUE),
-                            inline: true
                         });
 
-                        if (channel_fields.length > 0)
-                            channel_embeds.push(<Embed> {
-                                title: 'Explained...',
-                                fields: truncFields(channel_fields, 'explain rules')
+                        if (member_fields.length > 0) {
+                            shuffleInPlace(member_fields);
+
+                            if (!direct_embeds.has(member))
+                                direct_embeds.set(member, []);
+
+                            direct_embeds.get(member)?.push(<Embed> {
+                                title: 'You were shown...',
+                                fields: truncFields(member_fields, 'show rules')
                             });
+                        }
                     }
+                }
+                else if ('announce' in rule) {
+                    const channel_fields: EmbedField[] = [];
+
+                    for (const announce of listOf(rule.announce)) {
+                        const these_fields: EmbedField[] = [];
+
+                        const limit = valueOf(rule.limit, script.setup);
+
+                        for (const [ them, those ] of which_deal) {
+                            those.filter(it => matchOf(it, announce, script.setup)).forEach(theirs => {
+                                const name = trunc(rule.as ?? theirs, MAX_FIELD_NAME),
+                                    value = trunc(them.toString(), MAX_FIELD_VALUE);
+                                if (![ ...channel_fields, ...these_fields ].some(it => it.name == name && it.value == value))
+                                    these_fields.push({
+                                        name,
+                                        value,
+                                        inline: true
+                                    });
+                            });
+                        }
+
+                        if (limit)
+                            channel_fields.push(...choose(these_fields, limit, true));
+                        else
+                            channel_fields.push(...these_fields);
+                    }
+
+                    if (channel_fields.length > 0) {
+                        shuffleInPlace(channel_fields);
+
+                        channel_embeds.push(<Embed> {
+                            title: 'Announced...',
+                            fields: truncFields(channel_fields, 'announce rules')
+                        });
+                    }
+                }
+                else if ('explain' in rule) {
+                    const channel_fields: EmbedField[] = [];
+
+                    channel_fields.push({
+                        name: trunc(rule.explain, MAX_FIELD_NAME),
+                        value: trunc(rule.as, MAX_FIELD_VALUE),
+                        inline: true
+                    });
+
+                    if (channel_fields.length > 0)
+                        channel_embeds.push(<Embed> {
+                            title: 'Explained...',
+                            fields: truncFields(channel_fields, 'explain rules')
+                        });
+                }
             }
         }
 
