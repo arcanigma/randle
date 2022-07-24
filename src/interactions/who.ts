@@ -1,4 +1,4 @@
-import { ApplicationCommandData, ApplicationCommandOptionType, ApplicationCommandType, Client, InteractionType, TextChannel, VoiceChannel } from 'discord.js';
+import { ApplicationCommandData, ApplicationCommandOptionType, ApplicationCommandType, Client, InteractionType, TextChannel, ThreadChannel, VoiceChannel } from 'discord.js';
 import { registerApplicationCommand } from '../library/backend.js';
 import { membersOf, names } from '../library/factory.js';
 import { blame } from '../library/message.js';
@@ -32,8 +32,10 @@ export const register = ({ client }: { client: Client }): void => {
 
         try {
             if (!(
-                interaction.channel instanceof TextChannel || interaction.channel instanceof VoiceChannel
-            )) throw 'This command can only be used in text and voice channels.';
+                interaction.channel instanceof TextChannel ||
+                interaction.channel instanceof VoiceChannel ||
+                interaction.channel instanceof ThreadChannel
+            )) throw 'This command can only be used in text channels, text chats in voice channels, and threads.';
 
             const role_id = interaction.options.get('role')?.value as string;
 

@@ -64,7 +64,7 @@ export const register = ({ client }: { client: Client }): void => {
         try {
             if (!(
                 interaction.channel instanceof TextChannel
-            )) throw 'This command can only be used in text channels.';
+            )) throw 'This command can only be used in text channels which support threads.';
 
             if (!canMakePoll(interaction))
                 throw "You don't have permission to make a poll in this channel";

@@ -1,4 +1,4 @@
-import { ApplicationCommandData, ApplicationCommandOptionType, ApplicationCommandType, AttachmentBuilder, Client, Colors, InteractionType, TextChannel } from 'discord.js';
+import { ApplicationCommandData, ApplicationCommandOptionType, ApplicationCommandType, AttachmentBuilder, Client, Colors, InteractionType, TextChannel, ThreadChannel, VoiceChannel } from 'discord.js';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { registerApplicationCommand } from '../library/backend.js';
@@ -37,8 +37,10 @@ export const register = ({ client }: { client: Client }): void => {
 
         try {
             if (!(
-                interaction.channel instanceof TextChannel
-            )) throw 'This command can only be used in text channels.';
+                interaction.channel instanceof TextChannel ||
+                interaction.channel instanceof VoiceChannel ||
+                interaction.channel instanceof ThreadChannel
+            )) throw 'This command can only be used in text channels, text chats in voice channels, and threads.';
 
             const about = interaction.options.get('about')?.value as string | undefined;
 
@@ -49,7 +51,6 @@ export const register = ({ client }: { client: Client }): void => {
                 ephemeral: true
             });
 
-            // TODO find a way to support text chat of voice channel
             await interaction.channel.send({
                 embeds: [
                     {

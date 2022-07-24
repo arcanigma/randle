@@ -68,8 +68,9 @@ export const register = ({ client }: { client: Client }): void => {
 
         try {
             if (!(
-                interaction.channel instanceof TextChannel || interaction.channel instanceof VoiceChannel
-            )) throw 'This command can only be used in text and voice channels.';
+                interaction.channel instanceof TextChannel ||
+                interaction.channel instanceof VoiceChannel
+            )) throw 'This command can only be used in text channels and text chats in voice channels.';
 
             const you = interaction.member as GuildMember,
                 bot = interaction.guild?.members.resolve(client?.user?.id as string) as GuildMember,
