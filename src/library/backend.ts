@@ -6,10 +6,13 @@ export function createApplicationCommand (client: Client, command: ApplicationCo
         if (!guild)
             throw `Unavailable guild <${process.env.DISCORD_GUILD_ID}>.`;
 
+        // USE ONLY AS NEEDED
+        // void guild.commands.set([]);
+
         guild.commands.create(command).then(() => {
-            console.debug(`Registered /${command.name} on guild <${guild.name}>.`);
+            console.debug(`Registered <${command.name}> command on guild <${guild.name}>.`);
         }, () => {
-            console.debug(`Unable to register /${command.name} on guild <${guild.name}>.`);
+            console.debug(`Unable to register <${command.name}> command on guild <${guild.name}>.`);
         });
     }
     else {
@@ -17,9 +20,9 @@ export function createApplicationCommand (client: Client, command: ApplicationCo
             throw 'Unavailable application.';
 
         client.application.commands.create(command).then(() => {
-            console.debug(`Registered /${command.name} globally.`);
+            console.debug(`Registered <${command.name}> command globally.`);
         }, () => {
-            console.debug(`Unable to register /${command.name} globally.`);
+            console.debug(`Unable to register <${command.name}> command globally.`);
         });
     }
 }

@@ -1,4 +1,4 @@
-import { ApplicationCommandOptionType, ApplicationCommandType, CacheType, Client, CommandInteraction, Embed, EmbedField, GuildMember, Interaction, InteractionType, Snowflake, TextChannel, VoiceChannel } from 'discord.js';
+import { ApplicationCommandType, CacheType, Client, Embed, EmbedField, GuildMember, Interaction, TextChannel, VoiceChannel } from 'discord.js';
 import got from 'got';
 import JSON5 from 'json5';
 import { MAX_EMBED_DESCRIPTION, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants.js';
@@ -12,50 +12,36 @@ export const MAX_IMPORTS = 5;
 
 export function register ({ client }: { client: Client }): void {
     createApplicationCommand(client, {
-        type: ApplicationCommandType.ChatInput,
-        name: 'run',
-        description: 'Run a script',
-        options: [
-            {
-                name: 'address',
-                type: ApplicationCommandOptionType.String,
-                description: 'A URL or ID to a message, attachment, or external file',
-                required: true
-            },
-            {
-                name: 'moderator',
-                type: ApplicationCommandOptionType.User,
-                description: 'A member who serves as the moderator, if any',
-                required: false
-            }
-        ]
+        type: ApplicationCommandType.Message,
+        name: 'Launch Script',
     });
 
     createApplicationCommand(client, {
-        type: ApplicationCommandType.ChatInput,
-        name: 'preview',
-        description: 'Preview a script',
-        options: [
-            {
-                name: 'address',
-                type: ApplicationCommandOptionType.String,
-                description: 'A URL or ID to a message, attachment, or external file',
-                required: true
-            },
-            {
-                name: 'moderator',
-                type: ApplicationCommandOptionType.User,
-                description: 'A member who serves as the moderator, if any',
-                required: false
-            }
-        ]
+        type: ApplicationCommandType.Message,
+        name: 'Launch Script as Moderator',
+    });
+
+    createApplicationCommand(client, {
+        type: ApplicationCommandType.Message,
+        name: 'Preview Script',
+    });
+
+    createApplicationCommand(client, {
+        type: ApplicationCommandType.Message,
+        name: 'Preview Script as Moderator',
     });
 }
 
+const re_highlight = /^```(json\b)?|```$/g;
 export async function execute ({ interaction }: { interaction: Interaction<CacheType>}): Promise<boolean> {
     if (!(
-        interaction.type === InteractionType.ApplicationCommand &&
-        [ 'run', 'preview' ].includes(interaction.commandName)
+        interaction.isMessageContextMenuCommand() &&
+        (
+            interaction.commandName == 'Launch Script' ||
+            interaction.commandName == 'Launch Script as Moderator' ||
+            interaction.commandName == 'Preview Script' ||
+            interaction.commandName == 'Preview Script as Moderator'
+        )
     )) return false;
 
     try {
@@ -66,14 +52,13 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
 
         const you = interaction.member as GuildMember,
             bot = interaction.guild?.members.resolve(interaction.client?.user?.id as string) as GuildMember,
-            address = interaction.options.get('address')?.value as string,
-            moderator = interaction.channel.members.get(interaction.options.get('moderator')?.value as Snowflake),
-            preview = interaction.commandName == 'preview';
+            moderator = interaction.commandName.includes('Moderator'),
+            preview = interaction.commandName.includes('Preview');
 
         const members = shuffleInPlace([
             ...interaction.channel.members
                 .filter(them => !them.user.bot)
-                .filter(them => !moderator || them != moderator)
+                .filter(them => !moderator || them != you)
                 .filter(them => them.roles.highest.name == '@everyone' || them.roles.highest.position > bot.roles.highest.position)
                 .values()
         ]);
@@ -81,7 +66,14 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
         if (members.length < 1)
             throw `Everyone in ${interaction.channel.toString()} includes no qualifying members for a script.`;
 
-        const script = await scriptFrom(address.trim(), interaction);
+        let script: Script;
+        try {
+            const raw = interaction.targetMessage.content.replace(re_highlight, '').trim();
+            script = JSON5.parse(raw);
+        }
+        catch (error) {
+            throw 'Unable to parse JSON in message.';
+        }
 
         if (script.requireModerator !== undefined)
             script.requireModerator = optionOf(script.requireModerator, script.setup);
@@ -106,7 +98,21 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 throw `Too many imports in script (limit of ${MAX_IMPORTS}).`;
 
             for (const i_url of imports) {
-                const i_script = await scriptFrom(i_url.trim(), interaction);
+                let raw: string;
+                try {
+                    raw = (await got.get(i_url).text()).trim();
+                }
+                catch (error) {
+                    throw `Web error ${JSON.stringify(error)} at \`${i_url}\` address.`;
+                }
+
+                let i_script: Script;
+                try {
+                    i_script = JSON5.parse(raw);
+                }
+                catch (error) {
+                    throw `Unable to parse JSON at \`${i_url}\` address.`;
+                }
 
                 if (i_script.event !== undefined)
                     script.event = script.event !== undefined
@@ -264,10 +270,10 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                         });
 
                     if (moderator_fields.length > 0) {
-                        if (!direct_embeds.has(moderator))
-                            direct_embeds.set(moderator, []);
+                        if (!direct_embeds.has(you))
+                            direct_embeds.set(you, []);
 
-                        direct_embeds.get(moderator)?.push(<Embed> {
+                        direct_embeds.get(you)?.push(<Embed> {
                             title: 'Dealt...',
                             fields: moderator_fields
                         });
@@ -393,13 +399,10 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
 
         let channel_content = `${interaction.user.toString()}`;
         if (moderator)
-            if (moderator == you)
-                channel_content = `${channel_content} (**moderator**)`;
-            else
-                channel_content = `${channel_content} on behalf of ${moderator.toString()} (**moderator**)`;
+            channel_content = `${channel_content} as **moderator**`;
         channel_content = `${channel_content} ran a script`;
         if (script.event)
-            channel_content = `${channel_content} for the **${script.event}** event in this channel`;
+            channel_content = `${channel_content} for the **${script.event}** event`;
 
         if (!preview)
             await interaction.reply({
@@ -418,13 +421,10 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
             if (embeds.length > 0) {
                 let content = member != you ? interaction.user.toString() : 'You';
                 if (moderator)
-                    if (moderator == you)
-                        content = `${content} (**moderator**)`;
-                    else
-                        content = `${content} on behalf of ${moderator != member ? moderator.toString() : 'you'} (**moderator**)`;
-                content = `${content} ran a script`;
+                    content = `${content} as **moderator**`;
+                content = `${content} ran a script in ${interaction.channel.toString()}`;
                 if (script.event)
-                    content = `${content} for the **${script.event}** event in ${interaction.channel.toString()}`;
+                    content = `${content} for the **${script.event}** event`;
 
                 if (!preview)
                     await member.send({
@@ -447,69 +447,4 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
     }
 
     return true;
-}
-
-const re_message_id = /^(?:(\d+)-)?(\d+)$|^https?:\/\/.+\/channels\/.+\/(\d+)\/(\d+)\/?$/;
-async function scriptFrom (address: string, interaction: CommandInteraction): Promise<Script> {
-    const match = re_message_id.exec(address);
-
-    let data: string;
-
-    if (match) {
-        const message_id = match[2] ?? match[4];
-
-        if (!interaction.channel)
-            throw `Unknown channel at \`${address}\` address.`;
-
-        // TODO support any message within threads of this channel
-        // TODO support message within text chat of voice channel
-        let message;
-        try {
-            message = await interaction.channel.messages.fetch(message_id);
-        }
-        catch (error) {
-            throw `Message must be in this channel at \`${address}\` address.`;
-        }
-
-        if (message.attachments.size == 0) {
-            if (message.content.length > 0)
-                data = message.content.replace(/^```(json\b)?|```$/g, '');
-            else
-                throw `No text or attachments at \`${address}\` address.`;
-        }
-        else if (message.attachments.size == 1) {
-            const attachment_url = message.attachments.first()?.attachment as string;
-
-            try {
-                data = await got.get(attachment_url).text();
-            }
-            catch (error) {
-                throw `Attachment error ${(error as Error).message} at \`${address}\` address.`;
-            }
-        }
-        else {
-            throw `Too many attachments (limit of 1, actually ${message.attachments.size}) at \`${address}\` address.`;
-        }
-    }
-    else {
-        try {
-            data = await got.get(address).text();
-        }
-        catch (error) {
-            throw `Web error ${(error as Error).message} at \`${address}\` address.`;
-        }
-    }
-
-    let script: Script;
-    try {
-        script = JSON5.parse(data);
-    }
-    catch (error) {
-        if (error == JSON5.parse('{"lineNumber":1,"columnNumber":1}'))
-            throw `No JSON at \`${address}\` address.`;
-        else
-            throw `JSON error \`${JSON.stringify(error)}\` at \`${address}\` address.`;
-    }
-
-    return script;
 }
