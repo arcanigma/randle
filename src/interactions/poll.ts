@@ -1,12 +1,10 @@
-import { ApplicationCommandOptionType, ApplicationCommandType, ButtonComponent, ButtonStyle, CacheType, Client, Collection, ComponentType, EmbedField, GuildMember, Interaction, InteractionType, Message, MessageActionRowComponentResolvable, MessageOptions, PermissionsBitField, TextChannel, ThreadChannel, UserMention } from 'discord.js';
-import emojiRegex from 'emoji-regex';
+import { ApplicationCommandOptionType, ApplicationCommandType, ButtonComponent, ButtonStyle, CacheType, Client, Collection, ComponentType, EmbedField, Interaction, InteractionType, Message, MessageActionRowComponentResolvable, MessageOptions, PermissionsBitField, TextChannel, TextInputStyle, ThreadChannel, UserMention } from 'discord.js';
+import emoji from 'node-emoji';
 import { MAX_ACTION_ROWS, MAX_FIELD_NAME, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } from '../constants.js';
 import { createSlashCommand } from '../library/backend.js';
 import { commas, itemize, names, trunc, wss } from '../library/factory.js';
 import { blame } from '../library/message.js';
 import { shuffleCopy, shuffleInPlace } from '../library/solve.js';
-
-// TODO allow modifying choices using modal
 
 const MAX_CHOICE_LABEL = 25,
     DURATION_ONE_DAY = 1440;
@@ -63,20 +61,12 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 throw "You don't have permission to make a poll in this channel";
 
             const prompt = interaction.options.get('prompt')?.value as string,
-                members = interaction.channel.members,
-                choices = itemize(interaction.options.get('choices')?.value as string, interaction).map(it => ({
-                    emoji: buildEmoji(it),
-                    label: buildChoice(it, members)
-                })),
-                type = interaction.options.get('type')?.value as string,
-                emojis = shuffleCopy(ABSTRACT_EMOJIS.filter(emoji => !choices.some(choice => choice.emoji == emoji)));
+                list = interaction.options.get('choices')?.value as string,
+                type = interaction.options.get('type')?.value as string;
 
-            if (choices.length < 1)
-                throw 'At least 1 choice is required.';
-
-            const MAX_CHOICES = (MAX_ACTION_ROWS - 1) * MAX_ROW_COMPONENTS;
-            if (choices.length > MAX_CHOICES)
-                throw `At most ${MAX_CHOICES} choices are allowed.`;
+            const components = buildChoiceComponents(list, type, interaction);
+            if (!components)
+                throw 'Unsupported list of poll choices.';
 
             const reply = await interaction.reply({
                 content: type != 'unsealed'
@@ -94,30 +84,15 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
             if (thread.joinable)
                 await thread.join();
 
-            const components: MessageOptions['components'] = [];
-            while (choices.length > 0) {
-                components.push({
-                    type: ComponentType.ActionRow,
-                    // TODO handle row widths gracefully
-                    components: choices.splice(0, MAX_ROW_COMPONENTS).map(it => ({
-                        type: ComponentType.Button,
-                        emoji: it.emoji ?? (it.emoji = emojis.pop() as string),
-                        label: (it.label = trunc(it.label, MAX_CHOICE_LABEL)),
-                        customId: type != 'unsealed'
-                            ? `vote_s_${it.emoji} ${it.label}`
-                            : `vote_u_${it.emoji} ${it.label}`,
-                        style: ButtonStyle.Primary
-                    }))
-                });
-            }
-            components.push({
-                type: ComponentType.ActionRow,
-                components: buildPollActionComponents()
-            });
-
             await thread.send({
                 content: '**Choices and Actions**',
-                components: components
+                components: [
+                    ...components,
+                    {
+                        type: ComponentType.ActionRow,
+                        components: buildPollActionComponents()
+                    }
+                ]
             });
         }
         catch (error: unknown) {
@@ -318,10 +293,11 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
             else if (!canModeratePoll(interaction))
                 throw "You don't have permission to moderate this poll";
 
-            await interaction.update({
-                content: interaction.message.content,
-                components: interaction.message.components
-            });
+            // TODO obsolete but maybe useful in the future
+            // await interaction.update({
+            //     content: interaction.message.content,
+            //     components: interaction.message.components
+            // });
 
             const messages = await interaction.channel.messages.fetch();
 
@@ -331,7 +307,7 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                     everyone = [...(interaction.channel.parent as TextChannel).members.values()].filter(member => !member.user.bot).map(member => member.user.toString()),
                     unvoted = everyone.filter(member => !voted.includes(member));
 
-                await interaction.followUp({
+                await interaction.reply({
                     content: 'You checked member participation',
                     embeds: [
                         {
@@ -357,7 +333,7 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 const results = getVoteResults(messages),
                     total = getVoteTotal(results);
 
-                await interaction.followUp({
+                await interaction.reply({
                     content: 'You peeked at all votes',
                     embeds: [{
                         title: `Votes (${total})`,
@@ -414,7 +390,7 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 const results = getVoteResults(messages),
                     total = getVoteTotal(results);
 
-                await interaction.followUp({
+                await interaction.reply({
                     content: `${interaction.user.toString()} tallied all votes`,
                     embeds: [{
                         title: `Votes (${total})`,
@@ -426,12 +402,36 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 const results = getVoteResults(messages),
                     total = getVoteTotal(results);
 
-                await interaction.followUp({
+                await interaction.reply({
                     content: `${interaction.user.toString()} showed all votes`,
                     embeds: [{
                         title: `Votes (${total})`,
                         fields: buildResultFields(results, true)
                     }]
+                });
+            }
+            else if (action == 'edit') {
+                const list = interaction.message?.components.slice(0, -1)
+                    .map(it => it.components).flat()
+                    .map(it => it.customId?.slice(7));
+
+                await interaction.showModal({
+                    custom_id: 'edit_poll',
+                    title: 'Edit Poll',
+                    components: [
+                        {
+                            type: ComponentType.ActionRow,
+                            components: [
+                                {
+                                    custom_id: 'list',
+                                    label: 'The list of choices',
+                                    type: ComponentType.TextInput,
+                                    style: TextInputStyle.Paragraph,
+                                    value: list.join(', ')
+                                }
+                            ]
+                        }
+                    ]
                 });
             }
         }
@@ -441,6 +441,41 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 ephemeral: true
             });
         }
+    }
+    else if (
+        interaction.type === InteractionType.ModalSubmit &&
+        interaction.customId == 'edit_poll'
+    ) {
+        if (!(interaction.channel instanceof ThreadChannel))
+            throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
+
+        if (!canModeratePoll(interaction))
+            throw "You don't have permission to edit a poll in this channel";
+
+        const starter = await interaction.channel.fetchStarterMessage();
+
+        const list = interaction.fields.fields.get('list')?.value as string,
+            type = starter.content.includes('**unsealed**') ? 'unsealed' : 'sealed';
+
+        const components = buildChoiceComponents(list, type, interaction);
+        if (!components)
+            throw 'Unsupported list of poll choices.';
+
+        await interaction.message?.edit({
+            content: interaction.message.content,
+            components: [
+                ...components,
+                {
+                    type: ComponentType.ActionRow,
+                    components: buildPollActionComponents()
+                }
+            ]
+        });
+
+        await interaction.reply({
+            content: `${interaction.user.toString()} edited the list of choices`,
+            ephemeral: true
+        });
     }
     else {
         return false;
@@ -470,26 +505,57 @@ function canModeratePoll (interaction: Interaction): boolean {
     return permissions?.has(PermissionsBitField.Flags.ManageThreads) ?? false;
 }
 
-const re_emoji = emojiRegex();
-function buildEmoji (choice: string): string | undefined {
-    const match = re_emoji.exec(choice);
-    if (match) {
-        const emoji = match[0],
-            codepoints = [...emoji],
-            base = codepoints[0]; // TODO support modifiers once Discord does
-        return base;
-    }
-    else return undefined;
-}
-
 const re_user = /<@!?(\d+)>/g,
     re_markdown = /[_~*]+/g;
-function buildChoice (choice: string, members: Collection<string, GuildMember>): string {
-    return `${wss(choice
-        .replaceAll(re_user, (_, id: string) => members.get(id)?.nickname ?? members.get(id)?.user.username ?? 'Unknown')
-        .replaceAll(re_emoji, '')
-        .replaceAll(re_markdown, '')
-    )}`;
+function buildChoiceComponents (list: string, type: string, interaction: Interaction): MessageOptions['components'] {
+    const members = (interaction.channel as TextChannel).members;
+
+    const choices = itemize(list, interaction).map(choice => {
+        choice = emoji.emojify(choice, () => '');
+
+        let first: string | undefined = undefined;
+        choice = emoji.replace(choice, it => {
+            if (first === undefined) // && it.emoji.length == 2)
+                first = it.emoji;
+            return '';
+        });
+
+        choice = choice.replaceAll(re_markdown, '');
+        choice = choice.replaceAll(re_user, (_, id: string) => members.get(id)?.nickname ?? members.get(id)?.user.username ?? 'Unknown');
+        choice = wss(choice);
+
+        return {
+            emoji: first as string | undefined,
+            label: choice
+        };
+    });
+
+    const emojis = shuffleCopy(ABSTRACT_EMOJIS.filter(emoji => !choices.some(choice => choice.emoji == emoji)));
+
+    if (choices.length < 1)
+        throw 'At least 1 choice is required.';
+
+    const MAX_CHOICES = (MAX_ACTION_ROWS - 1) * MAX_ROW_COMPONENTS;
+    if (choices.length > MAX_CHOICES)
+        throw `At most ${MAX_CHOICES} choices are allowed.`;
+
+    const components: MessageOptions['components'] = [];
+    while (choices.length > 0) {
+        components.push({
+            type: ComponentType.ActionRow,
+            // TODO distribute column major instead of row major
+            components: choices.splice(0, MAX_ROW_COMPONENTS).map(it => ({
+                type: ComponentType.Button,
+                emoji: it.emoji ?? (it.emoji = emojis.pop() as string),
+                label: (it.label = trunc(it.label, MAX_CHOICE_LABEL)),
+                customId: type != 'unsealed'
+                    ? `vote_s_${it.emoji} ${it.label}`
+                    : `vote_u_${it.emoji} ${it.label}`,
+                style: ButtonStyle.Primary
+            }))
+        });
+    }
+    return components;
 }
 
 function buildPollActionComponents (): MessageActionRowComponentResolvable[] {
@@ -498,7 +564,7 @@ function buildPollActionComponents (): MessageActionRowComponentResolvable[] {
             type: ComponentType.SelectMenu,
             customId: 'mod_poll',
             emoji: '🗳️',
-            placeholder: 'Select an Action',
+            placeholder: 'Select an action',
             minValues: 1,
             maxValues: 1,
             options: [
@@ -537,6 +603,12 @@ function buildPollActionComponents (): MessageActionRowComponentResolvable[] {
                     emoji: '📊',
                     label: 'Show',
                     description: 'Show all votes (moderator only)'
+                },
+                {
+                    value: 'edit',
+                    emoji: '✏️',
+                    label: 'Edit',
+                    description: 'Edit the list of choices (moderator only)'
                 }
             ]
         }
