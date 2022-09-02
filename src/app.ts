@@ -10,8 +10,8 @@ import * as roll from './interactions/roll.js';
 import * as shuffle from './interactions/shuffle.js';
 import * as who from './interactions/who.js';
 import { resetCommands } from './library/backend.js';
+import * as health from './routes/health.js';
 import * as logo from './routes/logo.js';
-import * as status from './routes/status.js';
 
 // TODO anonymous send-and-reply
 // TODO macros
@@ -63,7 +63,7 @@ client.on('channelUpdate', async (oldChannel, newChannel) => {
 const app = express();
 
 const routes = [
-    status,
+    health,
     logo
 ];
 
