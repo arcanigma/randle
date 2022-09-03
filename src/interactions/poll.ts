@@ -453,6 +453,8 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
             throw "You don't have permission to edit a poll in this channel";
 
         const starter = await interaction.channel.fetchStarterMessage();
+        if (!starter)
+            throw 'Missing starter message for poll thread.';
 
         const list = interaction.fields.fields.get('list')?.value as string,
             type = starter.content.includes('**unsealed**') ? 'unsealed' : 'sealed';
