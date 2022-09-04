@@ -1,7 +1,7 @@
 {
-    "name": "randle-discord",
+    "name": "randle",
     "description": "Dice, cards, and polls bot for Discord.",
-    "version": "1.15.0",
+    "version": "1.15.1",
     "main": "./dist/app.js",
     "scripts": {
         "build": "tsc",
@@ -35,10 +35,10 @@
     },
     "license": "MIT",
     "author": {
-        "name": "Arcanigma Foundation",
-        "email": "randle@arcanigma.org",
+        "name": "Arcanigma Project",
+        "email": "contact@arcanigma.org",
         "url": "https://github.com/arcanigma"
     },
-    "repository": "github:arcanigma/randle-discord",
+    "repository": "github:arcanigma/randle",
     "private": true
 }
