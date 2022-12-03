@@ -18,7 +18,7 @@ export async function register ({ client }: { client: Client }): Promise<void> {
 
     await createMenuCommand(client, {
         type: ApplicationCommandType.Message,
-        name: 'Launch Script as Moderator',
+        name: 'Launch Script as Mod',
     });
 
     await createMenuCommand(client, {
@@ -28,7 +28,7 @@ export async function register ({ client }: { client: Client }): Promise<void> {
 
     await createMenuCommand(client, {
         type: ApplicationCommandType.Message,
-        name: 'Preview Script as Moderator',
+        name: 'Preview Script as Mod',
     });
 }
 
@@ -38,9 +38,9 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
         interaction.isMessageContextMenuCommand() &&
         (
             interaction.commandName == 'Launch Script' ||
-            interaction.commandName == 'Launch Script as Moderator' ||
+            interaction.commandName == 'Launch Script as Mod' ||
             interaction.commandName == 'Preview Script' ||
-            interaction.commandName == 'Preview Script as Moderator'
+            interaction.commandName == 'Preview Script as Mod'
         )
     )) return false;
 
@@ -52,7 +52,7 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
 
         const you = interaction.member as GuildMember,
             bot = interaction.guild?.members.resolve(interaction.client?.user?.id as string) as GuildMember,
-            moderator = interaction.commandName.includes('Moderator'),
+            moderator = interaction.commandName.includes('Mod'),
             preview = interaction.commandName.includes('Preview');
 
         const members = shuffleInPlace([
