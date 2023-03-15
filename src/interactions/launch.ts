@@ -51,7 +51,7 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
         )) throw 'This command can only be used in text channels and text chats in voice channels.';
 
         const you = interaction.member as GuildMember,
-            bot = interaction.guild?.members.resolve(interaction.client?.user?.id as string) as GuildMember,
+            bot = interaction.guild?.members.resolve(interaction.client?.user?.id ) as GuildMember,
             moderator = interaction.commandName.includes('Mod'),
             preview = interaction.commandName.includes('Preview');
 
@@ -185,10 +185,11 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
 
                 let cycles = Math.ceil(pile.length / members.length);
                 if (rule.limit !== undefined) {
-                    if (rule.limit < 0)
+                    const limit = valueOf(rule.limit, script.setup);
+                    if (limit < 1)
                         throw 'Deal limit must be at least 1, if any.';
 
-                    cycles = Math.min(valueOf(rule.limit, script.setup), cycles);
+                    cycles = Math.min(limit, cycles);
                 }
 
                 recent_deal = new Map();

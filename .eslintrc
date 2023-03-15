@@ -4,16 +4,17 @@
     },
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
-        "ecmaVersion": 2020,
+        "ecmaVersion": "latest",
         "project": ["./tsconfig.json"]
     },
-    "plugins": [ "@typescript-eslint" ],
+    "plugins": [ "@typescript-eslint", "deprecation" ],
     "extends": [
         "eslint:recommended",
         "plugin:@typescript-eslint/recommended",
         "plugin:@typescript-eslint/recommended-requiring-type-checking"
     ],
     "rules": {
+        "deprecation/deprecation": "warn",
         "semi": [ "warn", "always" ],
         "quotes": [ "warn", "single", { "avoidEscape": true } ],
         "indent": [ "warn", 4 ],

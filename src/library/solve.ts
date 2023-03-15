@@ -46,6 +46,7 @@ export function deckOf (it?: Deck, setup?: Setup): string[] {
             : it.else
                 ? deckOf(it.else, setup)
                 : [] ;
+    // TODO can't show setup.setname without using union/intersect/except
     else if ('union' in it) {
         return <string[]> listOf(it.union).reduce((x, y) => [ ...deckOf(x, setup), ...deckOf(y, setup) ].filter((item, index, self) => self.indexOf(item) === index));
     }

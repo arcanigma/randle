@@ -1,10 +1,13 @@
-import { ApplicationCommandOptionType, ApplicationCommandType, ButtonComponent, ButtonStyle, CacheType, Client, Collection, ComponentType, EmbedField, Interaction, InteractionType, Message, MessageActionRowComponentResolvable, MessageOptions, PermissionsBitField, TextChannel, TextInputStyle, ThreadChannel, UserMention } from 'discord.js';
+import { ApplicationCommandOptionType, ApplicationCommandType, BaseMessageOptions, ButtonComponent, ButtonStyle, CacheType, Client, Collection, ComponentType, EmbedField, Interaction, InteractionType, Message, MessageActionRowComponentResolvable, PermissionsBitField, TextChannel, TextInputStyle, ThreadChannel, UserMention } from 'discord.js';
 import emoji from 'node-emoji';
 import { MAX_ACTION_ROWS, MAX_FIELD_NAME, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } from '../constants.js';
 import { createSlashCommand } from '../library/backend.js';
 import { commas, itemize, names, trunc, wss } from '../library/factory.js';
 import { blame } from '../library/message.js';
 import { shuffleCopy, shuffleInPlace } from '../library/solve.js';
+
+// TODO discard from unsealed, restore to poll's un/sealed type
+// TODO reset poll actions menu after selections
 
 const MAX_CHOICE_LABEL = 25,
     DURATION_ONE_DAY = 1440;
@@ -276,7 +279,7 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
         }
     }
     else if (
-        interaction.isSelectMenu() &&
+        interaction.isStringSelectMenu() &&
         interaction.customId == 'mod_poll'
     ) {
         try {
@@ -509,7 +512,7 @@ function canModeratePoll (interaction: Interaction): boolean {
 
 const re_user = /<@!?(\d+)>/g,
     re_markdown = /[_~*]+/g;
-function buildChoiceComponents (list: string, type: string, interaction: Interaction): MessageOptions['components'] {
+function buildChoiceComponents (list: string, type: string, interaction: Interaction): BaseMessageOptions['components'] {
     const members = (interaction.channel as TextChannel).members;
 
     const choices = itemize(list, interaction).map(choice => {
@@ -541,7 +544,7 @@ function buildChoiceComponents (list: string, type: string, interaction: Interac
     if (choices.length > MAX_CHOICES)
         throw `At most ${MAX_CHOICES} choices are allowed.`;
 
-    const components: MessageOptions['components'] = [];
+    const components: BaseMessageOptions['components'] = [];
     while (choices.length > 0) {
         components.push({
             type: ComponentType.ActionRow,
@@ -563,7 +566,7 @@ function buildChoiceComponents (list: string, type: string, interaction: Interac
 function buildPollActionComponents (): MessageActionRowComponentResolvable[] {
     return [
         {
-            type: ComponentType.SelectMenu,
+            type: ComponentType.StringSelect,
             customId: 'mod_poll',
             emoji: '🗳️',
             placeholder: 'Select an action',
