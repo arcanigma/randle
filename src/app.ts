@@ -16,6 +16,7 @@ import * as logo from './routes/logo.js';
 // TODO anonymous send-and-reply
 // TODO macros
 
+// TODO reevaluate which intents are needed
 const client = new Client({ intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,

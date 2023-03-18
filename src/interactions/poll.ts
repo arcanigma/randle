@@ -6,8 +6,8 @@ import { commas, itemize, names, trunc, wss } from '../library/factory.js';
 import { blame } from '../library/message.js';
 import { shuffleCopy, shuffleInPlace } from '../library/solve.js';
 
-// TODO discard from unsealed, restore to poll's un/sealed type
-// TODO reset poll actions menu after selections
+// TODO discard from un/sealed, restore to poll's un/sealed type
+// TODO reset poll actions after selection
 
 const MAX_CHOICE_LABEL = 25,
     DURATION_ONE_DAY = 1440;
@@ -65,10 +65,10 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
 
             const prompt = interaction.options.get('prompt')?.value as string,
                 list = interaction.options.get('choices')?.value as string,
-                type = interaction.options.get('type')?.value as string;
+                type = interaction.options.get('type')?.value as 'sealed' | 'unsealed';
 
-            const components = buildChoiceComponents(list, type, interaction);
-            if (!components)
+            const choices = buildChoiceComponents(list, type, interaction);
+            if (!choices)
                 throw 'Unsupported list of poll choices.';
 
             const reply = await interaction.reply({
@@ -88,9 +88,13 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 await thread.join();
 
             await thread.send({
-                content: '**Choices and Actions**',
+                content: '**Poll Choices**',
+                components: choices
+            });
+
+            await thread.send({
+                content: '**Poll Actions**',
                 components: [
-                    ...components,
                     {
                         type: ComponentType.ActionRow,
                         components: buildPollActionComponents()
@@ -296,15 +300,9 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
             else if (!canModeratePoll(interaction))
                 throw "You don't have permission to moderate this poll";
 
-            // TODO obsolete but maybe useful in the future
-            // await interaction.update({
-            //     content: interaction.message.content,
-            //     components: interaction.message.components
-            // });
-
-            const messages = await interaction.channel.messages.fetch();
-
             if (action == 'check') {
+                const messages = await interaction.channel.messages.fetch();
+
                 const results = getVoteResults(messages),
                     voted = getVotedMembers(results),
                     everyone = [...(interaction.channel.parent as TextChannel).members.values()].filter(member => !member.user.bot).map(member => member.user.toString()),
@@ -333,6 +331,8 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 });
             }
             else if (action == 'peek') {
+                const messages = await interaction.channel.messages.fetch();
+
                 const results = getVoteResults(messages),
                     total = getVoteTotal(results);
 
@@ -346,6 +346,8 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 });
             }
             else if (action == 'unseal') {
+                const messages = await interaction.channel.messages.fetch();
+
                 let affected = 0;
                 messages.filter(message => message.author.bot).forEach(message => {
                     const button = message.components[0]?.components[0] as ButtonComponent;
@@ -374,6 +376,8 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 });
             }
             else if (action == 'reseal') {
+                const messages = await interaction.channel.messages.fetch();
+
                 let affected = 0;
                 messages.filter(message => message.author.bot).forEach(message => {
                     const button = message.components[0]?.components[0] as ButtonComponent;
@@ -402,6 +406,8 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 });
             }
             else if (action == 'tally') {
+                const messages = await interaction.channel.messages.fetch();
+
                 const results = getVoteResults(messages),
                     total = getVoteTotal(results);
 
@@ -414,6 +420,8 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 });
             }
             else if (action == 'show') {
+                const messages = await interaction.channel.messages.fetch();
+
                 const results = getVoteResults(messages),
                     total = getVoteTotal(results);
 
@@ -426,7 +434,14 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 });
             }
             else if (action == 'edit') {
-                const list = interaction.message?.components.slice(0, -1)
+                const previous = (await interaction.channel.messages.fetch({
+                    before: interaction.message?.id,
+                    limit: 1
+                })).first();
+                if (!previous?.content.includes('**Poll Choices**'))
+                    throw 'Missing poll choices message for poll thread.';
+
+                const list = previous.components
                     .map(it => it.components).flat()
                     .map(it => it.customId?.slice(7));
 
@@ -472,21 +487,22 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
             throw 'Missing starter message for poll thread.';
 
         const list = interaction.fields.fields.get('list')?.value as string,
-            type = starter.content.includes('**unsealed**') ? 'unsealed' : 'sealed';
+            type = starter.content.includes('**sealed**') ? 'sealed' : 'unsealed';
 
-        const components = buildChoiceComponents(list, type, interaction);
-        if (!components)
+        const choices = buildChoiceComponents(list, type, interaction);
+        if (!choices)
             throw 'Unsupported list of poll choices.';
 
-        await interaction.message?.edit({
-            content: interaction.message.content,
-            components: [
-                ...components,
-                {
-                    type: ComponentType.ActionRow,
-                    components: buildPollActionComponents()
-                }
-            ]
+        const previous = (await interaction.channel.messages.fetch({
+            before: interaction.message?.id,
+            limit: 1
+        })).first();
+        if (!previous?.content.includes('**Poll Choices**'))
+            throw 'Missing poll choices message for poll thread.';
+
+        await previous.edit({
+            content: previous.content,
+            components: choices
         });
 
         await interaction.reply({
@@ -524,7 +540,7 @@ function canModeratePoll (interaction: Interaction): boolean {
 
 const re_user = /<@!?(\d+)>/g,
     re_markdown = /[_~*]+/g;
-function buildChoiceComponents (list: string, type: string, interaction: Interaction): BaseMessageOptions['components'] {
+function buildChoiceComponents (list: string, type: 'sealed' | 'unsealed', interaction: Interaction): BaseMessageOptions['components'] {
     const members = (interaction.channel as TextChannel).members;
 
     const choices = itemize(list, interaction).map(choice => {
