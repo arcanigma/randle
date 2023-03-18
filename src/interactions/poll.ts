@@ -346,6 +346,7 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 });
             }
             else if (action == 'unseal') {
+                let affected = 0;
                 messages.filter(message => message.author.bot).forEach(message => {
                     const button = message.components[0]?.components[0] as ButtonComponent;
                     if (!button) return;
@@ -355,6 +356,7 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                             choice = button.customId?.slice(7);
                         if (!whose || !choice) return;
 
+                        affected++;
                         void message.edit({
                             content: `${whose} voted for **${choice}**`,
                             components: [
@@ -366,8 +368,13 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                         });
                     }
                 });
+                await interaction.reply({
+                    content: `You unsealed **${affected}** vote${affected != 1 ? 's' : ''}`,
+                    ephemeral: true
+                });
             }
             else if (action == 'reseal') {
+                let affected = 0;
                 messages.filter(message => message.author.bot).forEach(message => {
                     const button = message.components[0]?.components[0] as ButtonComponent;
                     if (!button) return;
@@ -377,6 +384,7 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                             choice = button.customId?.slice(7);
                         if (!whose || !choice) return;
 
+                        affected++;
                         void message.edit({
                             content: `${whose} voted`,
                             components: [
@@ -387,6 +395,10 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                             ]
                         });
                     }
+                });
+                await interaction.reply({
+                    content: `You resealed **${affected}** vote${affected != 1 ? 's' : ''}`,
+                    ephemeral: true
                 });
             }
             else if (action == 'tally') {
