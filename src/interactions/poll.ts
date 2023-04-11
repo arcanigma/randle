@@ -1,4 +1,4 @@
-import { ApplicationCommandOptionType, ApplicationCommandType, BaseMessageOptions, ButtonComponent, ButtonStyle, CacheType, Client, Collection, ComponentType, EmbedField, Interaction, InteractionType, Message, MessageActionRowComponentResolvable, PermissionsBitField, TextChannel, TextInputStyle, ThreadChannel, UserMention } from 'discord.js';
+import { ApplicationCommandOptionType, ApplicationCommandType, BaseMessageOptions, ButtonComponent, ButtonStyle, CacheType, ChannelType, Client, Collection, ComponentType, EmbedField, Interaction, InteractionType, Message, MessageActionRowComponentResolvable, PermissionsBitField, TextChannel, TextInputStyle, ThreadChannel, UserMention } from 'discord.js';
 import emoji from 'node-emoji';
 import { MAX_ACTION_ROWS, MAX_FIELD_NAME, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } from '../constants.js';
 import { createSlashCommand } from '../library/backend.js';
@@ -9,8 +9,7 @@ import { shuffleCopy, shuffleInPlace } from '../library/solve.js';
 // TODO discard from un/sealed, restore to poll's un/sealed type
 // TODO reset poll actions after selection
 
-const MAX_CHOICE_LABEL = 25,
-    DURATION_ONE_DAY = 1440;
+const MAX_CHOICE_LABEL = 25;
 
 const ABSTRACT_EMOJIS = [
     '⬛', '⬜', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '🟫',
@@ -37,15 +36,25 @@ export async function register ({ client }: { client: Client }): Promise<void> {
                 required: true
             },
             {
-                name: 'type',
+                name: 'format',
                 type: ApplicationCommandOptionType.String,
-                description: 'The type of poll (sealed by default)',
+                description: 'Whether the votes are sealed (default) or unsealed',
                 choices: [
                     { name: 'Sealed', value: 'sealed' },
                     { name: 'Unsealed', value: 'unsealed' }
                 ],
                 required: false
             },
+            {
+                name: 'membership',
+                type: ApplicationCommandOptionType.String,
+                description: 'Whether the thread is public (default) or private',
+                choices: [
+                    { name: 'Public', value: 'public' },
+                    { name: 'Private', value: 'private' }
+                ],
+                required: false
+            }
         ]
     });
 }
@@ -60,35 +69,60 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 interaction.channel instanceof TextChannel
             )) throw 'This command can only be used in text channels which support threads.';
 
-            if (!canMakePoll(interaction))
-                throw "You don't have permission to make a poll in this channel";
-
             const prompt = interaction.options.get('prompt')?.value as string,
                 list = interaction.options.get('choices')?.value as string,
-                type = interaction.options.get('type')?.value as 'sealed' | 'unsealed';
+                format = interaction.options.get('format')?.value as 'sealed' | 'unsealed',
+                membership = interaction.options.get('membership')?.value as 'public' | 'private';
 
-            const choices = buildChoiceComponents(list, type, interaction);
+            if (membership == 'public' && !canCreatePublicPoll(interaction))
+                throw "You don't have permission to create a public poll in this channel";
+            else if (membership == 'private' && !canCreatePrivatePoll(interaction))
+                throw "You don't have permission to create a private poll in this channel";
+
+            const choices = buildChoiceComponents(list, format, interaction);
             if (!choices)
                 throw 'Unsupported list of poll choices.';
 
-            const reply = await interaction.reply({
-                content: type != 'unsealed'
-                    ? `${interaction.user.toString()} made a **sealed** poll`
-                    : `${interaction.user.toString()} made an **unsealed** poll`,
-                fetchReply: true
-            });
+            let thread;
+            if (membership == 'public') {
+                const reply = await interaction.reply({
+                    content: `${interaction.user.toString()} made a poll`,
+                    fetchReply: true
+                });
 
-            const thread = await interaction.channel.threads.create({
-                startMessage: reply.id,
-                name: trunc(prompt, MAX_THREAD_NAME),
-                autoArchiveDuration: DURATION_ONE_DAY
-            });
+                thread = await interaction.channel.threads.create({
+                    startMessage: reply.id,
+                    name: trunc(prompt, MAX_THREAD_NAME)
+                });
+            }
+            else {
+                thread = await interaction.channel.threads.create({
+                    name: trunc(prompt, MAX_THREAD_NAME),
+                    type: ChannelType.PrivateThread
+                });
 
-            if (thread.joinable)
-                await thread.join();
+                await interaction.reply({
+                    content: 'You made a poll, but membership is private, so there is no public starter message',
+                    components: [{
+                        type: ComponentType.ActionRow,
+                        components: [{
+                            type: ComponentType.Button,
+                            style: ButtonStyle.Link,
+                            label: 'View Thread',
+                            url: thread.url
+                        }]
+                    }],
+                    ephemeral: true
+                });
+            }
+
+            await thread.join();
+            await thread.members.add(interaction.user);
 
             await thread.send({
-                content: '**Poll Choices**',
+                content: format == 'sealed'
+                    ? '**Poll Choices** \u2022 Sealed'
+                    : '**Poll Choices** \u2022 Unsealed',
                 components: choices
             });
 
@@ -133,6 +167,11 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                         }
                     ]
                 });
+
+                await interaction.followUp({
+                    content: `You voted for **${choice}**`,
+                    ephemeral: true
+                });
             }
             else {
                 await interaction.reply({
@@ -145,11 +184,6 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                     ]
                 });
             }
-
-            await interaction.followUp({
-                content: `You voted for **${choice}**`,
-                ephemeral: true
-            });
         }
         catch (error: unknown) {
             await interaction.reply({
@@ -438,7 +472,7 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                     before: interaction.message?.id,
                     limit: 1
                 })).first();
-                if (!previous?.content.includes('**Poll Choices**'))
+                if (!previous?.content.startsWith('**Poll Choices**'))
                     throw 'Missing poll choices message for poll thread.';
 
                 const list = previous.components
@@ -482,23 +516,19 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
         if (!canModeratePoll(interaction))
             throw "You don't have permission to edit a poll in this channel";
 
-        const starter = await interaction.channel.fetchStarterMessage();
-        if (!starter)
-            throw 'Missing starter message for poll thread.';
-
-        const list = interaction.fields.fields.get('list')?.value as string,
-            type = starter.content.includes('**sealed**') ? 'sealed' : 'unsealed';
-
-        const choices = buildChoiceComponents(list, type, interaction);
-        if (!choices)
-            throw 'Unsupported list of poll choices.';
-
         const previous = (await interaction.channel.messages.fetch({
             before: interaction.message?.id,
             limit: 1
         })).first();
-        if (!previous?.content.includes('**Poll Choices**'))
+        if (!previous?.content.startsWith('**Poll Choices**'))
             throw 'Missing poll choices message for poll thread.';
+
+        const list = interaction.fields.fields.get('list')?.value as string,
+            type = previous.content.endsWith('Sealed') ? 'sealed' : 'unsealed';
+
+        const choices = buildChoiceComponents(list, type, interaction);
+        if (!choices)
+            throw 'Unsupported list of poll choices.';
 
         await previous.edit({
             content: previous.content,
@@ -527,10 +557,16 @@ function canVote (interaction: Interaction): boolean {
     return permissions?.has(PermissionsBitField.Flags.SendMessagesInThreads) ?? false;
 }
 
-function canMakePoll (interaction: Interaction): boolean {
+function canCreatePublicPoll (interaction: Interaction): boolean {
     const permissions = (interaction.channel as ThreadChannel).permissionsFor(interaction.user);
 
     return permissions?.has(PermissionsBitField.Flags.CreatePublicThreads) ?? false;
+}
+
+function canCreatePrivatePoll (interaction: Interaction): boolean {
+    const permissions = (interaction.channel as ThreadChannel).permissionsFor(interaction.user);
+
+    return permissions?.has(PermissionsBitField.Flags.CreatePrivateThreads) ?? false;
 }
 
 function canModeratePoll (interaction: Interaction): boolean {
@@ -581,7 +617,7 @@ function buildChoiceComponents (list: string, type: 'sealed' | 'unsealed', inter
                 type: ComponentType.Button,
                 emoji: it.emoji ?? (it.emoji = emojis.pop() as string),
                 label: (it.label = trunc(it.label, MAX_CHOICE_LABEL)),
-                customId: type != 'unsealed'
+                customId: type == 'sealed'
                     ? `vote_s_${it.emoji} ${it.label}`
                     : `vote_u_${it.emoji} ${it.label}`,
                 style: ButtonStyle.Primary
