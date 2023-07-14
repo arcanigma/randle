@@ -1,4 +1,4 @@
-import { ApplicationCommandOptionType, ApplicationCommandType, CacheType, Client, Interaction, InteractionType, TextChannel, ThreadChannel, VoiceChannel } from 'discord.js';
+import { ApplicationCommandOptionType, ApplicationCommandType, CacheType, Client, Interaction, InteractionType, TextChannel, ThreadChannel, VoiceChannel, channelMention } from 'discord.js';
 import { createSlashCommand } from '../library/backend.js';
 import { membersOf, names } from '../library/factory.js';
 import { blame } from '../library/message.js';
@@ -39,7 +39,7 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
             const { members } = membersOf('@everyone', interaction);
 
             await interaction.reply({
-                content: `Everyone in ${interaction.channel?.toString()} includes ${names(shuffleInPlace(members))}.`
+                content: `Everyone in ${channelMention(interaction.channel.id)} includes ${names(shuffleInPlace(members))}.`
             });
         }
         else {

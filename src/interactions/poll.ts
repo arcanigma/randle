@@ -1,5 +1,5 @@
 import { ApplicationCommandOptionType, ApplicationCommandType, BaseMessageOptions, ButtonComponent, ButtonStyle, CacheType, ChannelType, Client, Collection, ComponentType, EmbedField, Interaction, InteractionType, Message, MessageActionRowComponentResolvable, PermissionsBitField, TextChannel, TextInputStyle, ThreadChannel, UserMention } from 'discord.js';
-import emoji from 'node-emoji';
+import * as emoji from 'node-emoji';
 import { MAX_ACTION_ROWS, MAX_FIELD_NAME, MAX_ROW_COMPONENTS, MAX_THREAD_NAME } from '../constants.js';
 import { createSlashCommand } from '../library/backend.js';
 import { commas, itemize, names, trunc, wss } from '../library/factory.js';
@@ -8,6 +8,7 @@ import { shuffleCopy, shuffleInPlace } from '../library/solve.js';
 
 // TODO discard from un/sealed, restore to poll's un/sealed type
 // TODO reset poll actions after selection
+// TODO allow poll starter to moderate...?
 
 const MAX_CHOICE_LABEL = 25;
 
@@ -514,7 +515,7 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
             throw `Unsupported channel <${interaction.channel?.toString() ?? 'undefined'}>.`;
 
         if (!canModeratePoll(interaction))
-            throw "You don't have permission to edit a poll in this channel";
+            throw "You don't have permission to moderate this poll";
 
         const previous = (await interaction.channel.messages.fetch({
             before: interaction.message?.id,
@@ -580,7 +581,7 @@ function buildChoiceComponents (list: string, type: 'sealed' | 'unsealed', inter
     const members = (interaction.channel as TextChannel).members;
 
     const choices = itemize(list, interaction).map(choice => {
-        choice = emoji.emojify(choice, () => '');
+        choice = emoji.emojify(choice, { fallback: '' });
 
         let first: string | undefined = undefined;
         choice = emoji.replace(choice, it => {

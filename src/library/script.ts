@@ -15,7 +15,7 @@ export type Setup = {
 };
 
 export type Value =
-    | Name | 'members'
+    | Name // Predefined: 'members'
     | number
     | { plus: Value[] }
     | { minus: Value[] }
@@ -32,7 +32,7 @@ export type Option =
 
 export type Deck =
     | Name
-    | string
+
     | { choose: Value; from: Deck }
     | { choose: Value; grouping: Deck[] }
     | { repeat: Value; from: Deck }

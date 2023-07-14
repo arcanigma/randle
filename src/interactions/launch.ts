@@ -1,4 +1,4 @@
-import { ApplicationCommandType, CacheType, Client, Embed, EmbedField, GuildMember, Interaction, TextChannel, VoiceChannel } from 'discord.js';
+import { ApplicationCommandType, CacheType, Client, Embed, EmbedField, GuildMember, Interaction, TextChannel, VoiceChannel, channelMention } from 'discord.js';
 import got from 'got';
 import JSON5 from 'json5';
 import { MAX_EMBED_DESCRIPTION, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants.js';
@@ -64,7 +64,7 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
         ]);
 
         if (members.length < 1)
-            throw `Everyone in ${interaction.channel.toString()} includes no qualifying members for a script.`;
+            throw `Everyone in ${channelMention(interaction.channel.id)} includes no qualifying members for a script.`;
 
         let script: Script;
         try {
@@ -420,7 +420,7 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
                 let content = member != you ? interaction.user.toString() : 'You';
                 if (moderator)
                     content = `${content} as **moderator**`;
-                content = `${content} ran a script in ${interaction.channel.toString()}`;
+                content = `${content} ran a script in ${channelMention(interaction.channel.id)}`;
                 if (script.event)
                     content = `${content} for the **${script.event}** event`;
 
