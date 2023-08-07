@@ -35,7 +35,7 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
 
     try {
         const elements = interaction.options.get('items')?.value as string,
-            quantity = interaction.options.get('quantity')?.value as number ?? 1;
+            quantity = (interaction.options.get('quantity')?.value ?? 1) as number;
 
         let items = itemize(elements, interaction);
 

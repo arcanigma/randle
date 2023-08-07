@@ -72,8 +72,8 @@ export async function execute ({ interaction }: { interaction: Interaction<Cache
 
             const prompt = interaction.options.get('prompt')?.value as string,
                 list = interaction.options.get('choices')?.value as string,
-                format = interaction.options.get('format')?.value as 'sealed' | 'unsealed',
-                membership = interaction.options.get('membership')?.value as 'public' | 'private';
+                format = (interaction.options.get('format')?.value ?? 'sealed') as 'sealed' | 'unsealed',
+                membership = (interaction.options.get('membership')?.value ?? 'public') as 'public' | 'private';
 
             if (membership == 'public' && !canCreatePublicPoll(interaction))
                 throw "You don't have permission to create a public poll in this channel";
