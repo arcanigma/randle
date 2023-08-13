@@ -8,6 +8,8 @@ import { blame, truncEmbeds, truncFields } from '../library/message.js';
 import { Script } from '../library/script.js';
 import { choose, conditionOf, deckOf, listOf, matchOf, optionOf, shuffleInPlace, valueOf } from '../library/solve.js';
 
+// TODO command params for mod(s), include(s), exclude(s)
+
 export const MAX_IMPORTS = 5;
 
 export async function register ({ client }: { client: Client }): Promise<void> {

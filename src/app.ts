@@ -16,6 +16,24 @@ import * as logo from './routes/logo.js';
 // TODO anonymous send-and-reply
 // TODO macros
 
+console.debug('Creating Express client.');
+
+const app = express();
+const port = Number(process.env.PORT ?? 80);
+
+console.debug('Listening Express client.');
+
+app.listen(port, () => {
+    console.debug('Starting Express features.');
+
+    health.register({ app, port, client });
+    logo.register({ app, port });
+
+    console.debug('Ending Express features.');
+});
+
+console.debug('Creating Discord client.');
+
 // TODO reevaluate which intents are needed
 const client = new Client({ intents: [
     GatewayIntentBits.Guilds,
@@ -25,55 +43,44 @@ const client = new Client({ intents: [
     GatewayIntentBits.GuildVoiceStates
 ] });
 
+console.debug('Logging Discord client.');
+
 client.login(process.env.DISCORD_BOT_TOKEN).then(() => {
-    console.debug('Bot logged into Discord.');
+    client.once('ready', async () => {
+        console.debug('Starting Discord features.');
+
+        if (process.env.RESET_COMMANDS)
+            await resetCommands(client);
+
+        const interactions = [
+            roll,
+            draw,
+            shuffle,
+            poll,
+            panic,
+            echo,
+            who,
+            launch
+        ];
+
+        for (const interaction of interactions)
+            await interaction.register({ client });
+
+        client.on('interactionCreate', async interaction => {
+            for (const event of interactions)
+                if (await event.execute({ interaction }))
+                    return;
+        });
+
+        client.on('channelUpdate', async (oldChannel, newChannel) => {
+            await topicUpdated.execute({ oldChannel, newChannel });
+        });
+
+        console.debug('Ending Discord features.');
+    });
 }, () => {
-    console.debug('Bot unable to log into Discord.');
-    process.exitCode = 1;
-});
-
-const interactions = [
-    roll,
-    draw,
-    shuffle,
-    poll,
-    panic,
-    echo,
-    who,
-    launch
-];
-
-client.once('ready', async () => {
-    if (process.env.RESET_COMMANDS)
-        await resetCommands(client);
-
-    for (const interaction of interactions)
-        await interaction.register({ client });
-});
-
-client.on('interactionCreate', async interaction => {
-    for (const event of interactions)
-        if (await event.execute({ interaction }))
-            return;
-});
-
-client.on('channelUpdate', async (oldChannel, newChannel) => {
-    await topicUpdated.execute({ oldChannel, newChannel });
-});
-
-const app = express();
-
-const routes = [
-    health,
-    logo
-];
-
-const port = Number(process.env.PORT ?? 80);
-app.listen(port, () => {
-    for (const route of routes)
-        route.register({ app });
-
-    console.debug(`Listening on port <${port}>.`);
+    console.debug('Terminating Discord bot.');
+    process.exit(1);
 });
 
 // // packages: sequelize, @types/sequelize, pg, pg-hstore

@@ -1,9 +1,16 @@
+import { Client } from 'discord.js';
 import { Express } from 'express';
 
-export function register ({ app }: { app: Express }): void {
+export function register ({ app, port, client }: { app: Express; port: number; client: Client<boolean> }): void {
     app.get('/health', (_, res) => {
-        res.sendStatus(200);
+        let status: number;
+        if (client.isReady())
+            status = 200;
+        else
+            status = 503;
+
+        res.sendStatus(status);
     });
 
-    console.debug('Registered <health> route in server.');
+    console.debug(`Registered <health> route on port <${port}>.`);
 }
