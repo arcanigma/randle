@@ -633,7 +633,6 @@ function buildPollActionComponents (): MessageActionRowComponentResolvable[] {
         {
             type: ComponentType.StringSelect,
             customId: 'mod_poll',
-            emoji: '🗳️',
             placeholder: 'Select an action',
             minValues: 1,
             maxValues: 1,
