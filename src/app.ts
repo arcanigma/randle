@@ -79,7 +79,7 @@ client.login(process.env.DISCORD_BOT_TOKEN).then(() => {
         console.debug('Ending Discord features.');
     });
 }, () => {
-    console.debug('Terminating Discord bot.');
+    console.debug('Terminating Discord client.');
     process.exit(1);
 });
 
