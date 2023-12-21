@@ -1,7 +1,7 @@
-import { GuildMember, Interaction, TextChannel, VoiceChannel } from 'discord.js';
+import { BaseInteraction, GuildMember, TextChannel, VoiceChannel } from 'discord.js';
 
 export function commas (list: (string | undefined)[], separator=', ', conjunction='and'): string {
-    const flist = <string[]>list.filter(it => it !== undefined);
+    const flist = list.filter(it => it !== undefined) as string[];
     if (flist.length == 1)
         return flist[0];
     else if (flist.length == 2)
@@ -16,7 +16,7 @@ export function names (members: (GuildMember | string)[], separator?: string, co
     return commas(members.map(them => `${them.toString()}`), separator, conjunction) || 'nobody';
 }
 
-export function size (object: {[key: string]: unknown}): number {
+export function size (object: Record<string, unknown>): number {
     return Object.keys(object).length;
 }
 
@@ -34,13 +34,13 @@ export function wss (text: string): string {
     return text.trim().replace(re_wss, ' ');
 }
 
-export function itemize (text: string, interaction: Interaction): string[] {
+export function itemize (text: string, interaction: BaseInteraction): string[] {
     const elements = text.split(',').map(it => it.trim()).filter(Boolean);
 
     if (elements.length == 1) {
         const num = Number(elements[0]);
         if (num >= 1 && num % 1 == 0)
-            return (<number[]> Array(num).fill(1)).map((v, i) => String(v + i));
+            return (Array(num).fill(1) as number[]).map((v, i) => String(v + i));
     }
 
     const items: string[] = [];
@@ -60,7 +60,7 @@ export function itemize (text: string, interaction: Interaction): string[] {
 }
 
 const re_role = /^<@&(\d+)>$|^(\d+)$/;
-export function membersOf (mention: string, interaction: Interaction): { name: string; members: string[] } {
+export function membersOf (mention: string, interaction: BaseInteraction): { name: string; members: string[] } {
     if (
         (mention == '@everyone' || mention == '@here') &&
         (interaction.channel instanceof TextChannel || interaction.channel instanceof VoiceChannel)
@@ -74,7 +74,7 @@ export function membersOf (mention: string, interaction: Interaction): { name: s
         };
     }
 
-    const match = re_role.exec(mention),
+    const match = mention.match(re_role), //re_role.exec(mention),
         role_id = match?.[1] ?? match?.[2];
 
     if (role_id) {

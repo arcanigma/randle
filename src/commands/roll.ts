@@ -1,71 +1,55 @@
 import { randomInt } from 'crypto';
-import { ApplicationCommandOptionType, ApplicationCommandType, BaseGuildEmojiManager, CacheType, Client, Embed, EmbedField, Interaction, InteractionType } from 'discord.js';
+import { ApplicationCommandOptionType, ApplicationCommandType, BaseGuildEmojiManager, ChatInputApplicationCommandData, CommandInteraction, Embed, EmbedField } from 'discord.js';
 import * as inflection from 'inflection';
 import { MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants.js';
-import { createSlashCommand } from '../library/backend.js';
 import { trunc, wss } from '../library/factory.js';
-import { blame, truncEmbeds, truncFields } from '../library/message.js';
-import { } from '../library/parser.js';
+import { truncEmbeds, truncFields } from '../library/messaging.js';
 import { repeat } from '../library/solve.js';
 
-// TODO support messages that include custom emojis
-
-export async function register ({ client }: { client: Client }): Promise<void> {
-    await createSlashCommand(client, {
-        type: ApplicationCommandType.ChatInput,
-        name: 'roll',
-        description: 'Roll dice',
-        options: [
-            {
-                name: 'text',
-                type: ApplicationCommandOptionType.String,
-                description: 'Text including dice codes',
-                required: true
-            },
-        ]
-    });
-}
+export const data: ChatInputApplicationCommandData = {
+    type: ApplicationCommandType.ChatInput,
+    name: 'roll',
+    description: 'Roll dice',
+    options: [
+        {
+            name: 'text',
+            type: ApplicationCommandOptionType.String,
+            description: 'Text including dice codes',
+            required: true
+        },
+    ]
+};
 
 const re_boundary = /\s*;\s*/;
-export async function execute ({ interaction }: { interaction: Interaction<CacheType>}): Promise<boolean> {
-    if (!(
-        interaction.type === InteractionType.ApplicationCommand &&
-        interaction.commandName === 'roll'
-    )) return false;
+export async function execute (interaction: CommandInteraction): Promise<void> {
+    if (!interaction.channel?.isTextBased())
+        throw 'This command can only be used in text-based channels.';
 
-    try {
-        const text = interaction.options.get('text')?.value as string,
-            arrays = findEmojiArrays(text, interaction.client.emojis),
-            clauses = text.trim().split(re_boundary),
-            raw_clauses = clauses.length;
+    const text = interaction.options.get('text')?.value as string,
+        arrays = findEmojiArrays(text, interaction.client.emojis),
+        clauses = text.trim().split(re_boundary),
+        raw_clauses = clauses.length;
 
-        for (let i = 0; i < raw_clauses; i++)
-            clauses.push(...expandRepeats(clauses.shift() as string));
+    for (let i = 0; i < raw_clauses; i++)
+        clauses.push(...expandRepeats(clauses.shift() as string));
 
-        const embeds = rollDice(clauses, arrays);
+    const embeds = rollDice(clauses, arrays);
 
-        if (embeds.length > 0)
-            await interaction.reply({
-                content: `${interaction.user.toString()} rolled dice`,
-                embeds
-            });
-        else
-            await interaction.reply({
-                embeds: [{
-                    title: '⚠️ Warning',
-                    description: 'There were no dice to roll.'
-                }],
-                ephemeral: true
-            });
-    }
-    catch (error: unknown) {
+    if (embeds.length > 0) {
         await interaction.reply({
-            embeds: blame({ error, interaction }),
+            content: `${interaction.user.toString()} rolled dice`,
+            embeds
+        });
+    }
+    else {
+        await interaction.reply({
+            embeds: [{
+                title: '⚠️ Warning',
+                description: 'There were no dice to roll.'
+            }],
             ephemeral: true
         });
     }
-
-    return true;
 }
 
 const re_ellipsis = /\.\.\./,
@@ -113,9 +97,7 @@ function rollDice (clauses: string[], arrays: Record<string, string[]>): Embed[]
 
             keep = Math.min(parseInt(keep as string) || 1, count);
 
-            const strikes: {
-                [key: number]: number;
-            } = {};
+            const strikes: Record<number, number> = {};
             if (hilo) {
                 const sorted = rolls.slice();
                 if ((hilo as string).toUpperCase() == 'L')
@@ -197,10 +179,10 @@ function rollDice (clauses: string[], arrays: Record<string, string[]>): Embed[]
             clauses[i] = evaluateArithmetic(clauses[i]);
             clauses[i] = prettifyMarkdown(clauses[i]);
 
-            embeds.push(<Embed>{
+            embeds.push(({
                 title: trunc(`${embeds.length == 0 ? 'Rolled' : 'Then rolled' } ${clauses[i]}.`, MAX_EMBED_TITLE),
                 fields: truncFields(fields, 'rolls')
-            });
+            } as Embed));
         }
     }
 

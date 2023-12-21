@@ -1,7 +1,7 @@
 {
     "name": "randle",
     "description": "Dice, cards, polls, and tabletop gaming tools bot for Discord.",
-    "version": "1.18",
+    "version": "2.0",
     "main": "./dist/app.js",
     "scripts": {
         "build": "tsc",
@@ -26,6 +26,7 @@
         "typescript": "^5.3.3"
     },
     "devDependencies": {
+        "@stylistic/eslint-plugin": "^1.5.1",
         "@typescript-eslint/eslint-plugin": "^6.15.0",
         "@typescript-eslint/parser": "^6.15.0",
         "dotenv": "^16.3.1",

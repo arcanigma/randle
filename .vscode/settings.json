@@ -1,7 +1,6 @@
 {
     "editor.codeActionsOnSave": {
         "source.organizeImports": "explicit",
-        "source.fixAll.eslint": "explicit"
-    },
-    "debug.node.autoAttach": "on"
+        "source.fixAll": "explicit"
+    }
 }

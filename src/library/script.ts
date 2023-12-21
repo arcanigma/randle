@@ -1,4 +1,4 @@
-export type Script = {
+export interface Script {
     event?: string;
     requireModerator?: Option;
     minMembers?: Value;
@@ -6,13 +6,11 @@ export type Script = {
     setup?: Setup;
     rules?: Rule[];
     import?: string | string[];
-};
+}
 
 type Name = string;
 
-export type Setup = {
-    [name: Name]: Value | Option | Deck;
-};
+export type Setup = Record<Name, Value | Option | Deck>;
 
 export type Value =
     | Name // Predefined: 'members'
@@ -55,13 +53,13 @@ export type Rule = (
     | ExplainRule
 ) & ConditionalRule
 
-export type DealRule = {
+export interface DealRule {
     deal: Deck;
     for?: string;
     limit?: Value;
 }
 
-export type ShowRule = {
+export interface ShowRule {
     show: Matcher;
     to: Matcher;
     hideSame?: Option;
@@ -69,18 +67,18 @@ export type ShowRule = {
     limit?: Value;
 }
 
-export type AnnounceRule = {
+export interface AnnounceRule {
     announce: Matcher;
     as?: string;
     limit?: Value;
 }
 
-export type ExplainRule = {
+export interface ExplainRule {
     explain: string;
     as: string;
 }
 
-export type ConditionalRule = {
+export interface ConditionalRule {
     if?: Option;
     when?: Matcher;
     cumulative?: Option;

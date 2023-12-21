@@ -46,15 +46,15 @@ export function deckOf (it?: Deck, setup?: Setup): string[] {
             : it.else
                 ? deckOf(it.else, setup)
                 : [] ;
-    // TODO can't show setup.setname without using union/intersect/except
+    // TODO show rule for given set name requires degenerate union/intersect/except
     else if ('union' in it) {
-        return <string[]> listOf(it.union).reduce((x, y) => [ ...deckOf(x, setup), ...deckOf(y, setup) ].filter((item, index, self) => self.indexOf(item) === index));
+        return listOf(it.union).reduce((x, y) => [ ...deckOf(x, setup), ...deckOf(y, setup) ].filter((item, index, self) => self.indexOf(item) === index)) as string[];
     }
     else if ('intersect' in it) {
-        return <string[]> listOf(it.intersect).reduce((x, y) => deckOf(x, setup).filter(item => deckOf(y, setup).includes(item)));
+        return listOf(it.intersect).reduce((x, y) => deckOf(x, setup).filter(item => deckOf(y, setup).includes(item))) as string[];
     }
     else if ('except' in it) {
-        return <string[]> listOf(it.except).reduce((x, y) => deckOf(x, setup).filter(item => !deckOf(y, setup).includes(item)));
+        return listOf(it.except).reduce((x, y) => deckOf(x, setup).filter(item => !deckOf(y, setup).includes(item))) as string[];
     }
     else
         throw `Unexpected deck \`${JSON.stringify(it)}\` in script.`;
@@ -181,11 +181,11 @@ export function valueOf (it?: Value, setup?: Setup): number {
             throw `Undefined value \`${JSON.stringify(it)}\` in script.`;
     }
     else if ('plus' in it)
-        return <number>it.plus.reduce((x, y) => valueOf(x, setup) + valueOf(y, setup));
+        return it.plus.reduce((x, y) => valueOf(x, setup) + valueOf(y, setup)) as number;
     else if ('minus' in it)
-        return <number>it.minus.reduce((x, y) => valueOf(x, setup) - valueOf(y, setup));
+        return it.minus.reduce((x, y) => valueOf(x, setup) - valueOf(y, setup)) as number;
     else if ('times' in it)
-        return <number>it.times.reduce((x, y) => valueOf(x, setup) * valueOf(y, setup));
+        return it.times.reduce((x, y) => valueOf(x, setup) * valueOf(y, setup)) as number;
     else if ('max' in it)
         return Math.max(...it.max.map(x => valueOf(x, setup)));
     else if ('min' in it)
@@ -239,7 +239,7 @@ export function matchOf (it: string, matcher: Matcher, setup?: Setup): boolean {
         if (setup?.[it] !== undefined)
             return matchOf(it, deckOf(matcher, setup), setup);
         else
-            return matchOf(it, { 'includes': matcher }, setup);
+            return matchOf(it, { includes: matcher }, setup);
     else if ('includes' in matcher)
         return it.includes(wss(matcher.includes));
     else if ('excludes' in matcher)
