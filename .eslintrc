@@ -1,7 +1,4 @@
 {
-    "env": {
-        "node": true
-    },
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
         "ecmaVersion": "latest",
@@ -10,27 +7,27 @@
     "plugins": [ "@typescript-eslint", "deprecation" ],
     "extends": [
         "eslint:recommended",
-        "plugin:@typescript-eslint/recommended",
-        "plugin:@typescript-eslint/recommended-requiring-type-checking"
+        "plugin:@typescript-eslint/strict",
+        "plugin:@typescript-eslint/stylistic"
     ],
     "rules": {
-        "deprecation/deprecation": "warn",
-        "semi": [ "warn", "always" ],
-        "quotes": [ "warn", "single", { "avoidEscape": true } ],
+        "array-bracket-spacing": [ "warn", "always", { "singleValue": false } ],
         "indent": [ "warn", 4 ],
+        "no-console": [ "warn", { "allow": [ "debug", "info", "warn", "error" ] } ],
         "no-multi-spaces": [ "warn" ],
         "object-curly-spacing": [ "warn", "always" ],
-        "array-bracket-spacing": [ "warn", "always", { "singleValue": false } ],
-        "no-console": [ "warn", { "allow":
-            [ "debug", "info", "warn", "error" ]
-        } ],
-        "@typescript-eslint/consistent-type-definitions": [ "error", "type" ],
+        "quotes": [ "warn", "single", { "avoidEscape": true } ],
+        "quote-props": [ "warn", "consistent-as-needed" ],
+        "semi": [ "warn", "always" ],
+
         "@typescript-eslint/member-delimiter-style": "warn",
         "@typescript-eslint/no-unnecessary-type-assertion": "error",
         "@typescript-eslint/prefer-for-of": "warn",
         "@typescript-eslint/prefer-nullish-coalescing": "warn",
         "@typescript-eslint/prefer-optional-chain": "warn",
         "@typescript-eslint/space-before-function-paren": "warn",
-        "@typescript-eslint/type-annotation-spacing": "warn"
+        "@typescript-eslint/type-annotation-spacing": "warn",
+
+        "deprecation/deprecation": "warn"
     }
 }
