@@ -14,6 +14,7 @@ declare module 'discord.js' {
     export interface ClientCommand {
         data: ApplicationCommandData;
         execute: (interaction: CommandInteraction) => Promise<void>;
+        proceed: (interaction: MessageComponentInteraction) => Promise<void>;
     }
 
     export interface ClientRoute {

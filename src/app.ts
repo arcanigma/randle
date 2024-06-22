@@ -69,18 +69,3 @@ try {
 catch (error: unknown) {
     await sendBlame(error);
 }
-
-// -------------------------------------------------------------
-
-// // packages: sequelize, @types/sequelize, pg, pg-hstore
-// const db = new Sequelize(process.env.DATABASE_URL ?? '', {
-//     dialect: 'postgres',
-//     logging: false,
-//     dialectOptions: {
-//         ssl: {
-//             rejectUnauthorized: false
-//         }
-//     }
-// });
-
-// void db.sync();

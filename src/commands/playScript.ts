@@ -9,13 +9,13 @@ import { choose, conditionOf, deckOf, listOf, matchOf, optionOf, shuffleInPlace,
 
 // TODO prompts to select moderators, includes, or excludes
 
-export const MAX_IMPORTS = 3;
-export const PROMPT_TIMEOUT = 30_000;
-
 export const data: MessageApplicationCommandData = {
     type: ApplicationCommandType.Message,
     name: 'Play Script'
 };
+
+export const MAX_IMPORTS = 3;
+export const PROMPT_TIMEOUT = 30_000;
 
 const re_highlight = /^```(json\b)?|```$/g;
 export async function execute (interaction: MessageContextMenuCommandInteraction): Promise<void> {

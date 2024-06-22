@@ -2,11 +2,6 @@ import { ApplicationCommandOptionType, ApplicationCommandType, AttachmentBuilder
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-const PANIC_BUTTON_IMAGE = 'panic-button.png',
-    PANIC_BUTTON_PATH = join(__dirname, `../../public/${PANIC_BUTTON_IMAGE}`);
-
 export const data: ChatInputApplicationCommandData = {
     type: ApplicationCommandType.ChatInput,
     name: 'panic',
@@ -20,6 +15,11 @@ export const data: ChatInputApplicationCommandData = {
         }
     ],
 };
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const PANIC_BUTTON_IMAGE = 'panic-button.png',
+    PANIC_BUTTON_PATH = join(__dirname, `../../public/${PANIC_BUTTON_IMAGE}`);
 
 export async function execute (interaction: CommandInteraction): Promise<void> {
     if (!interaction.channel?.isTextBased())
