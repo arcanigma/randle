@@ -1,0 +1,11 @@
+services:
+- type: web
+  name: randle
+  runtime: node
+  plan: free
+  envVars:
+  - key: TOKEN
+    sync: false
+  buildCommand: npm ci; npm run build
+  startCommand: npm run start
+  healthCheckPath: /health
