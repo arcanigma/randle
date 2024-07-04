@@ -1,7 +1,7 @@
 import { BaseInteraction, GuildMember, TextChannel, VoiceChannel } from 'discord.js';
 
 export function commas (list: (string | undefined)[], separator=', ', conjunction='and'): string {
-    const flist = list.filter(it => it !== undefined) as string[];
+    const flist = list.filter(it => it !== undefined);
     if (flist.length == 1)
         return flist[0];
     else if (flist.length == 2)
