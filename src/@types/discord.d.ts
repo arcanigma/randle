@@ -1,5 +1,7 @@
 import { Collection } from 'discord.js';
 
+// TODO find API to deprecate these
+
 declare module 'discord.js' {
     export interface Client {
         commands: Collection<string, ClientCommand>;

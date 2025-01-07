@@ -1,6 +1,6 @@
 import { BaseInteraction, CommandInteraction, Embed, EmbedField } from 'discord.js';
-import { MAX_EMBED_FIELDS, MAX_FIELD_NAME, MAX_FIELD_VALUE, MAX_MESSAGE_EMBEDS } from '../constants.js';
-import { trunc } from './factory.js';
+import { MAX_EMBED_FIELDS, MAX_FIELD_NAME, MAX_FIELD_VALUE, MAX_MESSAGE_EMBEDS } from './constants.js';
+import { trunc } from './texts.js';
 
 export async function sendBlame (payload: unknown, interaction?: BaseInteraction): Promise<void> {
     if (payload instanceof Error) {
@@ -10,7 +10,7 @@ export async function sendBlame (payload: unknown, interaction?: BaseInteraction
         console.warn(payload);
     }
 
-    if (interaction && interaction.isRepliable()) {
+    if (interaction?.isRepliable()) {
         let embeds: Embed[];
         if (payload instanceof Error) {
             embeds = [

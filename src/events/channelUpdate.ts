@@ -1,8 +1,8 @@
 import { Channel, Colors, Events, TextChannel } from 'discord.js';
 import * as inflection from 'inflection';
 import * as emoji from 'node-emoji';
-import { MAX_EMBED_DESCRIPTION, MAX_EMBED_FIELDS, MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants.js';
-import { trunc } from '../library/factory.js';
+import { MAX_EMBED_DESCRIPTION, MAX_EMBED_FIELDS, MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../library/constants.js';
+import { trunc } from '../library/texts.js';
 
 export const name = Events.ChannelUpdate;
 export const once = false;

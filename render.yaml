@@ -4,7 +4,7 @@ services:
   runtime: node
   plan: free
   envVars:
-  - key: TOKEN
+  - key: DISCORD_TOKEN
     sync: false
   buildCommand: npm ci; npm run build
   startCommand: npm run start

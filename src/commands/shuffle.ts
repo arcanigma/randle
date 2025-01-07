@@ -1,7 +1,7 @@
 import { ApplicationCommandOptionType, ApplicationCommandType, ChatInputApplicationCommandData, CommandInteraction } from 'discord.js';
-import { MAX_EMBED_DESCRIPTION } from '../constants.js';
-import { commas, itemize, trunc, wss } from '../library/factory.js';
-import { shuffleInPlace } from '../library/solve.js';
+import { MAX_EMBED_DESCRIPTION } from '../library/constants.js';
+import { shuffleInPlace } from '../library/lists.js';
+import { commas, itemize, trunc, wss } from '../library/texts.js';
 
 export const data: ChatInputApplicationCommandData = {
     type: ApplicationCommandType.ChatInput,
@@ -22,7 +22,7 @@ export async function execute (interaction: CommandInteraction): Promise<void> {
         throw 'This command can only be used in text-based channels.';
 
     const elements = interaction.options.get('items')?.value as string,
-        items = shuffleInPlace(itemize(elements, interaction));
+        items = shuffleInPlace(itemize(elements));
 
     await interaction.reply({
         content: `${interaction.user.toString()} shuffled ${items.length != 1 ? 'items' : 'an item'}`,

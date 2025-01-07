@@ -1,5 +1,5 @@
 import { ClientCommand, Events, Interaction } from 'discord.js';
-import { sendBlame } from '../library/messaging.js';
+import { sendBlame } from '../library/messages.js';
 
 export const name = Events.InteractionCreate;
 export const once = false;

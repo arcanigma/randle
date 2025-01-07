@@ -3,19 +3,15 @@ import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { sendBlame } from './library/messaging.js';
+import { sendBlame } from './library/messages.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 try {
-    // TODO reevaluate which intents are needed
     const client = new Client({ intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildPresences,
-        GatewayIntentBits.GuildVoiceStates
+        GatewayIntentBits.GuildMessages
     ] });
 
     const raw_commands: ApplicationCommandData[] = [];
@@ -41,7 +37,7 @@ try {
             else if (folder == 'commands') {
                 const command = await import(filePath) as ClientCommand;
                 client.commands.set(command.data.name, command);
-                if (process.env.REDEPLOY === 'true')
+                if (process.env.REINSTALL_COMMANDS === 'true')
                     raw_commands.push(command.data);
                 console.debug(`Discord client loaded ${command.data.name} command.`);
             }
@@ -56,13 +52,13 @@ try {
     client.once(Events.ClientReady, async (client) => {
         console.debug(`Discord client ready as ${client.user.username}.`);
 
-        if (process.env.REDEPLOY === 'true') {
+        if (process.env.REINSTALL_COMMANDS === 'true') {
             await client.application.commands.set(raw_commands);
-            console.debug(`Discord client redeployed ${raw_commands.length} commands.`);
+            console.debug(`Discord client reinstalled commands ${raw_commands.length} commands.`);
         }
     });
 
-    await client.login(process.env.TOKEN);
+    await client.login(process.env.DISCORD_TOKEN);
 
     app.listen(port);
 }

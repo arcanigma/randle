@@ -1,7 +1,7 @@
 import { ApplicationCommandOptionType, ApplicationCommandType, ChatInputApplicationCommandData, CommandInteraction } from 'discord.js';
-import { MAX_EMBED_DESCRIPTION } from '../constants.js';
-import { commas, itemize, trunc, wss } from '../library/factory.js';
-import { choose } from '../library/solve.js';
+import { MAX_EMBED_DESCRIPTION } from '../library/constants.js';
+import { choose } from '../library/lists.js';
+import { commas, itemize, trunc, wss } from '../library/texts.js';
 
 export const data: ChatInputApplicationCommandData = {
     type: ApplicationCommandType.ChatInput,
@@ -30,7 +30,7 @@ export async function execute (interaction: CommandInteraction): Promise<void> {
     const elements = interaction.options.get('items')?.value as string,
         quantity = (interaction.options.get('quantity')?.value ?? 1) as number;
 
-    let items = itemize(elements, interaction);
+    let items = itemize(elements);
 
     if (items.length < 1)
         throw 'At least 1 item is required.';

@@ -1,10 +1,10 @@
 import { randomInt } from 'crypto';
 import { ApplicationCommandOptionType, ApplicationCommandType, BaseGuildEmojiManager, ChatInputApplicationCommandData, CommandInteraction, Embed, EmbedField } from 'discord.js';
 import * as inflection from 'inflection';
-import { MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../constants.js';
-import { trunc, wss } from '../library/factory.js';
-import { truncEmbeds, truncFields } from '../library/messaging.js';
-import { repeat } from '../library/solve.js';
+import { MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../library/constants.js';
+import { repeat } from '../library/lists.js';
+import { truncEmbeds, truncFields } from '../library/messages.js';
+import { trunc, wss } from '../library/texts.js';
 
 export const data: ChatInputApplicationCommandData = {
     type: ApplicationCommandType.ChatInput,
