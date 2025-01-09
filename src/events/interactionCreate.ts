@@ -25,7 +25,6 @@ export async function execute (interaction: Interaction): Promise<void> {
                 }
             }
             throw `Unrecognized component identifier ${interaction.customId}.`;
-
         }
     }
     catch (error: unknown) {
