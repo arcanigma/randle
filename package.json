@@ -1,7 +1,7 @@
 {
     "name": "randle",
-    "description": "Dice, cards, polls, and tabletop gaming tools bot for Discord.",
-    "version": "2.2",
+    "description": "Tabletop gaming randomization bot for Discord.",
+    "version": "2.3",
     "main": "./dist/app.js",
     "scripts": {
         "build": "tsc",

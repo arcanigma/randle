@@ -7,6 +7,12 @@ declare module 'discord.js' {
         commands: Collection<string, ClientCommand>;
     }
 
+    export interface ClientRoute {
+        name: keyof ClientEvents;
+        once: boolean;
+        register: (app: unknown, port?: number, client?: Client<boolean>) => void;
+    }
+
     export interface ClientEvent {
         name: keyof ClientEvents;
         once: boolean;
@@ -17,11 +23,5 @@ declare module 'discord.js' {
         data: ApplicationCommandData;
         execute: (interaction: CommandInteraction) => Promise<void>;
         proceed: (interaction: MessageComponentInteraction) => Promise<void>;
-    }
-
-    export interface ClientRoute {
-        name: keyof ClientEvents;
-        once: boolean;
-        register: (app: unknown, port?: number, client?: Client<boolean>) => void;
     }
 }

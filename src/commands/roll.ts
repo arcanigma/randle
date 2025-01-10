@@ -155,7 +155,8 @@ function rollDice (clauses: string[], arrays: Record<string, string[]>): Embed[]
             const min = 1 * (!hilo ? count : keep) + modifier,
                 max = size * (!hilo ? count : keep) + modifier;
 
-            percentages.push((total - min) / (max - min));
+            if (min < max)
+                percentages.push((total - min) / (max - min));
 
             return `${total}`;
         }).replace(re_array_code, (code: string, count: string | number, slug: string) => {
@@ -183,13 +184,13 @@ function rollDice (clauses: string[], arrays: Record<string, string[]>): Embed[]
             clauses[i] = evaluateArithmetic(clauses[i]);
             clauses[i] = prettifyMarkdown(clauses[i]);
 
-            let embed_color: number;
+            let embed_color: number | undefined;
             if (percentages.length > 0) {
                 const avg_percentage = percentages.reduce((a, b) => a + b) / percentages.length;
                 embed_color = parseInt((color(color_gradient(avg_percentage)) as RGBColor).formatHex().substring(1), 16);
             }
             else {
-                embed_color = Colors.Blurple;
+                embed_color = undefined;
             }
 
             embeds.push(({
