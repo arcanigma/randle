@@ -1,5 +1,7 @@
 import { randomInt } from 'crypto';
-import { ApplicationCommandOptionType, ApplicationCommandType, BaseGuildEmojiManager, ChatInputApplicationCommandData, CommandInteraction, Embed, EmbedField } from 'discord.js';
+import { color, RGBColor } from 'd3-color';
+import { interpolateRgb, piecewise } from 'd3-interpolate';
+import { ApplicationCommandOptionType, ApplicationCommandType, ChatInputApplicationCommandData, Collection, Colors, CommandInteraction, Embed, EmbedField, Emoji } from 'discord.js';
 import * as inflection from 'inflection';
 import { MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../library/constants.js';
 import { repeat } from '../library/lists.js';
@@ -20,20 +22,28 @@ export const data: ChatInputApplicationCommandData = {
     ]
 };
 
+const color_gradient = piecewise(interpolateRgb, [
+    '#' + Colors.Red.toString(16),
+    '#' + Colors.Yellow.toString(16),
+    '#' + Colors.Green.toString(16)
+]);
+
 const re_boundary = /\s*;\s*/;
 export async function execute (interaction: CommandInteraction): Promise<void> {
     if (!interaction.channel?.isTextBased())
         throw 'This command can only be used in text-based channels.';
 
     const text = interaction.options.get('text')?.value as string,
-        arrays = findEmojiArrays(text, interaction.client.emojis),
         clauses = text.trim().split(re_boundary),
-        raw_clauses = clauses.length;
+        base_clauses = clauses.length;
 
-    for (let i = 0; i < raw_clauses; i++)
+    const app_emojis = await interaction.client.application.emojis.fetch(),
+        emoji_arrays = findEmojiArrays(text, app_emojis);
+
+    for (let i = 0; i < base_clauses; i++)
         clauses.push(...expandRepeats(clauses.shift() as string));
 
-    const embeds = rollDice(clauses, arrays);
+    const embeds = rollDice(clauses, emoji_arrays);
 
     if (embeds.length > 0) {
         await interaction.reply({
@@ -75,17 +85,15 @@ function expandRepeats (clause: string) {
 }
 
 const re_dice_code = /\b([1-9][0-9]*)?d([1-9][0-9]*|%)(?:([HL])([1-9][0-9]*)?)?([+-][0-9]+(?:\.[0-9]+)?)?\b/ig,
-    re_array_code = /(?:\b([1-9][0-9]*)?d?)?\{(\w+?)\}/ig;
-
+    re_array_code = /(?:\b([1-9][0-9]*)?[dx]?)?\{(\w+?)\}/ig;
 function rollDice (clauses: string[], arrays: Record<string, string[]>): Embed[] {
-    // TODO refactor into parser
-
     const embeds: Embed[] = [];
 
     for (let i = 0; i < clauses.length; i++) {
         clauses[i] = evaluateArithmetic(clauses[i]);
 
-        const fields: EmbedField[] = [];
+        const fields: EmbedField[] = [],
+            percentages: number[] = [];
 
         const outcome = clauses[i].replace(re_dice_code, (code: string, count: string | number, size: string | number, hilo: string | number, keep: string | number, modifier: string | number) => {
             count = parseInt(count as string) || 1;
@@ -138,20 +146,16 @@ function rollDice (clauses: string[], arrays: Record<string, string[]>): Embed[]
             else
                 atoms.unshift(`**${total}**`, '=');
 
-            const min = 1 * (!hilo ? count : keep) + modifier,
-                max = size * (!hilo ? count : keep) + modifier;
-
-            let emoji;
-            if (total == min && total != max)
-                emoji = '🔻';
-            else if (total == max && total != min)
-                emoji = '🔺';
-
             fields.push({
-                name: trunc(`${code} ${emoji ?? ''}`, MAX_FIELD_NAME),
+                name: trunc(code, MAX_FIELD_NAME),
                 value: trunc(`${atoms.join(' ')}`, MAX_FIELD_VALUE),
                 inline: true
             });
+
+            const min = 1 * (!hilo ? count : keep) + modifier,
+                max = size * (!hilo ? count : keep) + modifier;
+
+            percentages.push((total - min) / (max - min));
 
             return `${total}`;
         }).replace(re_array_code, (code: string, count: string | number, slug: string) => {
@@ -179,9 +183,19 @@ function rollDice (clauses: string[], arrays: Record<string, string[]>): Embed[]
             clauses[i] = evaluateArithmetic(clauses[i]);
             clauses[i] = prettifyMarkdown(clauses[i]);
 
+            let embed_color: number;
+            if (percentages.length > 0) {
+                const avg_percentage = percentages.reduce((a, b) => a + b) / percentages.length;
+                embed_color = parseInt((color(color_gradient(avg_percentage)) as RGBColor).formatHex().substring(1), 16);
+            }
+            else {
+                embed_color = Colors.Blurple;
+            }
+
             embeds.push(({
                 title: trunc(`${embeds.length == 0 ? 'Rolled' : 'Then rolled' } ${clauses[i]}.`, MAX_EMBED_TITLE),
-                fields: truncFields(fields, 'rolls')
+                fields: truncFields(fields, 'rolls'),
+                color: embed_color
             } as Embed));
         }
     }
@@ -222,7 +236,7 @@ function regexClosure (clause: string, re: RegExp, fun: (substring: string, ...a
     return clause;
 }
 
-function findEmojiArrays (text: string, emojis: BaseGuildEmojiManager): Record<string, string[]> {
+function findEmojiArrays (text: string, emojis: Collection<string, Emoji>): Record<string, string[]> {
     const arrays: Record<string, string[]> = {};
     for (let [ , , slug ] of text.matchAll(re_array_code)) {
         slug = slug.toLowerCase();
@@ -230,12 +244,12 @@ function findEmojiArrays (text: string, emojis: BaseGuildEmojiManager): Record<s
         if (arrays[slug])
             continue;
 
-        const ids = emojis.cache
+        const matches = emojis
             .filter(e => e.name?.toLowerCase().startsWith(`${slug}_`) ?? false)
             .map(e => e.toString());
 
-        if (ids.length > 0)
-            arrays[slug] = ids;
+        if (matches.length > 0)
+            arrays[slug] = matches;
     }
     return arrays;
 }
