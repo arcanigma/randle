@@ -24,7 +24,6 @@
         "discord.js": "^14.17.3",
         "express": "^4.18.2",
         "inflection": "^3.0.0",
-        "node-emoji": "^2.1.3",
         "typescript": "^5.3.3"
     },
     "devDependencies": {
