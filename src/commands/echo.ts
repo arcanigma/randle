@@ -1,15 +1,17 @@
 import { ApplicationCommandOptionType, ApplicationCommandType, ChatInputApplicationCommandData, CommandInteraction } from 'discord.js';
+import { MAX_MESSAGE_LENGTH } from '../library/constants.js';
 
 export const data: ChatInputApplicationCommandData = {
     type: ApplicationCommandType.ChatInput,
     name: 'echo',
-    description: 'Replies by echoing your input',
+    description: 'Echo your input',
     options: [
         {
             name: 'input',
             type: ApplicationCommandOptionType.String,
-            description: 'The input to be echoed',
-            required: true
+            description: 'An input',
+            required: true,
+            max_length: MAX_MESSAGE_LENGTH
         }
     ]
 };
@@ -19,8 +21,6 @@ export async function execute (interaction: CommandInteraction): Promise<void> {
         throw 'This command can only be used in text-based channels.';
 
     const input = interaction.options.get('input')?.value as string;
-
-    console.debug(input);
 
     await interaction.reply({
         content: input,
