@@ -1,4 +1,4 @@
-import { Channel, Colors, Events, TextChannel } from 'discord.js';
+import { AuditLogEvent, Channel, Colors, Events, TextChannel } from 'discord.js';
 import * as inflection from 'inflection';
 import { MAX_EMBED_DESCRIPTION, MAX_EMBED_FIELDS, MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../library/constants.js';
 import { trunc } from '../library/texts.js';
@@ -10,13 +10,19 @@ const re_bracketing = /^\s*(?:\[\s*([^\]]+?)\s*\]\s*)?(.+?)\s*$/;
 export async function execute (oldChannel: Channel, newChannel: Channel): Promise<void> {
     if (oldChannel instanceof TextChannel && newChannel instanceof TextChannel) {
         if (newChannel.topic && newChannel.topic != oldChannel.topic) {
+            const log_event = (await newChannel.guild.fetchAuditLogs({
+                    type: AuditLogEvent.ChannelUpdate,
+                    limit: 1
+                })).entries.first(),
+                by_user = log_event?.executor ?? 'A moderator';
+
             if (newChannel.topic.includes('|')) {
                 const [ first, ...rest ] = newChannel.topic.split('|').map(it => it.trim()).filter(Boolean).slice(0, MAX_EMBED_FIELDS+1);
 
                 const [ , title, description ] = first.match(re_bracketing) as string[];
 
                 await newChannel.send({
-                    content: '_New channel topic:_',
+                    content: `${by_user.toString()} set the topic:`,
                     embeds: [
                         {
                             title: title ? trunc(title, MAX_EMBED_TITLE) : 'Topic',
@@ -37,7 +43,7 @@ export async function execute (oldChannel: Channel, newChannel: Channel): Promis
             }
             else {
                 await newChannel.send({
-                    content: `_New channel topic:_ ${trunc(newChannel.topic, MAX_EMBED_DESCRIPTION)}`
+                    content: `${by_user.toString()} set the topic: ${trunc(newChannel.topic, MAX_EMBED_DESCRIPTION)}`
                 });
             }
         }
