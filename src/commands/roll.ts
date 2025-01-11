@@ -103,19 +103,21 @@ function rollDice (clauses: string[], arrays: Record<string, string[]>): Embed[]
             for (let i = 1; i <= count; i++)
                 rolls.push(randomInt(size) + 1);
 
-            keep = Math.min(parseInt(keep as string) || 1, count);
-
             const strikes: Record<number, number> = {};
             if (hilo) {
+                keep = Math.min(parseInt(keep as string) || count - 1, count);
+
                 const sorted = rolls.slice();
                 if ((hilo as string).toUpperCase() == 'L')
                     sorted.sort((x,y) => x-y);
                 else
                     sorted.sort((x,y) => y-x);
-                for (let i = keep ; i < sorted.length; i++) {
-                    const key = sorted[i];
-                    strikes[key] = (strikes[key] ?? 0) + 1;
+                for (let i = keep; i < sorted.length; i++) {
+                    const roll = sorted[i];
+                    strikes[roll] = (strikes[roll] ?? 0) + 1;
                 }
+
+                count = keep;
             }
 
             modifier = parseInt(modifier as string) || 0;
@@ -152,8 +154,8 @@ function rollDice (clauses: string[], arrays: Record<string, string[]>): Embed[]
                 inline: true
             });
 
-            const min = 1 * (!hilo ? count : keep) + modifier,
-                max = size * (!hilo ? count : keep) + modifier;
+            const min = 1 * count + modifier,
+                max = size * count + modifier;
 
             if (min < max)
                 percentages.push((total - min) / (max - min));
