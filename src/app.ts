@@ -10,9 +10,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 try {
+    /*  REQUIREMENTS
+        Intents:
+            Guilds (to receive channelUpdate event)
+        Scopes:
+            bot
+            applications.commands
+        Bot Permissions:
+            Use Slash Commands
+            Send Messages
+            Send Messages in Threads
+            View Audit Log [fetched in channelUpdate handler]
+    */
     const client = new Client({ intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages
+        GatewayIntentBits.Guilds
     ] });
 
     const app = express();
