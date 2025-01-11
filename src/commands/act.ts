@@ -15,7 +15,7 @@ export const data: ChatInputApplicationCommandData = {
         {
             name: 'input',
             type: ApplicationCommandOptionType.String,
-            description: 'A custom activity, reset, or clear',
+            description: 'A custom activity, Reset, or Clear',
             required: true,
             max_length: MAX_CUSTOM_STATUS
         }
@@ -26,7 +26,7 @@ export async function execute (interaction: CommandInteraction): Promise<void> {
     if (!interaction.channel?.isTextBased())
         throw 'This command can only be used in text-based channels.';
 
-    const activity = interaction.options.get('input')?.value as string;
+    const activity = (interaction.options.get('input')?.value as string).toLowerCase();
 
     if (activity == 'reset') {
         interaction.client.user.setPresence({
