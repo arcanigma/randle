@@ -1,4 +1,4 @@
-import { BaseInteraction, CommandInteraction, Embed, EmbedField } from 'discord.js';
+import { BaseInteraction, CommandInteraction, Embed, EmbedField, MessageFlags } from 'discord.js';
 import { MAX_EMBED_FIELDS, MAX_FIELD_NAME, MAX_FIELD_VALUE, MAX_MESSAGE_EMBEDS } from './constants.js';
 import { trunc } from './texts.js';
 
@@ -71,13 +71,13 @@ export async function sendBlame (payload: unknown, interaction?: BaseInteraction
         if (interaction.replied || interaction.deferred) {
             await interaction.followUp({
                 embeds: embeds,
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
         else {
             await interaction.reply({
                 embeds: embeds,
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
     }

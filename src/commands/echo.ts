@@ -1,4 +1,4 @@
-import { ApplicationCommandOptionType, ApplicationCommandType, ChatInputApplicationCommandData, CommandInteraction } from 'discord.js';
+import { ApplicationCommandOptionType, ApplicationCommandType, ChatInputApplicationCommandData, CommandInteraction, MessageFlags } from 'discord.js';
 import { MAX_MESSAGE_LENGTH } from '../library/constants.js';
 
 export const data: ChatInputApplicationCommandData = {
@@ -24,6 +24,6 @@ export async function execute (interaction: CommandInteraction): Promise<void> {
 
     await interaction.reply({
         content: input,
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
     });
 }

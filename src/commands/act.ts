@@ -1,4 +1,4 @@
-import { ActivityType, ApplicationCommandOptionType, ApplicationCommandType, ChatInputApplicationCommandData, CommandInteraction } from 'discord.js';
+import { ActivityType, ApplicationCommandOptionType, ApplicationCommandType, ChatInputApplicationCommandData, CommandInteraction, MessageFlags } from 'discord.js';
 import { MAX_CUSTOM_STATUS } from '../library/constants.js';
 
 export const READY_ACTIVITY = '🎲 Ready to Roll';
@@ -35,7 +35,7 @@ export async function execute (interaction: CommandInteraction): Promise<void> {
 
         await interaction.reply({
             content: 'Reset bot activity',
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         });
     }
     else if (activity == 'clear') {
@@ -45,7 +45,7 @@ export async function execute (interaction: CommandInteraction): Promise<void> {
 
         await interaction.reply({
             content: 'Cleared bot activity',
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         });
     }
     else {
@@ -55,7 +55,7 @@ export async function execute (interaction: CommandInteraction): Promise<void> {
 
         await interaction.reply({
             content: 'Set bot activity',
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         });
     }
 }

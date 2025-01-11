@@ -1,7 +1,7 @@
 import { randomInt } from 'crypto';
 import { color, RGBColor } from 'd3-color';
 import { interpolateRgb, piecewise } from 'd3-interpolate';
-import { ApplicationCommandOptionType, ApplicationCommandType, ChatInputApplicationCommandData, Collection, Colors, CommandInteraction, Embed, EmbedField, Emoji } from 'discord.js';
+import { ApplicationCommandOptionType, ApplicationCommandType, ChatInputApplicationCommandData, Collection, Colors, CommandInteraction, Embed, EmbedField, Emoji, MessageFlags } from 'discord.js';
 import * as inflection from 'inflection';
 import { MAX_EMBED_TITLE, MAX_FIELD_NAME, MAX_FIELD_VALUE } from '../library/constants.js';
 import { repeat } from '../library/lists.js';
@@ -57,7 +57,7 @@ export async function execute (interaction: CommandInteraction): Promise<void> {
                 title: '⚠️ Warning',
                 description: 'There were no dice to roll.'
             }],
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         });
     }
 }
