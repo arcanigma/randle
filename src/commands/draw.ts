@@ -24,9 +24,6 @@ export const data: ChatInputApplicationCommandData = {
 };
 
 export async function execute (interaction: CommandInteraction): Promise<void> {
-    if (!interaction.channel?.isTextBased())
-        throw 'This command can only be used in text-based channels.';
-
     const elements = interaction.options.get('items')?.value as string,
         quantity = (interaction.options.get('quantity')?.value ?? 1) as number;
 

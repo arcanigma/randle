@@ -23,9 +23,6 @@ export const data: ChatInputApplicationCommandData = {
 };
 
 export async function execute (interaction: CommandInteraction): Promise<void> {
-    if (!interaction.channel?.isTextBased())
-        throw 'This command can only be used in text-based channels.';
-
     const activity = (interaction.options.get('input')?.value as string).toLowerCase();
 
     if (activity == 'reset') {

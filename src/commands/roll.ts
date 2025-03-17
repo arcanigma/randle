@@ -30,9 +30,6 @@ const color_gradient = piecewise(interpolateRgb, [
 
 const re_boundary = /\s*;\s*/;
 export async function execute (interaction: CommandInteraction): Promise<void> {
-    if (!interaction.channel?.isTextBased())
-        throw 'This command can only be used in text-based channels.';
-
     const text = interaction.options.get('text')?.value as string,
         clauses = text.trim().split(re_boundary),
         base_clauses = clauses.length;

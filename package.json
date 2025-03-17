@@ -1,7 +1,7 @@
 {
     "name": "randle",
     "description": "Tabletop gaming randomization bot for Discord.",
-    "version": "2.3",
+    "version": "2.3.1",
     "main": "./dist/app.js",
     "scripts": {
         "build": "tsc",
